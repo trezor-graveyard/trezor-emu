@@ -115,7 +115,9 @@ class MessageBroker(object):
 
     def otp_request(self, message, func, *args):
         def generate():
-            return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz0123456789') for _ in range(4))
+            # Removed l and 0
+            return ''.join(random.choice('abcdefghijkmnopqrstuvwxyz123456789') for _ in range(4))
+            #return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz0123456789') for _ in range(4))
         
         self.otp = generate()
         self.otp_func = func
@@ -229,7 +231,7 @@ class MessageBroker(object):
                 
         if isinstance(msg, proto.GetEntropy):
             if not self.yesno("Send %d bytes of entropy to computer?" % msg.size):
-                return proto.Failure(code=4)
+                return proto.Failure(code=4, message='Action cancelled by user')
             if self.device.otp:
                 return self.otp_request(None, self._get_entropy, msg.size)
             return self._get_entropy(msg.size)
@@ -239,14 +241,14 @@ class MessageBroker(object):
 
         if isinstance(msg, proto.LoadDevice):
             if not self.yesno("Load device with custom seed?"):
-                return proto.Failure(code=4)
+                return proto.Failure(code=4, message='Action cancelled by user')
             if self.device.otp:
                 return self.otp_request(None, self._load_device, msg.seed, msg.otp, msg.pin, msg.spv)
             return self._load_device(msg.seed, msg.otp, msg.pin, msg.spv)
             
         if isinstance(msg, proto.ResetDevice):
             if not self.yesno("Reset device?"):
-                return proto.Failure(code=4)
+                return proto.Failure(code=4, message='Action cancelled by user')
             if self.device.otp:
                 return self.otp_request(None, self._reset_device)
 
@@ -255,7 +257,7 @@ class MessageBroker(object):
         if isinstance(msg, proto.SignTx):
             print "<TODO: Print transaction details>"
             if not self.yesno("Sign transaction?"):
-                return proto.Failure(code=4)
+                return proto.Failure(code=4, message='Action cancelled by user')
             if self.device.otp:
                 return self.otp_request(None, self._sign_tx, msg.algo)
             return self._sign_tx(msg.algo)
