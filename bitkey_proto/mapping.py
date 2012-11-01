@@ -19,6 +19,9 @@ map_type_to_class = {
        15: proto.SignTx,
        16: proto.SignedTx,
        17: proto.Features,
+       18: proto.PinRequest,
+       19: proto.PinAck,
+       20: proto.PinCancel,
 }
 
 map_class_to_type = {}
@@ -40,9 +43,9 @@ def check_missing():
                 if issubclass(proto.__dict__[item].__class__, reflection.GeneratedProtocolMessageType) ]
     
     missing = list(set(types) - set(map_type_to_class.values()))
+
     if len(missing):
-        raise Exception("Following protobuf messages are not defined in mapping: %s" % \
-                        [ i.__class__.__name__ for i in missing ])
+        raise Exception("Following protobuf messages are not defined in mapping: %s" % missing)
 
 check_missing()
 build_index()

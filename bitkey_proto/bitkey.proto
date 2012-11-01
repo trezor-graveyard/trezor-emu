@@ -12,7 +12,7 @@ message Features {
     optional bool otp = 2;
     optional bool pin = 3;
     optional bool spv = 4;
-    optional repeated Algorithm algo = 5;
+    repeated Algorithm algo = 5;
 }
 
 // Description: Test if another side is still alive.
@@ -72,7 +72,7 @@ message Entropy {
 
 // Response: MasterPublicKey, Failure
 message GetMasterPublicKey {
-    required Algorithm algo = 1;
+    required Algorithm algo = 1 [default=BIP32];
 }
 
 message MasterPublicKey {
@@ -84,6 +84,7 @@ message LoadDevice {
     required string seed = 1;
     optional bool otp = 2 [default=true];
     optional string pin = 3;
+    optional bool spv = 4 [default=true];
 }
 
 // Response: Success, OtpRequired, PinRequired, Failure
@@ -92,7 +93,7 @@ message ResetDevice {
 
 // Response: SignedTx, OtpRequired, Failure
 message SignTx {
-    required Algorithm algo = 1;
+    required Algorithm algo = 1 [default=BIP32];
 }
 
 message SignedTx {
