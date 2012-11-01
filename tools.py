@@ -68,6 +68,16 @@ def b58decode(v, length):
 
     return result
 
+def EncodeBase58Check(vchIn):
+    # Used only for debug prints of private keys
+    hash = Hash(vchIn)
+    return b58encode(vchIn + hash[0:4])
+
+def SecretToASecret(secret):
+    # Used only for debug prints of private keys
+    vchIn = chr(addrtype+128) + secret
+    return EncodeBase58Check(vchIn)
+
 def hash_160(public_key):
     md = hashlib.new('ripemd160')
     md.update(hashlib.sha256(public_key).digest())
@@ -91,31 +101,4 @@ def get_seed(seed_words):
 
 def generate_seed():
     return "%032x" % ecdsa.util.randrange(pow(2, 128))
-    
-def stretch_key(seed):
-    oldseed = seed
-    for _ in range(100000):
-        seed = hashlib.sha256(seed + oldseed).digest()
-    return ecdsa.util.string_to_number(seed)
-
-def init_master_private_key(seed):
-    secexp = stretch_key(seed)
-    return ecdsa.SigningKey.from_secret_exponent(secexp, curve=SECP256k1)
-    
-def init_master_public_key(seed):
-    master_private_key = init_master_private_key(seed)
-    return master_private_key.get_verifying_key().to_string()
-
-def get_sequence(master_public_key, n):
-    return ecdsa.util.string_to_number(Hash( "%d:0:" % n + master_public_key ))
-
-def get_new_address(master_public_key, n):
-    """Publickey(type,n) = Master_public_key + H(n|S|type)*point  """
-    z = get_sequence(master_public_key, n)
-    master_public_key = ecdsa.VerifyingKey.from_string(master_public_key, curve=SECP256k1 )
-    pubkey_point = master_public_key.pubkey.point + z*SECP256k1.generator
-    public_key2 = ecdsa.VerifyingKey.from_public_point( pubkey_point, curve = SECP256k1 )
-    address = public_key_to_bc_address('04'.decode('hex') + public_key2.to_string() )
-    print address
-    return address
     
