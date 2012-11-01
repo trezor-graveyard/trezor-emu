@@ -1,0 +1,100 @@
+enum Algorithm {
+	BIP32 = 0;
+    ELECTRUM = 1;
+}
+  
+// Response: None or Features
+message Initialize {
+}
+
+message Features {
+    optional string version = 1;
+    optional bool otp = 2;
+    optional bool pin = 3;
+    optional bool spv = 4;
+    optional repeated Algorithm algo = 5;
+}
+
+// Description: Test if another side is still alive.
+// Response: None or Success
+message Ping {
+}
+
+// Description: Response message for previous request with given id.
+message Success {
+    optional string message = 1;
+}
+
+// Description: Response message for previous request with given id.
+message Failure {
+	optional int32 code = 1;
+    optional string message = 2;
+}
+
+// Response: UUID or Failure
+message GetUUID {
+}
+
+message UUID {
+    required bytes UUID = 1;
+}
+
+message OtpRequest {
+   optional string message = 1;
+}
+
+message OtpAck {
+    required string otp = 1;
+}
+
+message OtpCancel {
+}
+
+message PinRequest {
+   optional string message = 1;
+}
+
+message PinAck {
+    required string pin = 1;
+}
+
+message PinCancel {
+}
+
+// Response: OtpRequired, Entropy, Failure
+message GetEntropy {
+    required uint32 size = 1;
+}
+
+message Entropy {
+    required bytes entropy = 1;
+}
+
+// Response: MasterPublicKey, Failure
+message GetMasterPublicKey {
+    required Algorithm algo = 1;
+}
+
+message MasterPublicKey {
+    required bytes key = 1;
+}
+
+// Response: Success, OtpRequired, Failure
+message LoadDevice {
+    required string seed = 1;
+    optional bool otp = 2 [default=true];
+    optional string pin = 3;
+}
+
+// Response: Success, OtpRequired, PinRequired, Failure
+message ResetDevice {
+}
+
+// Response: SignedTx, OtpRequired, Failure
+message SignTx {
+    required Algorithm algo = 1;
+}
+
+message SignedTx {
+   required bytes tx = 1;
+}
