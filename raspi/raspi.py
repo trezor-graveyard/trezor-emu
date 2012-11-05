@@ -274,7 +274,7 @@ class OLED:
             return
         if (c >= font.firstchar) and ( c<= font.lastchar):
             for col in xrange(font.width):
-                column[col] = font.au8FontTable[((c - 32) * font.width) + col]
+                column[col] = font.table[((c - 32) * font.width) + col]
         else:
             for col in xrange(font.width):
                 column[col] = 0xFF
