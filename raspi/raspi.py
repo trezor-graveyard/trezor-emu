@@ -288,7 +288,7 @@ class OLED:
 
     def drawString(self, x, y, text, font):
         for i in xrange(len(text)):
-            self.drawChar(x + (i * (font.width + 1)), y, text[i], font)
+            self.drawChar(x + (i * (font.width + 1)), y, ord(text[i]), font)
 
     def invert(self, x1, y1, x2, y2):
         if (x1 >= self.WIDTH) or (y1 >= self.HEIGHT) or (x2 >= self.WIDTH) or (y2 >= self.HEIGHT):
