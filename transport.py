@@ -33,17 +33,30 @@ class Transport(object):
         inst.ParseFromString(data)
         return inst
     
-    def _read_headers(self, filelike):
-        if filelike.read(2) != '##':
-            raise Exception("Header magic is broken")
+    def _read_headers(self, read_f):
+        # Try to read headers until some sane value are detected
+        is_ok = False
+        while not is_ok:
 
-        try:
-            headerlen = struct.calcsize(">HL")
-            (msg_type, datalen) = struct.unpack(">HL", filelike.read(headerlen))
-        except:
-            raise Exception("Cannot parse header length")
+            # Align cursor to the beginning of the header ("##")
+            c = read_f.read(1)
+            while c != '#':
+                if c == '':
+                    # timeout
+                    raise Exception("Timed out while waiting for the magic character")
+                print "Warning: Aligning to magic characters"
+                c = read_f.read(1)
 
-        if datalen < 0 or datalen > 10**7:
-            raise Exception("Header length mismatch")
+            if read_f.read(1) != "#":
+                # Second character must be # to be valid header
+                raise Exception("Second magic character is broken")
 
+            # Now we're most likely on the beginning of the header
+            try:
+                headerlen = struct.calcsize(">HL")
+                (msg_type, datalen) = struct.unpack(">HL", read_f.read(headerlen))
+                break
+            except:
+                raise Exception("Cannot parse header length")
+       
         return (msg_type, datalen)
