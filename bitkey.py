@@ -6,6 +6,7 @@ import json
 import tools
 from bitkey_proto import bitkey_pb2 as proto
 from transport_pipe import PipeTransport
+from transport_serial import SerialTransport
 from algo import AlgoFactory
 
 '''
@@ -273,7 +274,8 @@ def loop(broker):
         client.write(resp)
 
 if __name__ == '__main__':
-    client = PipeTransport('device.socket', is_device=True)
+    #client = PipeTransport('device.socket', is_device=True)
+    client = SerialTransport('COM8')
 
     try:
         print "Loading device..."
