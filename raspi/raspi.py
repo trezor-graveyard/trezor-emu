@@ -269,18 +269,18 @@ class OLED:
         self.buffer[x+(y/8)*self.WIDTH] &= ~(1 << (y%8))
 
     def drawChar(self, x, y, c, font):
-        column = [0]*font.width
         if (x >= self.WIDTH) or (y >= self.HEIGHT):
             return
-        if (c >= font.firstchar) and ( c<= font.lastchar):
+        column = [0] * font.width
+        if (c >= font.firstchar) and (c <= font.lastchar):
             for col in xrange(font.width):
-                column[col] = font.table[((c - 32) * font.width) + col]
+                column[col] = font.table[((c - font.firstchar) * font.width) + col]
         else:
             for col in xrange(font.width):
                 column[col] = 0xFF
         for xoffset in xrange(font.width):
-            bit = 0
             for yoffset in xrange(font.height+1):
+                bit = 0
                 bit = (column[xoffset] << (8 - (yoffset + 1)))
                 bit = (bit >> 7)
                 if bit > 0:
