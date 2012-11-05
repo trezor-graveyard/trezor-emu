@@ -1,5 +1,4 @@
 #!/usr/bin/python
-import numpy
 import time
 import wiringpi
 
@@ -242,7 +241,7 @@ class OLED:
 
         wiringpi.digitalWrite(self.PIN_CS, 0) # select
         seq = [ 0xAE, 0xD5, 0x80, 0xA8, 0x3F, 0xD3, 0x00, 0x40, 0x8D, 0x14, 0x20, 0x00, 0xA1, 0xC8, 0xDA, 0x12, 0x81, 0xCF, 0xD9, 0xF1, 0xDB, 0x40, 0xA4, 0xA6, 0xAF ]
-        wiringpi.wiringPiSPIDataRW(0, numpy.array(seq), len(seq))
+        wiringpi.wiringPiSPIDataRW(0, seq)
         wiringpi.digitalWrite(self.PIN_CS, 1) # deselect
 
     def clear(self):
@@ -251,11 +250,11 @@ class OLED:
     def refresh(self):
         wiringpi.digitalWrite(self.PIN_CS, 0) # select
         seq = [0x00, 0x10, 0x40]
-        wiringpi.wiringPiSPIDataRW(0, numpy.array(seq), len(seq))
+        wiringpi.wiringPiSPIDataRW(0, seq)
         wiringpi.digitalWrite(self.PIN_CS, 1) # deselect
         wiringpi.digitalWrite(self.PIN_DC, 1) # data
         wiringpi.digitalWrite(self.PIN_CS, 0) # select
-        wiringpi.wiringPiSPIDataRW(0, numpy.array(self.buffer), len(self.buffer))
+        wiringpi.wiringPiSPIDataRW(0, seq)
         wiringpi.digitalWrite(self.PIN_CS, 1) # deselect
         wiringpi.digitalWrite(self.PIN_DC, 0) # cmd
 
