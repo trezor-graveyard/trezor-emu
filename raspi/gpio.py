@@ -5,7 +5,7 @@ import wiringpi
 PIN_BTNYES = 7
 PIN_BTNNO  = 8
 
-wiringpi.wiringPiSetupSys()
+wiringpi.wiringPiSetupGpio()
 
 wiringpi.pinMode(PIN_BTNYES, wiringpi.INPUT)
 wiringpi.pinMode(PIN_BTNNO,  wiringpi.INPUT)
