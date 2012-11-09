@@ -1,8 +1,13 @@
 enum Algorithm {
-	BIP32 = 0;
+    BIP32 = 0;
     ELECTRUM = 1;
 }
-  
+ 
+enum ScriptType {
+    PAYTOADDRESS = 0;
+    PAYTOSCRIPTHASH = 1;
+} 
+
 // Response: None or Features
 message Initialize {
 }
@@ -27,7 +32,7 @@ message Success {
 
 // Description: Response message for previous request with given id.
 message Failure {
-	optional int32 code = 1;
+    optional int32 code = 1;
     optional string message = 2;
 }
 
@@ -93,7 +98,27 @@ message ResetDevice {
 
 // Response: SignedTx, OtpRequired, Failure
 message SignTx {
+    message TxInput {
+        required uint32 address_n = 1;
+        required uint64 amount = 2;
+        required bytes prev_hash = 3;
+        required uint32 prev_index = 4;
+        required bytes script_sig = 5;
+    }
+
+    message TxOutput {
+        required string address = 1;
+        optional uint32 address_n = 2;
+        required uint64 amount = 3;
+        required ScriptType script_type = 4;
+        repeated bytes script_args = 5;
+    }
+
     required Algorithm algo = 1 [default=BIP32];
+    required uint64 fee = 2;
+    repeated TxInput inputs = 3;
+    repeated TxOutput outputs = 4;
+    optional bytes random = 5;
 }
 
 message SignedTx {
