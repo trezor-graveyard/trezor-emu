@@ -1,4 +1,5 @@
 import ecdsa
+import struct
 import hashlib
 import binascii
 import mnemonic
@@ -70,8 +71,7 @@ def b58decode(v, length):
 
 def EncodeBase58Check(vchIn):
     # Used only for debug prints of private keys
-    hash = Hash(vchIn)
-    return b58encode(vchIn + hash[0:4])
+    return b58encode(vchIn + Hash(vchIn)[0:4])
 
 def SecretToASecret(secret):
     # Used only for debug prints of private keys
@@ -89,6 +89,9 @@ def hash_160_to_bc_address(h160):
     addr = vh160 + h[0:4]
     return b58encode(addr)
 
+def bc_address_to_hash_160(addr):
+    return b58decode(addr, 25)[1:21]
+
 def public_key_to_bc_address(public_key):
     h160 = hash_160(public_key)
     return hash_160_to_bc_address(h160)
@@ -100,5 +103,60 @@ def get_seed(seed_words):
     return mnemonic.mn_decode(seed_words.split(' '))
 
 def generate_seed():
-    return "%032x" % ecdsa.util.randrange(pow(2, 128))
-    
+    return "%032x" % ecdsa.util.randrange(pow(2, 128))    
+
+def var_int(i):
+    if i<0xfd:
+        return binascii.hexlify(struct.pack('<B', i))
+    elif i<=0xffff:
+        return 'fd' + binascii.hexlify(struct.pack('<H', i))
+    elif i<=0xffffffff:
+        return 'fe' + binascii.hexlify(struct.pack('<Q', i))
+    else:
+        return 'ff' + binascii.hexlify(struct.pack('<Q', i))
+
+# https://en.bitcoin.it/wiki/Protocol_specification#Variable_length_integer
+def raw_tx( inputs, outputs, for_sig):
+    s  = '01000000'                                          # version 
+    s += var_int(len(inputs))                                # number of inputs
+    for i in range(len(inputs)):
+        _, _, p_hash, p_index, p_script, _, _ = inputs[i]
+        s += p_hash.decode('hex')[::-1].encode('hex')        # prev hash
+        s += binascii.hexlify(struct.pack('<L', p_index))    # prev index
+
+        if for_sig == i:
+            script = p_script                                # scriptsig
+        else:
+            script=''
+            
+        s += var_int( len(script)/2 )                        # script length
+        s += script
+        s += "ffffffff"                                      # sequence
+    s += var_int(len(outputs))                               # number of outputs
+    for output in outputs:
+        addr, amount = output
+        s += binascii.hexlify(struct.pack('<Q', amount))     # amount 
+        script = '76a9'                                      # op_dup, op_hash_160
+        script += '14'                                       # push 0x14 bytes
+        script += bc_address_to_hash_160(addr).encode('hex')
+        script += '88ac'                                     # op_equalverify, op_checksig
+        s += var_int( len(script)/2 )                        # script length
+        s += script                                          # script
+    s += '00000000'                                          # lock time
+    s += '01000000'                                          # hash type
+    return s
+
+def sign_inputs(algo, seed, inputs, outputs):
+    s_inputs = []
+    for i in range(len(inputs)):
+        addr_n = inputs[i][0]
+        private_key = ecdsa.SigningKey.from_string(algo.get_private_key(seed, addr_n), curve=SECP256k1)
+        #public_key = private_key.get_verifying_key()
+        #pubkey = public_key.to_string()
+        tx = raw_tx(inputs, outputs, for_sig=i)
+        sig = private_key.sign_digest(Hash(tx.decode('hex')), sigencode=ecdsa.util.sigencode_der)
+        #assert public_key.verify_digest(sig, Hash(tx.decode('hex')), sigdecode=ecdsa.util.sigdecode_der)
+        #s_inputs.append((pubkey, sig))
+        s_inputs.append(sig)
+    return s_inputs
+
