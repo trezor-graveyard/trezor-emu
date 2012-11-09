@@ -1,5 +1,4 @@
 #!/usr/bin/python
-import numpy
 import time
 import wiringpi
 
@@ -242,7 +241,7 @@ class OLED:
 
         wiringpi.digitalWrite(self.PIN_CS, 0) # select
         seq = [ 0xAE, 0xD5, 0x80, 0xA8, 0x3F, 0xD3, 0x00, 0x40, 0x8D, 0x14, 0x20, 0x00, 0xA1, 0xC8, 0xDA, 0x12, 0x81, 0xCF, 0xD9, 0xF1, 0xDB, 0x40, 0xA4, 0xA6, 0xAF ]
-        wiringpi.wiringPiSPIDataRW(0, numpy.array(seq), len(seq))
+        wiringpi.wiringPiSPIDataRW(0, seq)
         wiringpi.digitalWrite(self.PIN_CS, 1) # deselect
 
     def clear(self):
@@ -251,11 +250,11 @@ class OLED:
     def refresh(self):
         wiringpi.digitalWrite(self.PIN_CS, 0) # select
         seq = [0x00, 0x10, 0x40]
-        wiringpi.wiringPiSPIDataRW(0, numpy.array(seq), len(seq))
+        wiringpi.wiringPiSPIDataRW(0, seq)
         wiringpi.digitalWrite(self.PIN_CS, 1) # deselect
         wiringpi.digitalWrite(self.PIN_DC, 1) # data
         wiringpi.digitalWrite(self.PIN_CS, 0) # select
-        wiringpi.wiringPiSPIDataRW(0, numpy.array(self.buffer), len(self.buffer))
+        wiringpi.wiringPiSPIDataRW(0, seq)
         wiringpi.digitalWrite(self.PIN_CS, 1) # deselect
         wiringpi.digitalWrite(self.PIN_DC, 0) # cmd
 
@@ -270,18 +269,18 @@ class OLED:
         self.buffer[x+(y/8)*self.WIDTH] &= ~(1 << (y%8))
 
     def drawChar(self, x, y, c, font):
-        column = [0]*font.width
         if (x >= self.WIDTH) or (y >= self.HEIGHT):
             return
-        if (c >= font.firstchar) and ( c<= font.lastchar):
+        column = [0] * font.width
+        if (c >= font.firstchar) and (c <= font.lastchar):
             for col in xrange(font.width):
-                column[col] = font.au8FontTable[((c - 32) * font.width) + col]
+                column[col] = font.table[((c - font.firstchar) * font.width) + col]
         else:
             for col in xrange(font.width):
                 column[col] = 0xFF
         for xoffset in xrange(font.width):
-            bit = 0
             for yoffset in xrange(font.height+1):
+                bit = 0
                 bit = (column[xoffset] << (8 - (yoffset + 1)))
                 bit = (bit >> 7)
                 if bit > 0:
@@ -289,7 +288,7 @@ class OLED:
 
     def drawString(self, x, y, text, font):
         for i in xrange(len(text)):
-            self.drawChar(x + (i * (font.width + 1)), y, text[i], font)
+            self.drawChar(x + (i * (font.width + 1)), y, ord(text[i]), font)
 
     def invert(self, x1, y1, x2, y2):
         if (x1 >= self.WIDTH) or (y1 >= self.HEIGHT) or (x2 >= self.WIDTH) or (y2 >= self.HEIGHT):
