@@ -103,60 +103,65 @@ def get_seed(seed_words):
     return mnemonic.mn_decode(seed_words.split(' '))
 
 def generate_seed():
-    return "%032x" % ecdsa.util.randrange(pow(2, 128))    
-
+    return "%032x" % ecdsa.util.randrange(pow(2, 128))
+    
 def var_int(i):
     if i<0xfd:
-        return binascii.hexlify(struct.pack('<B', i))
+        return struct.pack('<B', i)
     elif i<=0xffff:
-        return 'fd' + binascii.hexlify(struct.pack('<H', i))
+        return '\xfd' + struct.pack('<H', i)
     elif i<=0xffffffff:
-        return 'fe' + binascii.hexlify(struct.pack('<Q', i))
+        return '\xfe' + struct.pack('<Q', i)
     else:
-        return 'ff' + binascii.hexlify(struct.pack('<Q', i))
+        return '\xff' + struct.pack('<Q', i)
 
 # https://en.bitcoin.it/wiki/Protocol_specification#Variable_length_integer
-def raw_tx( inputs, outputs, for_sig):
-    s  = '01000000'                                          # version 
+def raw_tx(inputs, outputs, for_sig):
+    s  = '\x01\x00\x00\x00'                                  # version 
     s += var_int(len(inputs))                                # number of inputs
     for i in range(len(inputs)):
-        _, _, p_hash, p_index, p_script, _, _ = inputs[i]
-        s += p_hash.decode('hex')[::-1].encode('hex')        # prev hash
-        s += binascii.hexlify(struct.pack('<L', p_index))    # prev index
+        inp = inputs[i] 
+        
+        s += inp.prev_hash[::-1]                              # prev hash
+        s += struct.pack('<L', inp.prev_index)             # prev index
 
         if for_sig == i:
-            script = p_script                                # scriptsig
+            script = inp.script_sig                        # scriptsig
         else:
             script=''
             
-        s += var_int( len(script)/2 )                        # script length
+        s += var_int(len(script))                            # script length
         s += script
-        s += "ffffffff"                                      # sequence
+        s += "\xff\xff\xff\xff"                              # sequence
+        
     s += var_int(len(outputs))                               # number of outputs
     for output in outputs:
-        addr, amount = output
-        s += binascii.hexlify(struct.pack('<Q', amount))     # amount 
-        script = '76a9'                                      # op_dup, op_hash_160
-        script += '14'                                       # push 0x14 bytes
-        script += bc_address_to_hash_160(addr).encode('hex')
-        script += '88ac'                                     # op_equalverify, op_checksig
-        s += var_int( len(script)/2 )                        # script length
+        s += struct.pack('<Q', output.amount)                # amount 
+        script = '\x76\xa9'                                  # op_dup, op_hash_160
+        script += '\x14'                                     # push 0x14 bytes
+        script += bc_address_to_hash_160(output.address)
+        script += '\x88\xac'                                 # op_equalverify, op_checksig
+        s += var_int(len(script))                            # script length
         s += script                                          # script
-    s += '00000000'                                          # lock time
-    s += '01000000'                                          # hash type
+    s += '\x00\x00\x00\x00'                                  # lock time
+    s += '\x01\x00\x00\x00'                                  # hash type
     return s
 
 def sign_inputs(algo, seed, inputs, outputs):
-    s_inputs = []
+    signatures = []
     for i in range(len(inputs)):
-        addr_n = inputs[i][0]
+        addr_n = inputs[i].address_n
+        print addr_n
         private_key = ecdsa.SigningKey.from_string(algo.get_private_key(seed, addr_n), curve=SECP256k1)
-        #public_key = private_key.get_verifying_key()
-        #pubkey = public_key.to_string()
+
         tx = raw_tx(inputs, outputs, for_sig=i)
-        sig = private_key.sign_digest(Hash(tx.decode('hex')), sigencode=ecdsa.util.sigencode_der)
+        sig = private_key.sign_digest(Hash(tx), sigencode=ecdsa.util.sigencode_der)
         #assert public_key.verify_digest(sig, Hash(tx.decode('hex')), sigdecode=ecdsa.util.sigdecode_der)
         #s_inputs.append((pubkey, sig))
-        s_inputs.append(sig)
-    return s_inputs
+        
+        public_key = private_key.get_verifying_key()
+        pubkey = public_key.to_string()
+        
+        signatures.append((pubkey, sig))
+    return signatures
 
