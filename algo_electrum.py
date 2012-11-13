@@ -1,6 +1,6 @@
 import ecdsa
 import hashlib
-from tools import Hash, SECP256k1, public_key_to_bc_address, generator_secp256k1
+from tools import Hash, SECP256k1, public_key_to_bc_address, generator_secp256k1, raw_tx
 
 class AlgoElectrum(object):
     
@@ -13,7 +13,7 @@ class AlgoElectrum(object):
 
     @classmethod
     def _get_sequence(cls, master_public_key, n):
-        return ecdsa.util.string_to_number(Hash( "%d:0:" % n + master_public_key ))
+        return ecdsa.util.string_to_number(Hash( "%d:0:" % n[0] + master_public_key ))
 
     @classmethod
     def init_master_private_key(cls, seed):
