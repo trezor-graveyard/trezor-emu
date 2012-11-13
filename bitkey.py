@@ -10,6 +10,12 @@ from transport_serial import SerialTransport
 from algo import AlgoFactory
 
 '''
+    Feature list:
+        * PIN-protected seed
+        * Store PIN as a hash
+        * SPV
+        * P2SH
+        
     Failure codes:
         1 - Unknown method
         2 - Waiting to OTP
@@ -26,6 +32,7 @@ class Device(object):
         self.spv = False
         self.pin = ''
         self.algo = [proto.ELECTRUM,]
+        self.maxfee_kb = 100000 # == 0.001 BTC/kB
         
     @classmethod    
     def load(cls, filename):
@@ -35,6 +42,7 @@ class Device(object):
         dev.otp = data['otp']
         dev.spv = data['spv']
         dev.pin = data['pin']
+        dev.maxfee_kb = data['maxfee_kb']
         return dev
         
     def save(self, filename):
@@ -43,12 +51,13 @@ class Device(object):
         data['otp'] = self.otp
         data['spv'] = self.spv
         data['pin'] = self.pin
+        data['maxfee_kb'] = self.maxfee_kb
         json.dump(data, open(filename, 'w'))
         
     def get_master_public_key(self, algo):
         af = AlgoFactory(algo)
         master_public_key = af.init_master_public_key(self.seed)
-        af.get_new_address(master_public_key, 0)
+        #af.get_new_address(master_public_key, [0])
         return master_public_key
     
     def get_mnemonic(self):
@@ -152,6 +161,10 @@ class MessageBroker(object):
         m.entropy = ''.join([ chr(random.randrange(0, 255, 1)) for _ in xrange(0, size) ])
         return m
 
+    def _set_maxfee_kb(self, maxfee_kb):
+        self.device.maxfee_kb = maxfee_kb
+        return proto.Success()
+    
     def _load_device(self, seed_words, otp, pin, spv):
         self.device.load_seed(seed_words)
         self.device.set_otp(otp)
@@ -222,10 +235,11 @@ class MessageBroker(object):
             m.pin = self.device.pin != ''
             m.spv = self.device.spv == True
             m.algo.extend(self.device.algo)
+            m.maxfee_kb = self.device.maxfee_kb
             return m
         
         if isinstance(msg, proto.Ping):
-            return proto.Success()
+            return proto.Success(message=msg.message)
     
         if isinstance(msg, proto.GetUUID):
             return proto.UUID(UUID='device-UUID')
@@ -237,6 +251,15 @@ class MessageBroker(object):
                 return self.otp_request(None, self._get_entropy, msg.size)
             return self._get_entropy(msg.size)
     
+        if isinstance(msg, proto.SetMaxFeeKb):
+            if not self.yesno("Current maximal fee is %s per kB. Set transaction fee to %s per kilobyte?" % \
+                            (self.device.maxfee_kb, msg.maxfee_kb)):
+                return proto.Failure(code=4, message='Action cancelled by user')
+            if self.device.otp:
+                return self.otp_request(None, self._set_maxfee_kb, msg.maxfee_kb)
+            return self._get_entropy(msg.size)
+    
+            
         if isinstance(msg, proto.GetMasterPublicKey):
             return proto.MasterPublicKey(key=self.device.get_master_public_key(msg.algo))
 
@@ -274,8 +297,8 @@ def loop(broker):
         client.write(resp)
 
 if __name__ == '__main__':
-    #client = PipeTransport('device.socket', is_device=True)
-    client = SerialTransport('COM8')
+    client = PipeTransport('device.socket', is_device=True)
+    #client = SerialTransport('COM8')
 
     try:
         print "Loading device..."
@@ -291,10 +314,34 @@ if __name__ == '__main__':
     #device.get_master_public_key(proto.ELECTRUM)
     #print tools.SecretToASecret(AlgoFactory(proto.ELECTRUM).get_private_key(device.seed, 0))
     
+    # 521631520fe6c44ebd98b0e70c1c720d570d0ecd7927efd27151fc45dd1c84de
+    
+    
+    data = '080118a0c21e222c0a22314c4e35664b727a557677696e6e42716e6d426a324a486557664235654e776f3451100418c0843d2000222c0a22314b7159797a4c353352386f41314c6459767976376d364a5572794666474a447061100018e0a71220002a4508001080ea301a20622632090b7ca1a456c659e651f5778da4f3f1d3d4508811b8602b1209fb1ae820012a1976a914cea0ed8f6c892b20ec85202d00fac7e3155c7a8288ac2a45080410c0843d1a20729689408b9bc45c66f026fa4e4a2a5d535c56b5e9b8d23220b220b9f1978e9420002a1976a914d4670405b4b734ca2be50c044e815152503cbc8888ac3a800274596e35425aef92cbba32bc19e252166c95f765080cdea37b9202a98b7ea54f62bf3ee6899b75f01eee8c69e006cabf6006e957757e6f1ee49680ca62febff81c377b0841a63240f439b0c7bfbb507cb11701bdb47d3838426cc5802ee93ea5fd870f1c2b7e39969bad203da1a0b3df701901393264bdf7bc155f95fcc8ab5793ad7e1612c5ecf0dfb85b8e654260477bf1d2cd183f4a8743e93a2255d03f1836d9a36ea8746f34bd301ac6bd0e99c6a703a176f32a55370675b249deba83db776b5e20ab5f8d879518fdc91a6aa412f203fca59588dea131c7e09649cbaaca595aab8906674e97034f7f2431bd1cdf0aee725f592e56a768783a1dcdfa7b45'
+    # signature add550d6ba9ab7e01d37e17658f98b6e901208d241f24b08197b5e20dfa7f29f095ae01acbfa5c4281704a64053dcb80e9b089ecbe09f5871d67725803e36edd 3045022100dced96eeb43836bc95676879eac303eabf39802e513f4379a517475c259da12502201fd36c90ecd91a32b2ca8fed2e1755a7f2a89c2d520eb0da10147802bc7ca217
+    #print tx.decode('hex')
+    
+    '''
+    tx = proto.SignTx()
+    tx.ParseFromString(data.decode('hex'))
+    print tx
+    try:
+        signatures = tools.sign_inputs(AlgoFactory(tx.algo), device.seed, tx.inputs, tx.outputs)
+        for sig in signatures:
+            print (sig[0].encode('hex'), sig[1].encode('hex')).__repr__()
+    except:
+        client.close()
+        raise
+    #print tx
+    '''
+    
     broker = MessageBroker(device)        
     try:
         loop(broker)
     except KeyboardInterrupt:
         client.close()
-        
+    except:
+        client.close()
+        raise
+    
     device.save('device.dat')
