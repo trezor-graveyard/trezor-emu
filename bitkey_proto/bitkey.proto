@@ -17,12 +17,19 @@ message Features {
     optional bool otp = 2;
     optional bool pin = 3;
     optional bool spv = 4;
-    repeated Algorithm algo = 5;
+    optional uint64 maxfee_kb = 5;
+    repeated Algorithm algo = 6;
+    optional bool debug_link = 7;    
 }
 
 // Description: Test if another side is still alive.
 // Response: None or Success
 message Ping {
+    optional string message = 1;
+}
+
+message DebugLinkDecision {
+	required bool yes_no = 1;
 }
 
 // Description: Response message for previous request with given id.
@@ -66,13 +73,18 @@ message PinAck {
 message PinCancel {
 }
 
-// Response: OtpRequired, Entropy, Failure
+// Response: OtpRequest, Entropy, Failure
 message GetEntropy {
     required uint32 size = 1;
 }
 
 message Entropy {
     required bytes entropy = 1;
+}
+
+// Response: Success, OtpRequest, PinRequest, Failure
+message SetMaxFeeKb {
+	required uint64 maxfee_kb= 1;
 }
 
 // Response: MasterPublicKey, Failure
@@ -84,7 +96,7 @@ message MasterPublicKey {
     required bytes key = 1;
 }
 
-// Response: Success, OtpRequired, Failure
+// Response: Success, OtpRequest, Failure
 message LoadDevice {
     required string seed = 1;
     optional bool otp = 2 [default=true];
@@ -92,35 +104,56 @@ message LoadDevice {
     optional bool spv = 4 [default=true];
 }
 
-// Response: Success, OtpRequired, PinRequired, Failure
+// Response: Success, OtpRequest, PinRequest, Failure
 message ResetDevice {
 }
 
-// Response: SignedTx, OtpRequired, Failure
+message TxOutput {
+    required string address = 1;
+    repeated uint32 address_n = 2;
+    required uint64 amount = 3;
+    required ScriptType script_type = 4;
+    repeated bytes script_args = 5;
+}
+
+// Response: Success, SignedInput, Failure
+message TxInput {
+    repeated uint32 address_n = 1;
+    required uint64 amount = 2;
+    required bytes prev_hash = 3;
+    required uint32 prev_index = 4;
+    optional bytes script_sig = 5;
+}
+
+// Response: SignedTx, Success, OtpRequest, PinRequest, Failure
 message SignTx {
-    message TxInput {
-        required uint32 address_n = 1;
-        required uint64 amount = 2;
-        required bytes prev_hash = 3;
-        required uint32 prev_index = 4;
-        required bytes script_sig = 5;
-    }
-
-    message TxOutput {
-        required string address = 1;
-        optional uint32 address_n = 2;
-        required uint64 amount = 3;
-        required ScriptType script_type = 4;
-        repeated bytes script_args = 5;
-    }
-
     required Algorithm algo = 1 [default=BIP32];
-    required uint64 fee = 2;
-    repeated TxInput inputs = 3;
+    optional bool stream = 2; // enable streaming
+    required uint64 fee = 3;
     repeated TxOutput outputs = 4;
-    optional bytes random = 5;
+    repeated TxInput inputs = 5;
+    optional uint32 inputs_count = 6; // for streaming
+    optional bytes random = 7;
 }
 
 message SignedTx {
-   required bytes tx = 1;
+   repeated bytes signature = 1;
+}
+
+/*
+inputs = [] # list of TxInput
+for i in inputs:
+    for x in inputs:
+        send(x)
+        
+	signature = send(SignInput(i))
+*/
+
+// Response: SignedInput, Failure
+message SignInput {
+	required TxInput input = 1;
+}
+
+message SignedInput {
+	required bytes signature = 1;
 }
