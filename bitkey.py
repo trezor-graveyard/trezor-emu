@@ -2,11 +2,14 @@
 import random
 import time
 import json
+import sys
+from select import select # For raw_input timeout
 
 import tools
 from bitkey_proto import bitkey_pb2 as proto
 from transport_pipe import PipeTransport
 from transport_serial import SerialTransport
+from transport_fake import FakeTransport
 from algo import AlgoFactory
 
 '''
@@ -33,6 +36,7 @@ class Device(object):
         self.pin = ''
         self.algo = [proto.ELECTRUM,]
         self.maxfee_kb = 100000 # == 0.001 BTC/kB
+        self.debug_link = False # Enabled debugging connection
         
     @classmethod    
     def load(cls, filename):
@@ -52,6 +56,9 @@ class Device(object):
         data['spv'] = self.spv
         data['pin'] = self.pin
         data['maxfee_kb'] = self.maxfee_kb
+        
+        # Debug link state is NOT persisted
+        
         json.dump(data, open(filename, 'w'))
         
     def get_master_public_key(self, algo):
@@ -80,22 +87,53 @@ class Device(object):
     def sign_tx(self, algo):
         # TODO
         pass
-    
+
+class YesNo(object):
+    def __init__(self, debug_transport):
+        self.debug_transport = debug_transport
+        
+    def yesno(self, question):
+        '''Reads for y/n from standard input
+        AND from debug link if enabled'''
+        
+        timeout = 0.5
+        sys.stdout.write("%s (y/n) " % question)
+        sys.stdout.flush()
+        
+        while True:      
+            if self.debug_transport.ready_to_read():
+                decision = self.debug_transport.read()
+                if not isinstance(decision, proto.DebugLinkDecision):
+                    raise Exception("Expected DebugLinkDecision object, got %s" % decision)
+                
+                print 'y' if decision.yes_no else 'n'  
+                return decision.yes_no
+  
+            rlist, _, _ = select([sys.stdin], [], [], timeout)
+            
+            if not rlist:                
+                continue # timeout 
+        
+            
+            return sys.stdin.readline().strip() == 'y'
+        
 class MessageBroker(object):
-    def __init__(self, device):
+    def __init__(self, device, debug_transport, yesno_func):
         self.device = device
         # Setup internal variables for OTP handshake
         self.otp_cancel()
         self.pin_cancel()
         
-    def yesno(self, question):
-        return raw_input("%s (y/n) " % question) == 'y'
-        
+        self.debug_transport = debug_transport
+        self.yesno = yesno_func
+                    
     def pin_request(self, message, pass_or_check, func, *args):
         self.pin_pass_or_check = pass_or_check
         self.pin_func = func
         self.pin_args = args
         
+        self.debug_transport.write(proto.PinAck(pin=self.device.pin))
+            
         if message != None:
             return proto.PinRequest(message=message)
         else:
@@ -136,6 +174,8 @@ class MessageBroker(object):
             m = proto.OtpRequest(message=message)
         else:
             m = proto.OtpRequest()
+
+        self.debug_transport.write(proto.OtpAck(otp=self.otp))
         
         print "OTP:", self.otp
         return m
@@ -155,6 +195,21 @@ class MessageBroker(object):
         self.otp_func = None
         self.otp_args = []
             
+    def protect_call(self, yesno_message, otp_message, pin_message, func, *args):
+        if not self.yesno(yesno_message):
+            return proto.Failure(code=4, message='Action cancelled by user')
+
+        if self.device.otp:
+            if self.device.pin:
+                return self.otp_request(otp_message, self.pin_request, *[pin_message, False, func]+list(args))
+            else:
+                return self.otp_request(otp_message, func, *args)
+        
+        if self.device.pin:
+            return self.pin_request(pin_message, False, func, *args)
+        
+        return func(*args)
+
     def _get_entropy(self, size):
         random.seed()
         m = proto.Entropy()
@@ -175,9 +230,9 @@ class MessageBroker(object):
     def _reset_device(self):
         print "Starting setup wizard..."
 
-        is_otp = raw_input("Use OTP? (y/n) ") == 'y'
-        is_spv = raw_input("Use SPV? (y/n) ") == 'y'
-        is_pin = raw_input("Use PIN? (y/n) ") == 'y'
+        is_otp = self.yesno("Use OTP?")
+        is_spv = self.yesno("Use SPV?")
+        is_pin = self.yesno("Use PIN?")
         
         if is_pin:
             return self.pin_request("Please enter new PIN", True, self._reset_device2, is_otp, is_spv)
@@ -236,6 +291,7 @@ class MessageBroker(object):
             m.spv = self.device.spv == True
             m.algo.extend(self.device.algo)
             m.maxfee_kb = self.device.maxfee_kb
+            m.debug_link = self.device.debug_link
             return m
         
         if isinstance(msg, proto.Ping):
@@ -245,68 +301,67 @@ class MessageBroker(object):
             return proto.UUID(UUID='device-UUID')
                 
         if isinstance(msg, proto.GetEntropy):
-            if not self.yesno("Send %d bytes of entropy to computer?" % msg.size):
-                return proto.Failure(code=4, message='Action cancelled by user')
-            if self.device.otp:
-                return self.otp_request(None, self._get_entropy, msg.size)
-            return self._get_entropy(msg.size)
-    
-        if isinstance(msg, proto.SetMaxFeeKb):
-            if not self.yesno("Current maximal fee is %s per kB. Set transaction fee to %s per kilobyte?" % \
-                            (self.device.maxfee_kb, msg.maxfee_kb)):
-                return proto.Failure(code=4, message='Action cancelled by user')
-            if self.device.otp:
-                return self.otp_request(None, self._set_maxfee_kb, msg.maxfee_kb)
-            return self._get_entropy(msg.size)
-    
-            
+            return self.protect_call("Send %d bytes of entropy to computer?" % msg.size,
+                                     None, None,
+                                     self._get_entropy, msg.size)
+
         if isinstance(msg, proto.GetMasterPublicKey):
             return proto.MasterPublicKey(key=self.device.get_master_public_key(msg.algo))
-
+    
+        if isinstance(msg, proto.SetMaxFeeKb):
+            return self.protect_call("Current maximal fee is %s per kB. Set transaction fee to %s per kilobyte?" % \
+                                     (self.device.maxfee_kb, msg.maxfee_kb),
+                                     None, None,
+                                     self._set_maxfee_kb, msg.maxfee_kb)    
+            
         if isinstance(msg, proto.LoadDevice):
-            if not self.yesno("Load device with custom seed?"):
-                return proto.Failure(code=4, message='Action cancelled by user')
-            if self.device.otp:
-                return self.otp_request(None, self._load_device, msg.seed, msg.otp, msg.pin, msg.spv)
-            return self._load_device(msg.seed, msg.otp, msg.pin, msg.spv)
+            return self.protect_call("Load device with custom seed?",
+                                     None, None,
+                                     self._load_device, msg.seed, msg.otp, msg.pin, msg.spv)
             
         if isinstance(msg, proto.ResetDevice):
-            if not self.yesno("Reset device?"):
-                return proto.Failure(code=4, message='Action cancelled by user')
-            if self.device.otp:
-                return self.otp_request(None, self._reset_device)
-
-            return self._reset_device()
+            return self.protect_call("Reset device?",
+                                     None, None,
+                                     self._reset_device)
             
         if isinstance(msg, proto.SignTx):
             print "<TODO: Print transaction details>"
-            if not self.yesno("Sign transaction?"):
-                return proto.Failure(code=4, message='Action cancelled by user')
-            if self.device.otp:
-                return self.otp_request(None, self._sign_tx, msg.algo)
-            return self._sign_tx(msg.algo)
+            return self.protect_call("Sign transaction?",
+                                     None, None,
+                                     self._sign_tx, msg.algo)
         
         return proto.Failure(code=1, message='Unknown method')
         
-def loop(broker):
+def loop(transport, broker):
     while True:
-        msg = client.read()
+        msg = transport.read()
         print "Received:", msg.__class__
         resp = broker.process_message(msg)
         print "Sent:", resp.__class__
-        client.write(resp)
+        transport.write(resp)
 
 if __name__ == '__main__':
-    client = PipeTransport('device.socket', is_device=True)
-    #client = SerialTransport('COM8')
+    ENABLE_DEBUG_LINK = True
+        
+    if ENABLE_DEBUG_LINK:
+        debug_transport = PipeTransport('device.socket.debug', is_device=True)
+    else:
+        debug_transport = FakeTransport('/dev/null')
+   
+    #transport = SerialTransport('COM8')
+    transport = PipeTransport('device.socket', is_device=True)
 
     try:
         print "Loading device..."
         device = Device.load('device.dat')
-        print "Using seed:", device.get_mnemonic()
+        device.debug_link = ENABLE_DEBUG_LINK
     except IOError:
         print "Load failed, starting with new device configuration..."
         device = Device()
+        device.debug_link = ENABLE_DEBUG_LINK
+
+    print "Using seed:", device.get_mnemonic()
+    print "Using debug link:", device.debug_link
     
     if device.seed == '':
         print "This device hasn't been initialized yet. Please initialize it in desktop client."
@@ -335,13 +390,17 @@ if __name__ == '__main__':
     #print tx
     '''
     
-    broker = MessageBroker(device)        
+    yesno = YesNo(debug_transport)
+    broker = MessageBroker(device, debug_transport, yesno_func=yesno.yesno)
+          
     try:
-        loop(broker)
+        loop(transport, broker)
     except KeyboardInterrupt:
-        client.close()
+        transport.close()
+        debug_transport.close()
     except:
-        client.close()
+        transport.close()
+        debug_transport.close()
         raise
     
     device.save('device.dat')
