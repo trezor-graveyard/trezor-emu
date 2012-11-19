@@ -7,9 +7,10 @@ bitkey = bitkey.Bitkey()
 bitkey.init()
 
 bitkey.oledClear()
+
 bitkey.oledDrawString(0, 11, "1BRMLAB7nryYgFGrG8x9S", smallfonts.Font5x8)
-bitkey.oledDrawString(0, 21, "12381.87431928 B", smallfonts.Font7x8)
-bitkey.oledDrawString(0, 56, "Confirm        Cancel", smallfonts.Font5x8)
+bitkey.oledDrawString(0, 21, "12381.87431928 \x80", smallfonts.Font7x8)
+bitkey.oledDrawString(0, 56, "Confirm   \x80    Cancel", smallfonts.Font5x8);
 bitkey.oledInvert(0, 20, 127, 28)
 bitkey.oledRefresh()
 
