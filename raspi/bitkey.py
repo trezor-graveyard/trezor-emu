@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import time
 import wiringpi
-import spi
+import spidev
 
 class Bitkey:
 
@@ -18,7 +18,8 @@ class Bitkey:
 
     def init(self):
         wiringpi.wiringPiSetupGpio()
-        self.spidev = spi.SPIDev('/dev/spidev0.0')
+        self.spidev = spidev.SpiDev()
+        self.spidev.open(0, 0)
 
         wiringpi.pinMode(self.PIN_OLED_DC,  wiringpi.OUTPUT)
         wiringpi.pinMode(self.PIN_OLED_CS,  wiringpi.OUTPUT)
@@ -49,8 +50,7 @@ class Bitkey:
         self.oledRefresh()
 
     def sendSPI(self, data):
-        transfer, _, _ = spi.spi_transfer(str(bytearray(data)), readlen = 0)
-        self.spidev.do_transfers([transfer])
+        self.spidev.xfer2(data)
 
     def oledClear(self):
         self.oledbuffer  = [0] * (self.OLED_WIDTH * self.OLED_HEIGHT / 8)
