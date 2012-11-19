@@ -10,16 +10,18 @@ enum ScriptType {
 
 // Response: None or Features
 message Initialize {
+    require string session_id = 1;
 }
 
 message Features {
-    optional string version = 1;
-    optional bool otp = 2;
-    optional bool pin = 3;
-    optional bool spv = 4;
-    optional uint64 maxfee_kb = 5;
-    repeated Algorithm algo = 6;
-    optional bool debug_link = 7;    
+    require string session_id = 1;
+    optional string version = 2;
+    optional bool otp = 3;
+    optional bool pin = 4;
+    optional bool spv = 5;
+    optional uint64 maxfee_kb = 6;
+    repeated Algorithm algo = 7;
+    optional bool debug_link = 8;    
 }
 
 // Description: Test if another side is still alive.

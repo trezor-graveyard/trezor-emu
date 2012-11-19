@@ -260,6 +260,21 @@ class MessageBroker(object):
         return proto.SignedTx(tx='signed transaction')
     
     def process_message(self, msg):
+        if isinstance(msg, proto.Initialize):
+            self.otp_cancel()
+            self.pin_cancel()
+            
+            m = proto.Features()
+            m.session_id = msg.session_id
+            m.version = self.device.version
+            m.otp = self.device.otp == True
+            m.pin = self.device.pin != ''
+            m.spv = self.device.spv == True
+            m.algo.extend(self.device.algo)
+            m.maxfee_kb = self.device.maxfee_kb
+            m.debug_link = self.device.debug_link
+            return m
+                
         if self.otp != None:
             '''OTP response is expected'''
             
@@ -282,17 +297,6 @@ class MessageBroker(object):
                 return proto.Success(message="PIN request cancelled")
             
             return proto.Failure(code=5, message='Waiting for PIN')
-        
-        if isinstance(msg, proto.Initialize):
-            m = proto.Features()
-            m.version = self.device.version
-            m.otp = self.device.otp == True
-            m.pin = self.device.pin != ''
-            m.spv = self.device.spv == True
-            m.algo.extend(self.device.algo)
-            m.maxfee_kb = self.device.maxfee_kb
-            m.debug_link = self.device.debug_link
-            return m
         
         if isinstance(msg, proto.Ping):
             return proto.Success(message=msg.message)
