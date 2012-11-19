@@ -49,7 +49,7 @@ class Bitkey:
         self.oledRefresh()
 
     def sendSPI(self, data):
-        transfer, _, _ = spi.spi_transfer(bytearray(data), readlen = 0)
+        transfer, _, _ = spi.spi_transfer(str(bytearray(data)), readlen = 0)
         self.spidev.do_transfers([transfer])
 
     def oledClear(self):
