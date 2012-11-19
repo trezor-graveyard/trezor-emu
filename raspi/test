@@ -20,5 +20,11 @@ bitkey.oledRefresh()
 
 while True:
     b = bitkey.buttonsRead()
+    if b[0]:
+        bitkey.oledInvert(82, 54, 126, 62)
+        bitkey.oledRefresh()
+    if b[1]:
+        bitkey.oledInvert(1, 54, 45, 62)
+        bitkey.oledRefresh()
     print 'yes:', b[1], 'no:', b[0]
     time.sleep(0.1)
