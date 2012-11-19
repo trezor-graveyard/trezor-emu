@@ -88,9 +88,7 @@ class Bitkey:
                 column[col] = 0xFF
         for xoffset in xrange(font.width):
             for yoffset in xrange(font.height):
-                bit = column[xoffset] << (8 - (yoffset + 1))
-                bit = bit >> 7
-                if bit > 0:
+                if column[xoffset] & (1 << yoffset):
                     self.oledDrawPixel(x + xoffset, y + yoffset)
 
     def oledDrawString(self, x, y, text, font):
