@@ -91,11 +91,11 @@ class Bitkey:
                 bit = column[xoffset] << (8 - (yoffset + 1))
                 bit = bit >> 7
                 if bit > 0:
-                    self.drawPixel(x + xoffset, y + yoffset)
+                    self.oledDrawPixel(x + xoffset, y + yoffset)
 
     def oledDrawString(self, x, y, text, font):
         for i in xrange(len(text)):
-            self.drawChar(x + (i * (font.OLED_WIDTH + 1)), y, ord(text[i]), font)
+            self.oledDrawChar(x + (i * (font.OLED_WIDTH + 1)), y, ord(text[i]), font)
 
     def oledInvert(self, x1, y1, x2, y2):
         if (x1 >= self.OLED_WIDTH) or (y1 >= self.OLED_HEIGHT) or (x2 >= self.OLED_WIDTH) or (y2 >= self.OLED_HEIGHT):
