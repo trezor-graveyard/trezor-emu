@@ -87,7 +87,7 @@ class Bitkey:
             for col in xrange(font.width):
                 column[col] = 0xFF
         for xoffset in xrange(font.width):
-            for yoffset in xrange(font.height+1):
+            for yoffset in xrange(font.height):
                 bit = column[xoffset] << (8 - (yoffset + 1))
                 bit = bit >> 7
                 if bit > 0:
