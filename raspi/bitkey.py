@@ -102,5 +102,13 @@ class Bitkey:
             for y in xrange(y1, y2+1):
                 self.oledbuffer[x+(y/8)*self.OLED_WIDTH] ^= (1 << (y%8))
 
+    def oledFrame(self, x1, y1, x2, y2):
+        for x in xrange(x1, x2+1):
+            self.oledDrawPixel(x, y1)
+            self.oledDrawPixel(x, y2)
+        for y in xrange(y1+1, y2):
+            self.oledDrawPixel(x1, y)
+            self.oledDrawPixel(x2, y)
+
     def buttonsRead(self):
         return [ wiringpi.digitalRead(self.PIN_BTN_NO) > 0 , wiringpi.digitalRead(self.PIN_BTN_YES) > 0 ]
