@@ -105,4 +105,4 @@ class Bitkey:
                 self.oledbuffer[x+(y/8)*self.OLED_WIDTH] ^= (1 << (y%8))
 
     def buttonsRead(self):
-        return [ wiringpi.digitalRead(self.PIN_BTN_NO) == 0 , wiringpi.digitalRead(self.PIN_BTN_YES) == 0 ]
+        return [ wiringpi.digitalRead(self.PIN_BTN_NO) > 0 , wiringpi.digitalRead(self.PIN_BTN_YES) > 0 ]
