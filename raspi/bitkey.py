@@ -79,15 +79,15 @@ class Bitkey:
     def oledDrawChar(self, x, y, c, font):
         if (x >= self.OLED_WIDTH) or (y >= self.OLED_HEIGHT):
             return
-        column = [0] * font.OLED_WIDTH
+        column = [0] * font.width
         if (c >= font.firstchar) and (c <= font.lastchar):
-            for col in xrange(font.OLED_WIDTH):
-                column[col] = font.table[((c - font.firstchar) * font.OLED_WIDTH) + col]
+            for col in xrange(font.width):
+                column[col] = font.table[((c - font.firstchar) * font.width) + col]
         else:
-            for col in xrange(font.OLED_WIDTH):
+            for col in xrange(font.width):
                 column[col] = 0xFF
-        for xoffset in xrange(font.OLED_WIDTH):
-            for yoffset in xrange(font.OLED_HEIGHT+1):
+        for xoffset in xrange(font.width):
+            for yoffset in xrange(font.height+1):
                 bit = column[xoffset] << (8 - (yoffset + 1))
                 bit = bit >> 7
                 if bit > 0:
@@ -95,7 +95,7 @@ class Bitkey:
 
     def oledDrawString(self, x, y, text, font):
         for i in xrange(len(text)):
-            self.oledDrawChar(x + (i * (font.OLED_WIDTH + 1)), y, ord(text[i]), font)
+            self.oledDrawChar(x + (i * (font.width + 1)), y, ord(text[i]), font)
 
     def oledInvert(self, x1, y1, x2, y2):
         if (x1 >= self.OLED_WIDTH) or (y1 >= self.OLED_HEIGHT) or (x2 >= self.OLED_WIDTH) or (y2 >= self.OLED_HEIGHT):
