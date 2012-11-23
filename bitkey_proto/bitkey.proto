@@ -20,12 +20,12 @@ enum ScriptType {
 //
 // Response: Features
 message Initialize {
-    required string session_id = 1; // Any value identifying current connection, will be echoed back in Features message
+    required bytes session_id = 1; // Any value identifying current connection, will be echoed back in Features message
 }
 
 // Response object for Initialize. Contains list of available features on the device.
 message Features {
-    required string session_id = 1;	// Echoed back from Initialize message
+    required bytes session_id = 1;	// Echoed back from Initialize message
     optional string vendor = 2;	// Name of the manufacturer, e.g. "bitkey" 
     optional uint32 major_version = 3; // Major version of the device, e.g. 1
     optional uint32 minor_version = 4;  // Minor version of the device, e.g. 0
@@ -162,63 +162,54 @@ message LoadDevice {
 // 
 // Response: Success, OtpRequest, PinRequest, Failure
 message ResetDevice {
-	optional bytes random = 7;	// Provide additional entropy for seed generation function. Recommended to provide 256 bytes of random data.
-}
-
-// Data structure describes transaction output for SignTx message.
-message TxOutput {
-    required string address = 1;		// Target bitcoin address in base58 encoding
-    repeated uint32 address_n = 2;		// Has higher priority than "address". If the output is to myself, specify parameter for address generation algorithm.
-    required uint64 amount = 3;			// Amount to send in satoshis
-    required ScriptType script_type = 4;// Select output script type
-    repeated bytes script_args = 5;		// Provide additional parameters for the script (its script-depended)
-}
-
-// Data structure describes transaction output for SignTx and SignInput message
-message TxInput {
-    repeated uint32 address_n = 1;	// Parameter for address generation algorithm to derive the address from the master public key
-    required uint64 amount = 2;		// Amount to spend in satoshis. The rest will be used for transaction fees
-    required bytes prev_hash = 3;	// Hash of previous transaction spent by this input
-    required uint32 prev_index = 4;	// Index of previous spent output
-    optional bytes script_sig = 5;	// Script signature
+	optional bytes random = 7;	// Provide additional entropy for seed generation function.
+								// Recommended to provide 256 bytes of random data.
 }
 
 // Request the device to sign the transaction
 //
-// Response: SignedTx, Success, OtpRequest, PinRequest, Failure
+// Response: InputRequest, OutputRequest, OtpRequest, PinRequest, Failure
 message SignTx {
     required Algorithm algo = 1 [default=BIP32];	// Algorithm using for key generation algorithm
-    optional bool stream = 2; 			// Turn on input streaming (supports huge spending transactions)
-    required uint64 fee = 3;			// Expected transaction fee in satoshis (used for cross-check with fees calculated from tx inputs)
-    repeated TxOutput outputs = 4;		// List of TxOutput objects
-    repeated TxInput inputs = 5;		// Used if streaming is disabled, list of TxInput objects 
-    optional uint32 inputs_count = 6; // Used if streaming is enabled, count of input transactions to be streamed
-    optional bytes random = 7; // Provide additional entropy for signing function. Recommended to provide 256 bytes of random data.
+    repeated uint32 outputs_count = 3;		// Count of outputs of the transaction 
+    repeated uint32 inputs_count = 5; // Count of inputs of the transaction
+    optional bytes random = 6; 	// Provide additional entropy for signing function.
+    							// Recommended to provide 256 bytes of random data.
 }
 
-// Response to SignTx message
-message SignedTx {
-   repeated bytes signature = 1;	// List of signed inputs
+// Sent by the device as a response for SignTx.
+// If request_index is set, device asks for TxInput message with details of index's input.
+// If signed_index is set, 'signature' contains signed input of signed_index's input. 
+message InputRequest {
+	optional uint32 request_index = 1;	// If presented, device expects TxInput message from the computer 
+	optional uint32 signed_index = 2;	// If presented, 'signature' contains signed input of this input
+	optional bytes signature = 3;		// If presented, represent signature of the signed_index input
 }
 
-/*
-inputs = [] # list of TxInput
-for i in inputs:
-    for x in inputs:
-        send(x)
-        
-	signature = send(SignInput(i))
-*/
+// Sent by the device as a response for SignTx or TxInput.
+// Device asks for Tx
+message OutputRequest {
+	required uint32 request_index = 1;	// Device expects TxOutput message from the computer
+}
 
-// Pass transaction input to the device. Computer must call SignTx with stream=true before sending
-// inputs to the device.
+// Transaction onput for SignTx workflow. It is response to InputRequest message sent by device.
 //
-// Response: Success, SignedInput, Failure
-message SignInput {
-	required TxInput input = 1;		// TxInput object
+// Response: InputRequest, OutputRequest, Failure
+message TxInput {
+	required uint32 index = 1;		// Position of input in proposed transaction
+    repeated uint32 address_n = 2;	// Parameter for address generation algorithm to derive the address from the master public key
+    required uint64 amount = 3;		// Amount to spend in satoshis. The rest will be used for transaction fees
+    required bytes prev_hash = 4;	// Hash of previous transaction spent by this input
+    required uint32 prev_index = 5;	// Index of previous spent output
+    optional bytes script_sig = 6;	// Script signature
 }
 
-// Response to SignInput, contains signed input
-message SignedInput {
-	required bytes signature = 1;	// Signed input
+// Transaction output for SignTx workflow. It is response to OutputRequest message sent by the device.
+message TxOutput {
+    required uint32 index = 1;			// Position of output in proposed transaction
+    required string address = 2;		// Target bitcoin address in base58 encoding
+    repeated uint32 address_n = 3;		// Has higher priority than "address". If the output is to myself, specify parameter for address generation algorithm.
+    required uint64 amount = 4;			// Amount to send in satoshis
+    required ScriptType script_type = 5;// Select output script type
+    repeated bytes script_args = 6;		// Provide additional parameters for the script (its script-depended)
 }
