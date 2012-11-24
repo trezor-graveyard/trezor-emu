@@ -5,14 +5,14 @@ import spidev
 
 class Bitkey:
 
-    def __init__(self):
+    def __init__(self, width=128, height=64):
         self.PIN_OLED_DC  = 23   # RS
         self.PIN_OLED_CS  = 24   # CS
         self.PIN_OLED_RST = 25   # RES
         self.PIN_BTN_YES = 8
         self.PIN_BTN_NO  = 7
-        self.OLED_WIDTH   = 128
-        self.OLED_HEIGHT  = 64
+        self.OLED_WIDTH   = width
+        self.OLED_HEIGHT  = height
         self.oledbuffer  = [0] * (self.OLED_WIDTH * self.OLED_HEIGHT / 8)
         self.spidev = None
 
