@@ -2,22 +2,46 @@
 import time
 import bitkey
 import smallfonts
+import pygame
+
+pygame.init()
+size = (pygame.display.Info().current_w, pygame.display.Info().current_h)
+black = (0, 0, 0)
+white = (255, 255, 255)
+screen = pygame.display.set_mode((128, 64))
 
 bitkey = bitkey.Bitkey()
-bitkey.init()
+try:
+    bitkey.init()
+    bitkey.oledClear()
+except IOError:
+    print "SPI interface disabled"
 
-bitkey.oledClear()
+for x in range(2):
+    bitkey.oledDrawString(0, x*20+2, "1BRMLAB7nryYgFGrG8x9S", smallfonts.Font5x8)
+    bitkey.oledDrawString(0, x*20+12, "12381.87431928 \x80", smallfonts.Font7x8)
+    bitkey.oledInvert(0, x*20+11, 127, x*20+19)
 
-bitkey.oledDrawString(0, 11, "1BRMLAB7nryYgFGrG8x9S", smallfonts.Font5x8)
-bitkey.oledDrawString(0, 21, "12381.87431928 \x80", smallfonts.Font7x8)
-bitkey.oledDrawString(3, 55, "Confirm", smallfonts.Font5x8)
-bitkey.oledFrame(0, 53, 46, 63)
-bitkey.oledDrawString(88, 55, "Cancel", smallfonts.Font5x8)
-bitkey.oledFrame(81, 53, 127, 63)
-bitkey.oledInvert(0, 20, 127, 28)
+bitkey.oledFrame(0, 52, 128, 52)
+bitkey.oledDrawString(6, 55, "Cancel", smallfonts.Font5x8)
+bitkey.oledInvert(0, 54, 46, 63)
 
-bitkey.oledRefresh()
+bitkey.oledDrawString(84, 55, "Confirm", smallfonts.Font5x8)
+bitkey.oledInvert(81, 54, 127, 63)
+#bitkey.oledInvert(0, 54, 127, 63)
 
+def render(surface, buffer, size):
+    surface.fill(black)
+    for x in range(size[0]):
+        for y in range(size[1]):
+            pix = buffer[x+(y/8)*128] & ( 1 << (y%8))
+            if pix: surface.set_at((x, y), white)
+
+render(screen, bitkey.oledbuffer, (128, 64))
+pygame.display.flip()
+time.sleep(4)
+
+'''
 while True:
     b = bitkey.buttonsRead()
     if b[0]:
@@ -28,3 +52,4 @@ while True:
         bitkey.oledRefresh()
     print 'yes:', b[1], 'no:', b[0]
     time.sleep(0.1)
+'''
