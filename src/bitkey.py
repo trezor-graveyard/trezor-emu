@@ -6,7 +6,7 @@ import sys
 from select import select # For raw_input timeout
 
 import tools
-from bitkey_proto import bitkey_pb2 as proto
+import bitkey_pb2 as proto
 from transport_pipe import PipeTransport
 from transport_serial import SerialTransport
 from transport_fake import FakeTransport
@@ -354,16 +354,16 @@ if __name__ == '__main__':
     ENABLE_DEBUG_LINK = True
         
     if ENABLE_DEBUG_LINK:
-        debug_transport = PipeTransport('device.socket.debug', is_device=True)
+        debug_transport = PipeTransport('../device.socket.debug', is_device=True)
     else:
         debug_transport = FakeTransport('/dev/null')
    
     #transport = SerialTransport('COM8')
-    transport = PipeTransport('device.socket', is_device=True)
+    transport = PipeTransport('../device.socket', is_device=True)
 
     try:
         print "Loading device..."
-        device = Device.load('device.dat')
+        device = Device.load('../device.dat')
         device.debug_link = ENABLE_DEBUG_LINK
     except IOError:
         print "Load failed, starting with new device configuration..."
@@ -413,4 +413,4 @@ if __name__ == '__main__':
         debug_transport.close()
         raise
     
-    device.save('device.dat')
+    device.save('../device.dat')
