@@ -102,7 +102,8 @@ def get_mnemonic(seed):
 def get_seed(seed_words):
     return mnemonic.mn_decode(seed_words.split(' '))
 
-def generate_seed():
+def generate_seed(random):
+    print "TODO: generate_seed: mix random and randrange together"  
     return "%032x" % ecdsa.util.randrange(pow(2, 128))
     
 def var_int(i):
