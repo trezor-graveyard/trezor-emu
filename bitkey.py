@@ -15,6 +15,7 @@ from algo import AlgoFactory
 '''
     Feature list:
         * PIN-protected seed
+        * master private key derived from PIN?
         * Store PIN as a hash
         * SPV
         * P2SH
@@ -29,8 +30,11 @@ from algo import AlgoFactory
 '''
 class Device(object):
     def __init__(self):
+        self.vendor = 'slush'
+        self.major_version = 0
+        self.minor_version = 1
+        
         self.seed = ''
-        self.version = 'sim/0.1'
         self.otp = False
         self.spv = False
         self.pin = ''
@@ -84,7 +88,7 @@ class Device(object):
     def set_spv(self, spv):
         self.spv = spv
         
-    def sign_tx(self, algo):
+    def sign_tx(self, algo, inputs, outputs):
         # TODO
         pass
 
@@ -227,7 +231,7 @@ class MessageBroker(object):
         self.device.set_spv(spv)
         return proto.Success()
 
-    def _reset_device(self):
+    def _reset_device(self, random):
         print "Starting setup wizard..."
 
         is_otp = self.yesno("Use OTP?")
@@ -235,16 +239,16 @@ class MessageBroker(object):
         is_pin = self.yesno("Use PIN?")
         
         if is_pin:
-            return self.pin_request("Please enter new PIN", True, self._reset_device2, is_otp, is_spv)
+            return self.pin_request("Please enter new PIN", True, self._reset_device2, random, is_otp, is_spv)
         
-        return self._reset_device2('', is_otp, is_spv)
+        return self._reset_device2('', random, is_otp, is_spv)
             
-    def _reset_device2(self, pin, is_otp, is_spv):        
+    def _reset_device2(self, random, pin, is_otp, is_spv):        
         self.device.set_pin(pin)
         self.device.set_otp(is_otp)
         self.device.set_spv(is_spv)
         
-        seed = tools.generate_seed()
+        seed = tools.generate_seed(random)
         seed_words = tools.get_mnemonic(seed)
         self.device.load_seed(seed_words)
         
@@ -255,8 +259,8 @@ class MessageBroker(object):
 
         return proto.Success()
     
-    def _sign_tx(self, *args):
-        self.device.sign_tx()
+    def _sign_tx(self, tx):
+        #self.device.sign_tx(algo=tx.algo, inputs=tx.inputs, output=tx.output)
         return proto.SignedTx(tx='signed transaction')
     
     def process_message(self, msg):
@@ -266,7 +270,9 @@ class MessageBroker(object):
             
             m = proto.Features()
             m.session_id = msg.session_id
-            m.version = self.device.version
+            m.vendor = self.device.vendor
+            m.major_version = self.device.major_version
+            m.minor_version = self.device.minor_version
             m.otp = self.device.otp == True
             m.pin = self.device.pin != ''
             m.spv = self.device.spv == True
@@ -326,13 +332,13 @@ class MessageBroker(object):
         if isinstance(msg, proto.ResetDevice):
             return self.protect_call("Reset device?",
                                      None, None,
-                                     self._reset_device)
+                                     self._reset_device, msg.random)
             
         if isinstance(msg, proto.SignTx):
             print "<TODO: Print transaction details>"
             return self.protect_call("Sign transaction?",
                                      None, None,
-                                     self._sign_tx, msg.algo)
+                                     self._sign_tx, msg)
         
         return proto.Failure(code=1, message='Unknown method')
         
