@@ -1,20 +1,28 @@
 import smallfonts
+import time
 
 class Layout(object):
     def __init__(self, buffer):
         self.line_len_normal = 21
         self.line_len_bold = 16
         self.buffer = buffer
-    
+        self.update_delta = 0.04
         self.clear()
         
     def clear(self):
+        self.last_update = time.time()
         self.scrolls = []
         
         # Clear the area
         self.buffer.box(0, 0, self.buffer.width-1, self.buffer.height-1)
 
     def update(self):
+        t = time.time()        
+        if t - self.last_update < self.update_delta:
+            return
+        
+        self.last_update = t
+        
         for item in self.scrolls:
             (direction, wait, pos_x, y, text, font) = item
 

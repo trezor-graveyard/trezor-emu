@@ -22,19 +22,18 @@ class Tx(object):
         
 buffer = display_buffer.DisplayBuffer(width, height)
 display = display.Display(buffer, spi=False, virtual=True)
-but = buttons.Buttons(hw=False, stdin=True, pygame=False)
+but = buttons.Buttons(hw=False, stdin=True, pygame=True)
 layout = layout.Layout(buffer)
 
 display.init()
 layout.show_logo(logo.logo)
-#layout.show_transactions([Tx('1BRMLAB7nryYgFGrG8x9SYaokb8r2ZwAsX', 1.1), Tx('1Marek48fwU7mugmSe186do2QpUkBnpzSN', 2)], True)
+layout.show_transactions([Tx('1BRMLAB7nryYgFGrG8x9SYaokb8r2ZwAsX', 1.1), Tx('1Marek48fwU7mugmSe186do2QpUkBnpzSN', 2)], True)
 
 while True:
     b = but.read()
     if b != None:
         print "Button", b
         
-    buffer.scrollup(50)
     display.refresh()
     layout.update()
     #time.sleep(0.01)
