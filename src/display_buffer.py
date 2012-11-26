@@ -4,8 +4,13 @@ class DisplayBuffer(object):
         self.height = height
         self.clear()
 
-    def clear(self):
-        self.data = [0] * (self.width * self.height / 8)
+    def clear(self, x1=None, y1=None, x2=None, y2=None):
+        if x1 == None:
+            self.data = [0] * (self.width * self.height / 8)
+        else:
+            for x in xrange(x1, x2+1):
+                for y in xrange(y1, y2+1):
+                    self.draw_pixel(x, y)
 
     def draw_bitmap(self, bitmap):
         for x in xrange(self.width):
@@ -59,7 +64,7 @@ class DisplayBuffer(object):
     def box(self, x1, y1, x2, y2):
         for x in xrange(x1, x2+1):
             for y in xrange(y1, y2+1):
-                self.clear_pixel(x, y)
+                self.draw_pixel(x, y)
 
     def frame(self, x1, y1, x2, y2):
         for x in xrange(x1, x2+1):

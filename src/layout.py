@@ -15,7 +15,7 @@ class Layout(object):
         self.scrolls = []
         
         # Clear the area
-        self.buffer.box(0, 0, self.buffer.width-1, self.buffer.height-1)
+        self.buffer.clear()#(0, 0, self.buffer.width-1, self.buffer.height-1)
 
     def update(self):
         t = time.time()        
@@ -46,7 +46,7 @@ class Layout(object):
                 pos_x += direction            
                 item[2] = pos_x
             
-            self.buffer.box(0, y, self.buffer.width-1, y+font.height)
+            self.buffer.clear(0, y, self.buffer.width-1, y+font.height)
             self.buffer.draw_string(pos_x, y, text, font)
 
     def _scroll_text(self, y, text, font):
@@ -77,6 +77,18 @@ class Layout(object):
              'internim displeji'],
             'Question?', 'Confirm', 'Cancel')
 
+    def show_progress(self, current, maximum, clear=False):
+        if clear:
+            self.clear()
+            #....
+            self.buffer.frame(0,self.buffer.height-12, self.buffer.width-1, self.buffer.height-1)
+            
+        if current > maximum:
+            current = maximum
+            
+        width = int((self.buffer.width-5) * (current / float(maximum)))
+        self.buffer.box(2, self.buffer.height-10, width+2, self.buffer.height-3)
+        
     def show_transactions(self, txes, more=False):
         self.clear()
         
@@ -114,7 +126,7 @@ class Layout(object):
     def _show_status(self, status, yes_text, no_text):
         # Status line
         pos = self.buffer.width/2 - len(status)*(smallfonts.Font5x8.width+1)/2
-        self.buffer.box(0, self.buffer.height-20, self.buffer.width-1, self.buffer.height)
+        self.buffer.clear(0, self.buffer.height-20, self.buffer.width-1, self.buffer.height)
         self.buffer.frame(0, self.buffer.height-20, self.buffer.width-1, self.buffer.height-20)
         self.buffer.draw_string(pos, self.buffer.height-18, status, smallfonts.Font5x8)
 

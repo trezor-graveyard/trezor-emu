@@ -32,7 +32,12 @@ def main(args):
     display.init()
     layout.show_logo(logo)
         
+    i = 0
+    layout.show_progress(0, 137, True)
     while True:
+        i += 1
+        layout.show_progress(i, 137, False)
+                
         # Read button states
         button = but.read()
         if button != None:
