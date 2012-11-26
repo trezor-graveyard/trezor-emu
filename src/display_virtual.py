@@ -1,12 +1,13 @@
 #!/usr/bin/python
 import os
 import pygame
+from display_buffer import DisplayBuffer 
         
 class VirtualDisplay(object):
     def __init__(self, buffer):
         self.buffer = buffer
-        self.black = (0, 0, 0)
-        self.white = (255, 255, 255)
+        self.black = pygame.Color(0, 0, 0)
+        self.white = pygame.Color(255,255,255)
         self.scale = 2
         
         self.drivers = ['x11', 'dga', 'directfb', 'fbcon', 'ggi', 'vgl', 'svgalib', 'aalib']
@@ -38,11 +39,19 @@ class VirtualDisplay(object):
 
     def refresh(self):        
         self.surface.fill(self.black)
-        for x in range(self.buffer.width):
-            for y in range(self.buffer.height):
-                pix = self.buffer.get_pixel(x, y)#data[x+(y/8)*self.buffer.width] & ( 1 << (y%8))
-                if pix: self.surface.set_at((x, y), self.white)
-            
+        
+        set_at = self.surface.set_at
+        white = self.white
+        width = self.buffer.width
+        height = self.buffer.height
+        data = self.buffer.data
+        
+        '''Optimized for performance. Especially inline writedown of get_pixel helped a lot'''
+        for x in range(width):
+            for y in range(height):
+                #pix = get_pixel(x, y)
+                pix = data[x+(y/8)*width] & (1 << (y%8)) > 0
+                if pix: set_at((x, y), white)
+           
         pygame.transform.scale(self.surface, self.screen.get_size(), self.screen)
         pygame.display.flip()
-        pygame.event.pump()
