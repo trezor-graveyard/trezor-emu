@@ -34,13 +34,13 @@ class Layout(object):
                 
             elif width >= self.buffer.width:
                 
-                if pos_x < -width+self.buffer.width and direction == -1:
-                    item[0] = 1
-                    item[1] = 20
+                if pos_x < -width+self.buffer.width+1 and direction == -1:
+                    item[0] = 1 # Change direction
+                    item[1] = 20 # Set wait cycles
     
                 if pos_x >= 0 and direction == 1:
-                    item[0] = -1
-                    item[1] = 20
+                    item[0] = -1 # Change direction
+                    item[1] = 20 # Set wait cycles
     
                 
                 pos_x += direction            
@@ -93,12 +93,14 @@ class Layout(object):
             # Make amount inverted            
             self.buffer.invert(0, i*22+9, self.buffer.width-1, i*22+17)
             
-        self._show_status('Are you sure?', 'More' if more else 'Confirm', 'Cancel')
+        self._show_status('Confirm outputs?', 'More \x7e' if more else 'Confirm }', '{ Cancel')
         
     def _prepare_amount(self, amount):
-        if amount > 21*10**8 or amount < 0:
+        
+        if amount > 21*10**14 or amount < 0:
             return "Invalid amount"
         
+        amount = float(amount)/10**8    # From satoshis to bitcoins
         s = ("%.08f" % amount).rstrip('0').rstrip('.')
         if len(s) <= self.line_len_bold - 4:
             s = "%s BTC" % s
@@ -111,9 +113,10 @@ class Layout(object):
         
     def _show_status(self, status, yes_text, no_text):
         # Status line
+        pos = self.buffer.width/2 - len(status)*(smallfonts.Font5x8.width+1)/2
         self.buffer.box(0, self.buffer.height-20, self.buffer.width-1, self.buffer.height)
         self.buffer.frame(0, self.buffer.height-20, self.buffer.width-1, self.buffer.height-20)
-        self.buffer.draw_string(1, self.buffer.height-18, status, smallfonts.Font5x8)
+        self.buffer.draw_string(pos, self.buffer.height-18, status, smallfonts.Font5x8)
 
         # Left button title
         self.buffer.draw_string(1, self.buffer.height-9, no_text, smallfonts.Font5x8)
