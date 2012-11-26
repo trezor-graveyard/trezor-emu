@@ -37,7 +37,7 @@ class SPIDisplay(object):
         self.refresh()
 
     def __sendSPI(self, data):
-        self.spidev.xfer2(data)
+        self.spidev.xfer2(data[:])
 
     def __writePin(self, pin, value):
         if value:
