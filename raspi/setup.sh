@@ -16,3 +16,5 @@ echo 'in' > /sys/class/gpio/gpio$PIN_BTN_NO/direction
 echo 'out' > /sys/class/gpio/gpio$PIN_OLED_DC/direction
 echo 'out' > /sys/class/gpio/gpio$PIN_OLED_CS/direction
 echo 'out' > /sys/class/gpio/gpio$PIN_OLED_RST/direction
+
+modprobe spi_bcm2708

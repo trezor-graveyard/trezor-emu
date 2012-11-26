@@ -28,7 +28,7 @@ class SPIDisplay(object):
         self.__sendSPI(seq)
         self.__writePin(self.PIN_OLED_CS, 1) # deselect
 
-        self.render()
+        self.refresh()
 
     def __sendSPI(self, data):
         self.spidev.xfer2(data)
