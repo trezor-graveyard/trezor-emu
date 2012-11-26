@@ -10,7 +10,7 @@ class DisplayBuffer(object):
     def set_bitmap(self, bitmap):
         for x in xrange(self.width):
             for y in xrange(self.height):
-                if bitmap[(x/8)+y*self.width/8] & (1 << (7-x%8):
+                if bitmap[(x/8)+y*self.width/8] & (1 << (7-x%8)):
                     data[x+(y/8)*self.width] |= (1 << (y%8))
                 else:
                     data[x+(y/8)*self.width] &= ~(1 << (y%8))
