@@ -3,10 +3,18 @@ class DisplayBuffer(object):
         self.width = width
         self.height = height
         self.clear()
-        
+
     def clear(self):
-        self.data  = [0] * (self.width * self.height / 8)        
-        
+        self.data = [0] * (self.width * self.height / 8)
+
+    def set_bitmap(self, bitmap):
+        for x in xrange(self.width):
+            for y in xrange(self.height):
+                if bitmap[(x/8)+y*self.width/8] & (1 << (7-x%8):
+                    data[x+(y/8)*self.width] |= (1 << (y%8))
+                else:
+                    data[x+(y/8)*self.width] &= ~(1 << (y%8))
+
     def draw_pixel(self, x, y):
         if (x < 0) or (y < 0) or (x >= self.width) or (y >= self.height):
             return
