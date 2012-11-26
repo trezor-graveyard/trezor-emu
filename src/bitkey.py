@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import argparse
+import time
 
 import bitkey_pb2 as proto
 from buttons import Buttons
@@ -31,21 +32,26 @@ def main(args):
     
     display.init()
     layout.show_logo(logo)
+
+    tx1 = proto.TxOutput(address='1BRMLAB7nryYgFGrG8x9SYaokb8r2ZwAsX', amount=12300000001)#110000000)
+    tx2 = proto.TxOutput(address='1Marek48fwU7mugmSe186do2QpUkBnpzSN', amount=200000000)
+    
+    display.refresh()
         
-    i = 0
-    layout.show_progress(0, 137, True)
+    #i = 0
+    #layout.show_progress(0, 137, True, logo)
     while True:
-        i += 1
-        layout.show_progress(i, 137, False)
-                
+        active = False
+        #i += 1
+        #layout.show_progress(i, 137, False)                
+            
         # Read button states
         button = but.read()
         if button != None:
             print "Button", button
+            active = True
     
         if button == True:
-            tx1 = proto.TxOutput(address='1BRMLAB7nryYgFGrG8x9SYaokb8r2ZwAsX', amount=12300000001)#110000000)
-            tx2 = proto.TxOutput(address='1Marek48fwU7mugmSe186do2QpUkBnpzSN', amount=200000000)
             layout.show_transactions([tx1, tx2 ], False)
             #layout.show_question_dummy()
             
@@ -59,11 +65,15 @@ def main(args):
         # TODO
         
         # Display scrolling
-        layout.update()
+        active |= layout.update()
         
-        # Update viewport
-        display.refresh()
+        if active:
+            # Update viewport
+            display.refresh()
         
+        if not active:
+            # Nothing to do, sleep for a moment
+            time.sleep(0.1)
 
 if __name__ == '__main__':
     args = parse_args()

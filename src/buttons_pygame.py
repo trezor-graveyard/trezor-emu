@@ -3,6 +3,7 @@ import sys
 
 class PygameButtons(object):
     def read(self):
+        pygame.event.pump()
         bools = pygame.key.get_pressed()
         '''
         for x in range(len(bools)):
