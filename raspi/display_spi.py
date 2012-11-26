@@ -35,7 +35,7 @@ class SPIDisplay(object):
 
     def __writePin(self, pin, value):
         with open('/sys/class/gpio/gpio%d/value' % pin, 'w') as f:
-            f.write(value)
+            f.write(str(value))
 
     def refresh(self):
         self.__writePin(self.PIN_OLED_CS, 0) # select
