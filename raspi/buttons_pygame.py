@@ -9,12 +9,12 @@ class PygameButtons(object):
             if bools[x]:
                 print x
         '''
-             
-        if bools[121]: # y
-            return True
         
         if bools[110]: # n
-            return False
+            return False       
+     
+        if bools[121]: # y
+            return True
         
         if bools[99] and bools[306]: # Ctrl+C
             # Workaround for terminating the application from pygame window

@@ -14,7 +14,11 @@ class Display(object):
             
     def init(self):
         if self.spi:
-            self.spi.init()
+            try:
+                self.spi.init()
+            except IOError as exc:
+                print "SPI display not available: %s" % str(exc)
+                self.spi = None                
         if self.virtual:
             self.virtual.init()
     

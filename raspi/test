@@ -6,52 +6,126 @@ import display
 import display_buffer
 import smallfonts
 import pygame
+import logo
 
 import buttons
 
-but = buttons.Buttons(hw=False, stdin=True, pygame=True)
+class Layout(object):
+    def __init__(self, buffer):
+        self.line_len_normal = 21
+        self.line_len_bold = 16
+        self.buffer = buffer
+    
+        self.scroll_time = 0.05        
+        self.clear()
+        
+    def clear(self):
+        self.scrolls = []
+        
+        # Clear the area
+        self.buffer.box(0, 0, width-1, height-1)
 
-scale=3
+    def update(self):
+        for item in self.scrolls:
+            (direction, wait, pos_x, y, text, font) = item
+
+            if wait:
+                item[1] -= 1
+            else:
+            
+                width = len(text) * (font.width+1)
+                if pos_x <= -width+self.buffer.width and direction == -1:
+                    item[0] = 1
+                    item[1] = 20
+    
+                if pos_x >= 0 and direction == 1:
+                    item[0] = -1
+                    item[1] = 20
+    
+                
+                pos_x += direction            
+                item[2] = pos_x
+            
+            self.buffer.box(0, y, self.buffer.width-1, y+font.height)
+            self.buffer.draw_string(pos_x, y, text, font)
+            
+        #if self.address:
+            # Scroll address
+    
+    def show_logo(self):
+        self.clear()
+        self.buffer.draw_bitmap(logo.logo)
+
+    def show_question(self):
+        pass
+        
+    def show_transaction(self, address, amount, more=False):
+        self.clear()
+        
+        # Write address    
+        #self.buffer.draw_string(0, 0, address[:self.line_len_normal], smallfonts.Font5x8)
+        self._scroll_text(0, address, smallfonts.Font5x8)
+        
+        # Write amount
+        self.buffer.draw_string(0, 10, self._prepare_amount(amount), smallfonts.Font7x8)
+        
+        # Make amount inverted            
+        self.buffer.invert(0, 9, width-1, 17)
+        
+        self._show_status('Are you sure?', 'More' if more else 'Confirm', 'Cancel')
+        
+    def _prepare_amount(self, amount):
+        if amount > 21*10**8 or amount < 0:
+            return "Invalid amount"
+        
+        s = ("%.08f" % amount).rstrip('0')
+        if len(s) <= self.line_len_bold - 4:
+            s = "%s BTC" % s
+        elif len(s) <= self.line_len_bold - 2:
+            s = "%s \x80" % s
+        else:
+            s = "%s \x80" % s[:self.line_len_bold - 2]
+        
+        return s.rjust(self.line_len_bold, ' ')
+        
+    def _show_status(self, status, yes_text, no_text):
+        # Status line
+        #self.buffer.box(0, self.buffer.height-20, self.buffer.width-1, self.buffer.height)
+        self.buffer.frame(0, self.buffer.height-20, self.buffer.width-1, self.buffer.height-20)
+        self.buffer.draw_string(1, self.buffer.height-18, status, smallfonts.Font5x8)
+
+        # Left button title
+        self.buffer.draw_string(1, self.buffer.height-9, no_text, smallfonts.Font5x8)
+        self.buffer.invert(0, self.buffer.height-10, len(no_text)*6+1, self.buffer.height-1)
+        
+        # Right button title
+        self.buffer.draw_string(self.buffer.width-1-len(yes_text)*6, self.buffer.height-9, yes_text, smallfonts.Font5x8)
+        self.buffer.invert(self.buffer.width-3-len(yes_text)*6, self.buffer.height-10, self.buffer.width-1, self.buffer.height-1)
+
+    def _scroll_text(self, y, text, font):
+        # direction, x pos delta, pos_y, text, font
+        self.scrolls.append([-1, 30, 0, y, text, font])
+        
 width=128
 height=64
 
-#info = pygame.display.Info()
-
-#print pygame.display.Info()
-#print size
-#screen = pygame.display.set_mode(size, pygame.FULLSCREEN)
-
 buffer = display_buffer.DisplayBuffer(width, height)
 display = display.Display(buffer, spi=False, virtual=True)
-try:
-    display.init()
-except IOError:
-    print "SPI interface disabled"
+but = buttons.Buttons(hw=False, stdin=True, pygame=True)
+layout = Layout(buffer)
 
-for x in range(2):
-    buffer.draw_string(0, x*22, "1BRMLAB7nryYgFGrG8x9S", smallfonts.Font5x8)
-    buffer.draw_string(0, x*22+10, "\x80 12381.87431928", smallfonts.Font7x8)
-    buffer.invert(0, x*22+9, width-1, x*22+17)
-
-# Status line
-buffer.frame(0, height-20, width-1, height-20)
-buffer.draw_string(0, height-18, "Are you sure?", smallfonts.Font5x8)
-
-# Left button title
-buffer.draw_string(6, height-9, "Cancel", smallfonts.Font5x8)
-buffer.invert(0, height-10, 45, height-1)
-
-# Right button title
-buffer.draw_string(width-44, height-9, "Confirm", smallfonts.Font5x8)
-buffer.invert(width-46, height-10, width-1, height-1)
+display.init()
+layout.show_logo()
+layout.show_transaction('1BRMLAB7nryYgFGrG8x9SYaokb8r2ZwAsX', 1.1, True)
 
 while True:
-    but.read()
+    b = but.read()
+    if b != None:
+        print "Button", b
+        
     display.refresh()
-    time.sleep(0.1)
-    
-
-#raw_input()
+    layout.update()
+    #time.sleep(0.01)
 
 '''
 while True:

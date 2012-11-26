@@ -7,13 +7,13 @@ class DisplayBuffer(object):
     def clear(self):
         self.data = [0] * (self.width * self.height / 8)
 
-    def set_bitmap(self, bitmap):
+    def draw_bitmap(self, bitmap):
         for x in xrange(self.width):
             for y in xrange(self.height):
                 if bitmap[(x/8)+y*self.width/8] & (1 << (7-x%8)):
-                    data[x+(y/8)*self.width] |= (1 << (y%8))
+                    self.data[x+(y/8)*self.width] |= (1 << (y%8))
                 else:
-                    data[x+(y/8)*self.width] &= ~(1 << (y%8))
+                    self.data[x+(y/8)*self.width] &= ~(1 << (y%8))
 
     def draw_pixel(self, x, y):
         if (x < 0) or (y < 0) or (x >= self.width) or (y >= self.height):
@@ -50,6 +50,11 @@ class DisplayBuffer(object):
         for x in xrange(x1, x2+1):
             for y in xrange(y1, y2+1):
                 self.data[x+(y/8)*self.width] ^= (1 << (y%8))
+
+    def box(self, x1, y1, x2, y2):
+        for x in xrange(x1, x2+1):
+            for y in xrange(y1, y2+1):
+                self.clear_pixel(x, y)
 
     def frame(self, x1, y1, x2, y2):
         for x in xrange(x1, x2+1):
