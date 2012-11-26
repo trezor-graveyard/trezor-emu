@@ -40,7 +40,7 @@ class VirtualDisplay(object):
         self.surface.fill(self.black)
         for x in range(self.buffer.width):
             for y in range(self.buffer.height):
-                pix = self.buffer.data[x+(y/8)*self.buffer.width] & ( 1 << (y%8))
+                pix = self.buffer.get_pixel(x, y)#data[x+(y/8)*self.buffer.width] & ( 1 << (y%8))
                 if pix: self.surface.set_at((x, y), self.white)
             
         pygame.transform.scale(self.surface, self.screen.get_size(), self.screen)

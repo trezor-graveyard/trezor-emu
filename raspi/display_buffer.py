@@ -77,4 +77,4 @@ class DisplayBuffer(object):
                 else:
                     self.clear_pixel(x, y)
         for x in xrange(self.width):
-            self.clear_pixel(x, yb)
+            self.clear_pixel(x, yb-1)
