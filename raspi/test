@@ -35,14 +35,18 @@ def main(args):
     
     display.init()
     layout.show_logo(logo)
-    layout.show_transactions([Tx('1BRMLAB7nryYgFGrG8x9SYaokb8r2ZwAsX', 1.1), Tx('1Marek48fwU7mugmSe186do2QpUkBnpzSN', 2)], True)
-    
-    while True:
-        # Read button state
-        b = but.read()
-        if b != None:
-            print "Button", b
         
+    while True:
+        # Read button states
+        button = but.read()
+        if button != None:
+            print "Button", button
+    
+        if button == True:
+            layout.show_transactions([Tx('1BRMLAB7nryYgFGrG8x9SYaokb8r2ZwAsX', 1.1), Tx('1Marek48fwU7mugmSe186do2QpUkBnpzSN', 2)], True)    
+        if button == False:
+            layout.show_logo(logo)
+            
         # Handle main connection
         # TODO
         
