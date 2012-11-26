@@ -8,13 +8,14 @@ class DisplayBuffer(object):
         if x1 == None:
             self.data = [0] * (self.width * self.height / 8)
         else:
-            for x in xrange(x1, x2+1):
-                for y in xrange(y1, y2+1):
-                    self.draw_pixel(x, y)
+            for x in range(x1, x2+1):
+                for y in range(y1, y2+1):
+                    #self.clear_pixel(x, y)
+                    self.data[x+(y/8)*self.width] &= ~(1 << (y%8))
 
     def draw_bitmap(self, bitmap):
-        for x in xrange(self.width):
-            for y in xrange(self.height):
+        for x in range(self.width):
+            for y in range(self.height):
                 if bitmap[(x/8)+y*self.width/8] & (1 << (7-x%8)):
                     self.data[x+(y/8)*self.width] |= (1 << (y%8))
                 else:
@@ -40,36 +41,36 @@ class DisplayBuffer(object):
             return
         column = [0] * font.width
         if (c >= font.firstchar) and (c <= font.lastchar):
-            for col in xrange(font.width):
+            for col in range(font.width):
                 column[col] = font.table[((c - font.firstchar) * font.width) + col]
         else:
-            for col in xrange(font.width):
+            for col in range(font.width):
                 column[col] = 0xFF
-        for xoffset in xrange(font.width):
-            for yoffset in xrange(font.height):
+        for xoffset in range(font.width):
+            for yoffset in range(font.height):
                 if column[xoffset] & (1 << yoffset):
                     self.draw_pixel(x + xoffset, y + yoffset)
 
     def draw_string(self, x, y, text, font):
-        for i in xrange(len(text)):
+        for i in range(len(text)):
             self.draw_char(x + (i * (font.width + 1)), y, ord(text[i]), font)
 
     def invert(self, x1, y1, x2, y2):
         if (x1 >= self.width) or (y1 >= self.height) or (x2 >= self.width) or (y2 >= self.height):
             return
-        for x in xrange(x1, x2+1):
-            for y in xrange(y1, y2+1):
+        for x in range(x1, x2+1):
+            for y in range(y1, y2+1):
                 self.data[x+(y/8)*self.width] ^= (1 << (y%8))
 
     def box(self, x1, y1, x2, y2):
-        for x in xrange(x1, x2+1):
-            for y in xrange(y1, y2+1):
+        for x in range(x1, x2+1):
+            for y in range(y1, y2+1):
                 self.draw_pixel(x, y)
 
     def frame(self, x1, y1, x2, y2):
-        for x in xrange(x1, x2+1):
+        for x in range(x1, x2+1):
             self.draw_pixel(x, y1)
             self.draw_pixel(x, y2)
-        for y in xrange(y1+1, y2):
+        for y in range(y1+1, y2):
             self.draw_pixel(x1, y)
             self.draw_pixel(x2, y)
