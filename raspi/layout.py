@@ -1,5 +1,6 @@
 import smallfonts
 import time
+import math
 
 class Layout(object):
     def __init__(self, buffer):
@@ -56,9 +57,26 @@ class Layout(object):
         self.clear()
         self.buffer.draw_bitmap(logo)
 
-    def show_question(self):
-        pass
+    def show_question(self, messages, question, yes_text, no_text):
+        self.clear()
+        font = smallfonts.Font5x8
+
+        for i in range(len(messages)):
+            msg = messages[i]
+            self.buffer.draw_string(0, i*font.height+1, msg, font)
+
+        self._show_status(question, yes_text, no_text)
         
+    def show_question_dummy(self):
+        self.show_question(
+            # .....................
+            ['Tohle je nejaka',
+             'zprava, kterou chci',
+             'uzivateli zobrazi na',
+             'internim displeji',
+             'internim displeji'],
+            'Question?', 'Confirm', 'Cancel')
+
     def show_transactions(self, txes, more=False):
         self.clear()
         
@@ -93,7 +111,7 @@ class Layout(object):
         
     def _show_status(self, status, yes_text, no_text):
         # Status line
-        #self.buffer.box(0, self.buffer.height-20, self.buffer.width-1, self.buffer.height)
+        self.buffer.box(0, self.buffer.height-20, self.buffer.width-1, self.buffer.height)
         self.buffer.frame(0, self.buffer.height-20, self.buffer.width-1, self.buffer.height-20)
         self.buffer.draw_string(1, self.buffer.height-18, status, smallfonts.Font5x8)
 

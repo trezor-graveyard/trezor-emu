@@ -43,7 +43,9 @@ def main(args):
             print "Button", button
     
         if button == True:
-            layout.show_transactions([Tx('1BRMLAB7nryYgFGrG8x9SYaokb8r2ZwAsX', 1.1), Tx('1Marek48fwU7mugmSe186do2QpUkBnpzSN', 2)], True)    
+            #layout.show_transactions([Tx('1BRMLAB7nryYgFGrG8x9SYaokb8r2ZwAsX', 1.1), Tx('1Marek48fwU7mugmSe186do2QpUkBnpzSN', 2)], True)
+            layout.show_question_dummy()
+            
         if button == False:
             layout.show_logo(logo)
             
