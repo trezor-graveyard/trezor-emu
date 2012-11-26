@@ -2,8 +2,8 @@ import RPi.GPIO as GPIO
 
 class HwButtons(object):
     def __init__(self):
-        self.PIN_BTN_YES = 8
-        self.PIN_BTN_NO  = 7
+        self.PIN_BTN_YES = 7
+        self.PIN_BTN_NO  = 8
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.PIN_BTN_YES, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)
         GPIO.setup(self.PIN_BTN_NO,  GPIO.IN, pull_up_down = GPIO.PUD_DOWN)
