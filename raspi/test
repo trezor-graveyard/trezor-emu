@@ -1,45 +1,57 @@
 #!/usr/bin/python
+import os
+import sys
 import time
-import bitkey
+import display
+import display_buffer
 import smallfonts
 import pygame
 
-pygame.init()
-size = (pygame.display.Info().current_w, pygame.display.Info().current_h)
-black = (0, 0, 0)
-white = (255, 255, 255)
-screen = pygame.display.set_mode((128, 64))
+import buttons
 
-bitkey = bitkey.Bitkey()
+but = buttons.Buttons(hw=False, stdin=True, pygame=True)
+
+scale=3
+width=128
+height=64
+
+#info = pygame.display.Info()
+
+#print pygame.display.Info()
+#print size
+#screen = pygame.display.set_mode(size, pygame.FULLSCREEN)
+
+buffer = display_buffer.DisplayBuffer(width, height)
+display = display.Display(buffer, spi=False, virtual=True)
 try:
-    bitkey.init()
-    bitkey.oledClear()
+    display.init()
 except IOError:
     print "SPI interface disabled"
 
 for x in range(2):
-    bitkey.oledDrawString(0, x*20+2, "1BRMLAB7nryYgFGrG8x9S", smallfonts.Font5x8)
-    bitkey.oledDrawString(0, x*20+12, "12381.87431928 \x80", smallfonts.Font7x8)
-    bitkey.oledInvert(0, x*20+11, 127, x*20+19)
+    buffer.draw_string(0, x*22, "1BRMLAB7nryYgFGrG8x9S", smallfonts.Font5x8)
+    buffer.draw_string(0, x*22+10, "\x80 12381.87431928", smallfonts.Font7x8)
+    buffer.invert(0, x*22+9, width-1, x*22+17)
 
-bitkey.oledFrame(0, 52, 128, 52)
-bitkey.oledDrawString(6, 55, "Cancel", smallfonts.Font5x8)
-bitkey.oledInvert(0, 54, 46, 63)
+# Status line
+buffer.frame(0, height-20, width-1, height-20)
+buffer.draw_string(0, height-18, "Are you sure?", smallfonts.Font5x8)
 
-bitkey.oledDrawString(84, 55, "Confirm", smallfonts.Font5x8)
-bitkey.oledInvert(81, 54, 127, 63)
-#bitkey.oledInvert(0, 54, 127, 63)
+# Left button title
+buffer.draw_string(6, height-9, "Cancel", smallfonts.Font5x8)
+buffer.invert(0, height-10, 45, height-1)
 
-def render(surface, buffer, size):
-    surface.fill(black)
-    for x in range(size[0]):
-        for y in range(size[1]):
-            pix = buffer[x+(y/8)*128] & ( 1 << (y%8))
-            if pix: surface.set_at((x, y), white)
+# Right button title
+buffer.draw_string(width-44, height-9, "Confirm", smallfonts.Font5x8)
+buffer.invert(width-46, height-10, width-1, height-1)
 
-render(screen, bitkey.oledbuffer, (128, 64))
-pygame.display.flip()
-time.sleep(4)
+while True:
+    but.read()
+    display.refresh()
+    time.sleep(0.1)
+    
+
+#raw_input()
 
 '''
 while True:
