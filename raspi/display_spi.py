@@ -34,7 +34,7 @@ class SPIDisplay(object):
         self.spidev.xfer2(data)
 
     def __writePin(self, pin, value):
-        with open('/sys/class/gpio/gpio%d/value' % pin, 'r') as f:
+        with open('/sys/class/gpio/gpio%d/value' % pin, 'w') as f:
             f.write(value)
 
     def refresh(self):
