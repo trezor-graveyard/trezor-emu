@@ -1,5 +1,7 @@
 class Buttons(object):
     def __init__(self, hw=False, stdin=True, pygame=False):
+        self.pressed = None
+        
         if hw:
             import buttons_hw
             self.hw = buttons_hw.HwButtons()
@@ -19,22 +21,37 @@ class Buttons(object):
             self.pygame = None
             
     def read(self):
+        but = []
+        
+        # Check current state of buttons, add results to but list
         if self.hw:
-            but = self.hw.read()
-            if but != None:
-                return but
-            
-        if self.stdin:
-            but = self.stdin.read()
-            if but != None:
-                return but
+            but.append(self.hw.read())
             
         if self.pygame:
             try:
-                but = self.pygame.read()
-                if but != None:
-                    return but
-
-            except Exception as exc:
-                print "Pygame buttons requires usage of VirtualDisplay"
+                but.append(self.pygame.read())
+            except KeyboardInterrupt:
+                raise
+            except Exception:
+                print "Pygame buttons require usage of VirtualDisplay"
                 self.pygame = None
+                            
+        if self.stdin:
+            but.append(self.stdin.read())
+
+        # Now prevent button bouncing by registering current press
+        # and reporting the press after releasing the button
+        
+        # 'No' button has a priority, for security reason
+        if False in but and self.pressed != False:
+            self.pressed = False
+            return None
+
+        elif True in but and self.pressed != True:
+            self.pressed = True
+            return None
+            
+        if self.pressed != None and but.count(None) == len(but):
+            state = self.pressed
+            self.pressed = None
+            return state
