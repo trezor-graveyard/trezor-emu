@@ -1,5 +1,6 @@
 import time
 import spidev
+import RPi.GPIO as GPIO
 
 class SPIDisplay(object):
     def __init__(self, buffer):
@@ -10,6 +11,10 @@ class SPIDisplay(object):
         self.spidev = None
 
     def init(self):
+        GPIO.setup(self.PIN_OLED_DC,  GPIO.OUT)
+        GPIO.setup(self.PIN_OLED_CS,  GPIO.OUT)
+        GPIO.setup(self.PIN_OLED_RST, GPIO.OUT)
+
         self.spidev = spidev.SpiDev()
         self.spidev.open(0, 0)
 
@@ -34,8 +39,10 @@ class SPIDisplay(object):
         self.spidev.xfer2(data)
 
     def __writePin(self, pin, value):
-        with open('/sys/class/gpio/gpio%d/value' % pin, 'w') as f:
-            f.write(str(value))
+        if value:
+            GPIO.output(pin, GPIO.HIGH)
+        else:
+            GPIO.output(pin, GPIO.LOW)
 
     def refresh(self):
         self.__writePin(self.PIN_OLED_CS, 0) # select
