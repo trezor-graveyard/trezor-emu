@@ -68,13 +68,3 @@ class DisplayBuffer(object):
         for y in xrange(y1+1, y2):
             self.draw_pixel(x1, y)
             self.draw_pixel(x2, y)
-
-    def scrollup(self, yb):
-        for y in xrange(0, yb-1):
-            for x in xrange(self.width):
-                if self.get_pixel(x, y+1):
-                    self.draw_pixel(x, y)
-                else:
-                    self.clear_pixel(x, y)
-        for x in xrange(self.width):
-            self.clear_pixel(x, yb-1)
