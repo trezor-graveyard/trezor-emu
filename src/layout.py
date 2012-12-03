@@ -16,18 +16,21 @@ class Layout(object):
         
         # Clear the area
         self.buffer.clear()#(0, 0, self.buffer.width-1, self.buffer.height-1)
+        self.need_refresh = True
 
     def update(self):
-        '''return True if layout has something to render'''
+        '''return proper (is_refresh, is_active) if layout has something to render'''
         
         t = time.time()        
         if t - self.last_update < self.update_delta:
-            return True if len(self.scrolls) else False
+            if len(self.scrolls):
+                return True # No need for rendering, but active
+            else:
+                return False # Nothing to do
         self.last_update = t
         
         if not len(self.scrolls):
-            # Nothing to do
-            return False
+            return False # Nothing to do
         
         for item in self.scrolls:
             (direction, wait, pos_x, y, text, font) = item
@@ -50,6 +53,8 @@ class Layout(object):
                 
                 pos_x += direction            
                 item[2] = pos_x
+                
+                self.need_refresh = True
 
             self._draw_scroll_text(pos_x, y, text, font)
 
@@ -68,8 +73,29 @@ class Layout(object):
     def show_logo(self, logo):
         self.clear()
         self.buffer.draw_bitmap(logo)
+        self.need_refresh = True
+
+    def show_message(self, messages):
+        # Print message to console
+        print '-' * len(' '.join(messages))
+        print ' '.join(messages)
+        
+        self.clear()
+        font = smallfonts.Font5x8
+
+        for i in range(len(messages)):
+            msg = messages[i]
+            self.buffer.draw_string(0, i*font.height+1, msg, font)
+
+        self._show_status('', 'Continue }', '')
+        self.need_refresh = True
 
     def show_question(self, messages, question, yes_text, no_text):
+        # Print message to console
+        print '-' * len(' '.join(messages))
+        print ' '.join(messages)
+        print question, ' (y/n)'
+        
         self.clear()
         font = smallfonts.Font5x8
 
@@ -78,6 +104,7 @@ class Layout(object):
             self.buffer.draw_string(0, i*font.height+1, msg, font)
 
         self._show_status(question, yes_text, no_text)
+        self.need_refresh = True
         
     def show_question_dummy(self):
         self.show_question(
@@ -89,6 +116,15 @@ class Layout(object):
              'internim displeji'],
             'Question?', 'Confirm', 'Cancel')
 
+    def show_otp_request(self, otp):
+        self.show_question(
+            ["Please rewrite this",
+             "one time password",
+             "to computer:",
+             '',
+             otp.rjust(int(10+len(otp)/2), ' ')],
+            '', '', '{ Cancel')
+                                 
     def show_progress(self, current, maximum, clear=False, logo=None):
         if clear:
             self.clear()
@@ -103,6 +139,7 @@ class Layout(object):
             
         width = int((self.buffer.width-5) * (current / float(maximum)))
         self.buffer.box(2, self.buffer.height-8, width+2, self.buffer.height-3)
+        self.need_refresh = True
         
     def show_transactions(self, txes, more=False):
         self.clear()
@@ -121,6 +158,7 @@ class Layout(object):
             self.buffer.invert(0, i*22+9, self.buffer.width-1, i*22+17)
             
         self._show_status('Confirm outputs?', 'More \x7e' if more else 'Confirm }', '{ Cancel')
+        self.need_refresh = True
         
     def _prepare_amount(self, amount):
         
@@ -140,15 +178,21 @@ class Layout(object):
         
     def _show_status(self, status, yes_text, no_text):
         # Status line
-        pos = self.buffer.width/2 - len(status)*(smallfonts.Font5x8.width+1)/2
-        self.buffer.clear(0, self.buffer.height-20, self.buffer.width-1, self.buffer.height-1)
-        self.buffer.frame(0, self.buffer.height-20, self.buffer.width-1, self.buffer.height-20)
-        self.buffer.draw_string(pos, self.buffer.height-18, status, smallfonts.Font5x8)
-
+        if status != '':
+            pos = self.buffer.width/2 - len(status)*(smallfonts.Font5x8.width+1)/2
+            self.buffer.clear(0, self.buffer.height-20, self.buffer.width-1, self.buffer.height-1)
+            self.buffer.frame(0, self.buffer.height-20, self.buffer.width-1, self.buffer.height-20)
+            self.buffer.draw_string(pos, self.buffer.height-18, status, smallfonts.Font5x8)
+        else:
+            self.buffer.clear(0, self.buffer.height-11, self.buffer.width-1, self.buffer.height-1)
+            self.buffer.frame(0, self.buffer.height-12, self.buffer.width-1, self.buffer.height-12)
+            
         # Left button title
-        self.buffer.draw_string(1, self.buffer.height-9, no_text, smallfonts.Font5x8)
-        self.buffer.invert(0, self.buffer.height-10, len(no_text)*6+1, self.buffer.height-1)
+        if no_text != '':
+            self.buffer.draw_string(1, self.buffer.height-9, no_text, smallfonts.Font5x8)
+            self.buffer.invert(0, self.buffer.height-10, len(no_text)*6+1, self.buffer.height-1)
         
         # Right button title
-        self.buffer.draw_string(self.buffer.width-1-len(yes_text)*6, self.buffer.height-9, yes_text, smallfonts.Font5x8)
-        self.buffer.invert(self.buffer.width-3-len(yes_text)*6, self.buffer.height-10, self.buffer.width-1, self.buffer.height-1)
+        if yes_text != '':
+            self.buffer.draw_string(self.buffer.width-1-len(yes_text)*6, self.buffer.height-9, yes_text, smallfonts.Font5x8)
+            self.buffer.invert(self.buffer.width-3-len(yes_text)*6, self.buffer.height-10, self.buffer.width-1, self.buffer.height-1)

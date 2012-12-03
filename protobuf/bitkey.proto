@@ -52,6 +52,26 @@ message DebugLinkDecision {
 	required bool yes_no = 1;	// True for "confirm", False for "cancel"
 }
 
+// When sent over debug link connection, computer asks for some internal information of the device.
+//
+// Response: DebugLinkState
+message DebugLinkGetState {
+	optional bool layout = 1;	// Request raw buffer of display
+	optional bool otp = 2;		// Request current OTP
+	optional bool pin = 3;		// Request current PIN
+	optional bool seed = 4;		// Request current seed
+//	optional bool state = 5;	
+}
+
+// Response object reflecting device's current state. It can be received only over debug link connection.
+message DebugLinkState {
+	optional bytes layout = 1;	// Raw buffer of display
+	optional OtpAck otp = 2;	// Current OTP, blank if device is not waiting to OTP
+	optional PinAck pin = 3;	// Current PIN, blank if PIN is not set/enabled
+	optional string seed = 4;	// Current seed (in mnemonic format)
+//	optional string state = 5;
+}
+
 // Response object defining success of the previous request
 message Success {
     optional string message = 1;	//	May contain human readable description of the action or request-specific payload
@@ -78,7 +98,7 @@ message UUID {
 // Message can be sent by the *device* as a response to any request.
 // Message asks computer to send back OtpAck with the password printed on the device's display.
 //
-// Response: OtpAck, OtpCancel
+// Response: OtpAck, OtpCancel, Failure
 message OtpRequest {
    optional string message = 1;	// Human readable message
 }
@@ -96,7 +116,7 @@ message OtpCancel {
 // Message can be sent by the *device* as a response to any request.
 // Message asks computer to send back PinAck with the password associated with the device.
 //
-// Response: PinAck, PinCancel
+// Response: PinAck, PinCancel, Failure
 message PinRequest {
    optional string message = 1;	// Human readable message
 }
