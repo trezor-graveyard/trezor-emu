@@ -114,7 +114,7 @@ class StateMachine(object):
             if self.wallet.pin:
                 # Require hw buttons, OTP and PIN
                 return self.yesno_request(yesno_message, question, yes_text, no_text,
-                            self.pin_request, *[pin_message, False, self.otp_request, otp_message, func]+list(args))
+                            self.otp_request, *[otp_message, self.pin_request, pin_message, False, func]+list(args))
             else:
                 # Require hw buttons and OTP
                 return self.yesno_request(yesno_message, question, yes_text, no_text,
@@ -145,6 +145,7 @@ class StateMachine(object):
             self.wallet.get_seed()
             self.layout.show_logo(logo)
         except:
+            raise
             self.layout.show_message(
                 ["Device hasn't been",
                  "initialized yet.",
