@@ -20,6 +20,7 @@ class StateMachine(object):
         
         #self.debug_transport.write(proto.PinAck(pin=self.device.pin))
             
+        self.layout.show_pin_request()
         if message != None:
             return proto.PinRequest(message=message)
         else:

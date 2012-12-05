@@ -77,24 +77,14 @@ class Layout(object):
 
     def show_message(self, messages):
         # Print message to console
-        print '-' * len(' '.join(messages))
-        print ' '.join(messages)
-        
-        self.clear()
-        font = smallfonts.Font5x8
-
-        for i in range(len(messages)):
-            msg = messages[i]
-            self.buffer.draw_string(0, i*font.height+1, msg, font)
-
-        self._show_status('', 'Continue }', '')
-        self.need_refresh = True
+        self.show_question(messages, '', 'Continue }', '')
 
     def show_question(self, messages, question, yes_text, no_text):
         # Print message to console
         print '-' * len(' '.join(messages))
         print ' '.join(messages)
-        print question, ' (y/n)'
+        if question:
+            print question, ' (y/n)'
         
         self.clear()
         font = smallfonts.Font5x8
@@ -116,6 +106,13 @@ class Layout(object):
              'internim displeji'],
             'Question?', 'Confirm', 'Cancel')
 
+    def show_pin_request(self):
+        self.show_question(
+            ["Please write you",
+             "PIN code to",
+             "the computer"],
+            '', '', '{ Cancel')
+        
     def show_otp_request(self, otp):
         self.show_question(
             ["Please rewrite this",
