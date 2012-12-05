@@ -67,8 +67,8 @@ def get_transport(transport_string, path):
         return PipeTransport(path, is_device=True)
     
     if transport_string == 'socket':
-        from transport_socket import SocketTransport
-        return SocketTransport(path, listen=True)
+        from transport_socket import SocketTransport            
+        return SocketTransport(path)
     
     if transport_string == 'fake':
         from transport_fake import FakeTransport
@@ -109,9 +109,13 @@ def main(args):
     
     # Startup state machine and switch it to default state
     machine = StateMachine(wallet, layout, is_debuglink=bool(args.debuglink))
-    
-    display.refresh()
-    
+
+    #tx1 = proto.TxOutput(address='1BRMLAB7nryYgFGrG8x9SYaokb8r2ZwAsX', amount=112000000)
+    #tx2 = proto.TxOutput(address='1MarekMKDKRb6PEeHeVuiCGayk9avyBGBB', amount=12340123400)
+    #layout.show_transactions([tx1, tx2 ], False)
+        
+    display.refresh()  
+
     # Main cycle
     while True:
         # Set True if device does something
@@ -128,17 +132,18 @@ def main(args):
         # Handle debug link connection
         if debug_transport.ready_to_read():
             msg = debug_transport.read()
-            print "Received debuglink", msg.__class__.__name__, msg
-            if isinstance(msg, proto.DebugLinkDecision):
-                # Press the button
-                button = msg.yes_no
-            elif isinstance(msg, proto.DebugLinkGetState):
-                # Report device state
-                resp = machine.get_state(msg)
-                print "Sending debuglink", resp.__class__.__name__, resp
-                debug_transport.write(resp)
-            else:
-                raise Exception("Got unexpected object %s" % msg.__class__.__name__)
+            if msg != None:
+                print "Received debuglink", msg.__class__.__name__, msg
+                if isinstance(msg, proto.DebugLinkDecision):
+                    # Press the button
+                    button = msg.yes_no
+                elif isinstance(msg, proto.DebugLinkGetState):
+                    # Report device state
+                    resp = machine.get_state(msg)
+                    print "Sending debuglink", resp.__class__.__name__, resp
+                    debug_transport.write(resp)
+                else:
+                    raise Exception("Got unexpected object %s" % msg.__class__.__name__)
             
         if button != None:
             print "Button", button
@@ -149,11 +154,10 @@ def main(args):
                 print "Sending", resp
                 transport.write(resp)
                 
-        
         '''
         if button == True:
             layout.show_transactions([tx1, tx2 ], False)
-            #layout.show_question_dummy()
+            layout.show_question_dummy()
             
         if button == False:
             layout.show_logo(logo)
@@ -162,12 +166,13 @@ def main(args):
         # Handle main connection
         if transport.ready_to_read():
             msg = transport.read()
-            print "Received", msg.__class__.__name__, msg
-            resp = machine.process_message(msg)
-            if resp:
-                print "Sending", resp.__class__.__name__, resp
-                transport.write(resp)
-                is_active = True            
+            if msg != None:
+                print "Received", msg.__class__.__name__, msg
+                resp = machine.process_message(msg)
+                if resp:
+                    print "Sending", resp.__class__.__name__, resp
+                    transport.write(resp)
+                    is_active = True            
                 
         # Display scrolling
         is_active |= layout.update()
