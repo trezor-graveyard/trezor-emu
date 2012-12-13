@@ -11,7 +11,7 @@ from google.protobuf import descriptor_pb2
 DESCRIPTOR = descriptor.FileDescriptor(
   name='bitkey.proto',
   package='',
-  serialized_pb='\n\x0c\x62itkey.proto\" \n\nInitialize\x12\x12\n\nsession_id\x18\x01 \x02(\x0c\"\xc4\x01\n\x08\x46\x65\x61tures\x12\x12\n\nsession_id\x18\x01 \x02(\x0c\x12\x0e\n\x06vendor\x18\x02 \x01(\t\x12\x15\n\rmajor_version\x18\x03 \x01(\r\x12\x15\n\rminor_version\x18\x04 \x01(\r\x12\x0b\n\x03otp\x18\x05 \x01(\x08\x12\x0b\n\x03pin\x18\x06 \x01(\x08\x12\x0b\n\x03spv\x18\x07 \x01(\x08\x12\x11\n\tmaxfee_kb\x18\x08 \x01(\x04\x12\x18\n\x04\x61lgo\x18\t \x03(\x0e\x32\n.Algorithm\x12\x12\n\ndebug_link\x18\n \x01(\x08\"\x17\n\x04Ping\x12\x0f\n\x07message\x18\x01 \x01(\t\"#\n\x11\x44\x65\x62ugLinkDecision\x12\x0e\n\x06yes_no\x18\x01 \x02(\x08\"K\n\x11\x44\x65\x62ugLinkGetState\x12\x0e\n\x06layout\x18\x01 \x01(\x08\x12\x0b\n\x03otp\x18\x02 \x01(\x08\x12\x0b\n\x03pin\x18\x03 \x01(\x08\x12\x0c\n\x04seed\x18\x04 \x01(\x08\"Z\n\x0e\x44\x65\x62ugLinkState\x12\x0e\n\x06layout\x18\x01 \x01(\x0c\x12\x14\n\x03otp\x18\x02 \x01(\x0b\x32\x07.OtpAck\x12\x14\n\x03pin\x18\x03 \x01(\x0b\x32\x07.PinAck\x12\x0c\n\x04seed\x18\x04 \x01(\t\"\x1a\n\x07Success\x12\x0f\n\x07message\x18\x01 \x01(\t\"(\n\x07\x46\x61ilure\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\"\t\n\x07GetUUID\"\x14\n\x04UUID\x12\x0c\n\x04UUID\x18\x01 \x02(\x0c\"\x1d\n\nOtpRequest\x12\x0f\n\x07message\x18\x01 \x01(\t\"\x15\n\x06OtpAck\x12\x0b\n\x03otp\x18\x01 \x02(\t\"\x0b\n\tOtpCancel\"\x1d\n\nPinRequest\x12\x0f\n\x07message\x18\x01 \x01(\t\"\x15\n\x06PinAck\x12\x0b\n\x03pin\x18\x01 \x02(\t\"\x0b\n\tPinCancel\"\x1a\n\nGetEntropy\x12\x0c\n\x04size\x18\x01 \x02(\r\"\x1a\n\x07\x45ntropy\x12\x0f\n\x07\x65ntropy\x18\x01 \x02(\x0c\" \n\x0bSetMaxFeeKb\x12\x11\n\tmaxfee_kb\x18\x01 \x02(\x04\"5\n\x12GetMasterPublicKey\x12\x1f\n\x04\x61lgo\x18\x01 \x02(\x0e\x32\n.Algorithm:\x05\x42IP32\"\x1e\n\x0fMasterPublicKey\x12\x0b\n\x03key\x18\x01 \x02(\x0c\"M\n\nLoadDevice\x12\x0c\n\x04seed\x18\x01 \x02(\t\x12\x11\n\x03otp\x18\x02 \x01(\x08:\x04true\x12\x0b\n\x03pin\x18\x03 \x01(\t\x12\x11\n\x03spv\x18\x04 \x01(\x08:\x04true\"\x1d\n\x0bResetDevice\x12\x0e\n\x06random\x18\x07 \x01(\x0c\"f\n\x06SignTx\x12\x1f\n\x04\x61lgo\x18\x01 \x02(\x0e\x32\n.Algorithm:\x05\x42IP32\x12\x15\n\routputs_count\x18\x03 \x03(\r\x12\x14\n\x0cinputs_count\x18\x05 \x03(\r\x12\x0e\n\x06random\x18\x06 \x01(\x0c\"N\n\x0cInputRequest\x12\x15\n\rrequest_index\x18\x01 \x01(\r\x12\x14\n\x0csigned_index\x18\x02 \x01(\r\x12\x11\n\tsignature\x18\x03 \x01(\x0c\"&\n\rOutputRequest\x12\x15\n\rrequest_index\x18\x01 \x02(\r\"v\n\x07TxInput\x12\r\n\x05index\x18\x01 \x02(\r\x12\x11\n\taddress_n\x18\x02 \x03(\r\x12\x0e\n\x06\x61mount\x18\x03 \x02(\x04\x12\x11\n\tprev_hash\x18\x04 \x02(\x0c\x12\x12\n\nprev_index\x18\x05 \x02(\r\x12\x12\n\nscript_sig\x18\x06 \x01(\x0c\"\x84\x01\n\x08TxOutput\x12\r\n\x05index\x18\x01 \x02(\r\x12\x0f\n\x07\x61\x64\x64ress\x18\x02 \x02(\t\x12\x11\n\taddress_n\x18\x03 \x03(\r\x12\x0e\n\x06\x61mount\x18\x04 \x02(\x04\x12 \n\x0bscript_type\x18\x05 \x02(\x0e\x32\x0b.ScriptType\x12\x13\n\x0bscript_args\x18\x06 \x03(\x0c*$\n\tAlgorithm\x12\t\n\x05\x42IP32\x10\x00\x12\x0c\n\x08\x45LECTRUM\x10\x01*3\n\nScriptType\x12\x10\n\x0cPAYTOADDRESS\x10\x00\x12\x13\n\x0fPAYTOSCRIPTHASH\x10\x01')
+  serialized_pb='\n\x0c\x62itkey.proto\" \n\nInitialize\x12\x12\n\nsession_id\x18\x01 \x02(\x0c\"\xc4\x01\n\x08\x46\x65\x61tures\x12\x12\n\nsession_id\x18\x01 \x02(\x0c\x12\x0e\n\x06vendor\x18\x02 \x01(\t\x12\x15\n\rmajor_version\x18\x03 \x01(\r\x12\x15\n\rminor_version\x18\x04 \x01(\r\x12\x0b\n\x03otp\x18\x05 \x01(\x08\x12\x0b\n\x03pin\x18\x06 \x01(\x08\x12\x0b\n\x03spv\x18\x07 \x01(\x08\x12\x11\n\tmaxfee_kb\x18\x08 \x01(\x04\x12\x18\n\x04\x61lgo\x18\t \x03(\x0e\x32\n.Algorithm\x12\x12\n\ndebug_link\x18\n \x01(\x08\"\x17\n\x04Ping\x12\x0f\n\x07message\x18\x01 \x01(\t\"#\n\x11\x44\x65\x62ugLinkDecision\x12\x0e\n\x06yes_no\x18\x01 \x02(\x08\"K\n\x11\x44\x65\x62ugLinkGetState\x12\x0e\n\x06layout\x18\x01 \x01(\x08\x12\x0b\n\x03otp\x18\x02 \x01(\x08\x12\x0b\n\x03pin\x18\x03 \x01(\x08\x12\x0c\n\x04seed\x18\x04 \x01(\x08\"Z\n\x0e\x44\x65\x62ugLinkState\x12\x0e\n\x06layout\x18\x01 \x01(\x0c\x12\x14\n\x03otp\x18\x02 \x01(\x0b\x32\x07.OtpAck\x12\x14\n\x03pin\x18\x03 \x01(\x0b\x32\x07.PinAck\x12\x0c\n\x04seed\x18\x04 \x01(\t\"\x1a\n\x07Success\x12\x0f\n\x07message\x18\x01 \x01(\t\"(\n\x07\x46\x61ilure\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\"\t\n\x07GetUUID\"\x14\n\x04UUID\x12\x0c\n\x04UUID\x18\x01 \x02(\x0c\"\x0f\n\rButtonRequest\"\x0b\n\tButtonAck\"\x0e\n\x0c\x42uttonCancel\"\x1d\n\nOtpRequest\x12\x0f\n\x07message\x18\x01 \x01(\t\"\x15\n\x06OtpAck\x12\x0b\n\x03otp\x18\x01 \x02(\t\"\x0b\n\tOtpCancel\"\x1d\n\nPinRequest\x12\x0f\n\x07message\x18\x01 \x01(\t\"\x15\n\x06PinAck\x12\x0b\n\x03pin\x18\x01 \x02(\t\"\x0b\n\tPinCancel\"\x1a\n\nGetEntropy\x12\x0c\n\x04size\x18\x01 \x02(\r\"\x1a\n\x07\x45ntropy\x12\x0f\n\x07\x65ntropy\x18\x01 \x02(\x0c\" \n\x0bSetMaxFeeKb\x12\x11\n\tmaxfee_kb\x18\x01 \x02(\x04\"5\n\x12GetMasterPublicKey\x12\x1f\n\x04\x61lgo\x18\x01 \x02(\x0e\x32\n.Algorithm:\x05\x42IP32\"\x1e\n\x0fMasterPublicKey\x12\x0b\n\x03key\x18\x01 \x02(\x0c\"M\n\nLoadDevice\x12\x0c\n\x04seed\x18\x01 \x02(\t\x12\x11\n\x03otp\x18\x02 \x01(\x08:\x04true\x12\x0b\n\x03pin\x18\x03 \x01(\t\x12\x11\n\x03spv\x18\x04 \x01(\x08:\x04true\"\x1d\n\x0bResetDevice\x12\x0e\n\x06random\x18\x07 \x01(\x0c\"f\n\x06SignTx\x12\x1f\n\x04\x61lgo\x18\x01 \x02(\x0e\x32\n.Algorithm:\x05\x42IP32\x12\x15\n\routputs_count\x18\x03 \x03(\r\x12\x14\n\x0cinputs_count\x18\x05 \x03(\r\x12\x0e\n\x06random\x18\x06 \x01(\x0c\"N\n\x0cInputRequest\x12\x15\n\rrequest_index\x18\x01 \x01(\r\x12\x14\n\x0csigned_index\x18\x02 \x01(\r\x12\x11\n\tsignature\x18\x03 \x01(\x0c\"&\n\rOutputRequest\x12\x15\n\rrequest_index\x18\x01 \x02(\r\"v\n\x07TxInput\x12\r\n\x05index\x18\x01 \x02(\r\x12\x11\n\taddress_n\x18\x02 \x03(\r\x12\x0e\n\x06\x61mount\x18\x03 \x02(\x04\x12\x11\n\tprev_hash\x18\x04 \x02(\x0c\x12\x12\n\nprev_index\x18\x05 \x02(\r\x12\x12\n\nscript_sig\x18\x06 \x01(\x0c\"\x84\x01\n\x08TxOutput\x12\r\n\x05index\x18\x01 \x02(\r\x12\x0f\n\x07\x61\x64\x64ress\x18\x02 \x02(\t\x12\x11\n\taddress_n\x18\x03 \x03(\r\x12\x0e\n\x06\x61mount\x18\x04 \x02(\x04\x12 \n\x0bscript_type\x18\x05 \x02(\x0e\x32\x0b.ScriptType\x12\x13\n\x0bscript_args\x18\x06 \x03(\x0c*$\n\tAlgorithm\x12\t\n\x05\x42IP32\x10\x00\x12\x0c\n\x08\x45LECTRUM\x10\x01*3\n\nScriptType\x12\x10\n\x0cPAYTOADDRESS\x10\x00\x12\x13\n\x0fPAYTOSCRIPTHASH\x10\x01')
 
 _ALGORITHM = descriptor.EnumDescriptor(
   name='Algorithm',
@@ -30,8 +30,8 @@ _ALGORITHM = descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1483,
-  serialized_end=1519,
+  serialized_start=1529,
+  serialized_end=1565,
 )
 
 
@@ -52,8 +52,8 @@ _SCRIPTTYPE = descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1521,
-  serialized_end=1572,
+  serialized_start=1567,
+  serialized_end=1618,
 )
 
 
@@ -449,6 +449,69 @@ _UUID = descriptor.Descriptor(
 )
 
 
+_BUTTONREQUEST = descriptor.Descriptor(
+  name='ButtonRequest',
+  full_name='ButtonRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  serialized_start=583,
+  serialized_end=598,
+)
+
+
+_BUTTONACK = descriptor.Descriptor(
+  name='ButtonAck',
+  full_name='ButtonAck',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  serialized_start=600,
+  serialized_end=611,
+)
+
+
+_BUTTONCANCEL = descriptor.Descriptor(
+  name='ButtonCancel',
+  full_name='ButtonCancel',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  serialized_start=613,
+  serialized_end=627,
+)
+
+
 _OTPREQUEST = descriptor.Descriptor(
   name='OtpRequest',
   full_name='OtpRequest',
@@ -472,8 +535,8 @@ _OTPREQUEST = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=583,
-  serialized_end=612,
+  serialized_start=629,
+  serialized_end=658,
 )
 
 
@@ -500,8 +563,8 @@ _OTPACK = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=614,
-  serialized_end=635,
+  serialized_start=660,
+  serialized_end=681,
 )
 
 
@@ -521,8 +584,8 @@ _OTPCANCEL = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=637,
-  serialized_end=648,
+  serialized_start=683,
+  serialized_end=694,
 )
 
 
@@ -549,8 +612,8 @@ _PINREQUEST = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=650,
-  serialized_end=679,
+  serialized_start=696,
+  serialized_end=725,
 )
 
 
@@ -577,8 +640,8 @@ _PINACK = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=681,
-  serialized_end=702,
+  serialized_start=727,
+  serialized_end=748,
 )
 
 
@@ -598,8 +661,8 @@ _PINCANCEL = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=704,
-  serialized_end=715,
+  serialized_start=750,
+  serialized_end=761,
 )
 
 
@@ -626,8 +689,8 @@ _GETENTROPY = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=717,
-  serialized_end=743,
+  serialized_start=763,
+  serialized_end=789,
 )
 
 
@@ -654,8 +717,8 @@ _ENTROPY = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=745,
-  serialized_end=771,
+  serialized_start=791,
+  serialized_end=817,
 )
 
 
@@ -682,8 +745,8 @@ _SETMAXFEEKB = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=773,
-  serialized_end=805,
+  serialized_start=819,
+  serialized_end=851,
 )
 
 
@@ -710,8 +773,8 @@ _GETMASTERPUBLICKEY = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=807,
-  serialized_end=860,
+  serialized_start=853,
+  serialized_end=906,
 )
 
 
@@ -738,8 +801,8 @@ _MASTERPUBLICKEY = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=862,
-  serialized_end=892,
+  serialized_start=908,
+  serialized_end=938,
 )
 
 
@@ -787,8 +850,8 @@ _LOADDEVICE = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=894,
-  serialized_end=971,
+  serialized_start=940,
+  serialized_end=1017,
 )
 
 
@@ -815,8 +878,8 @@ _RESETDEVICE = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=973,
-  serialized_end=1002,
+  serialized_start=1019,
+  serialized_end=1048,
 )
 
 
@@ -864,8 +927,8 @@ _SIGNTX = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1004,
-  serialized_end=1106,
+  serialized_start=1050,
+  serialized_end=1152,
 )
 
 
@@ -906,8 +969,8 @@ _INPUTREQUEST = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1108,
-  serialized_end=1186,
+  serialized_start=1154,
+  serialized_end=1232,
 )
 
 
@@ -934,8 +997,8 @@ _OUTPUTREQUEST = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1188,
-  serialized_end=1226,
+  serialized_start=1234,
+  serialized_end=1272,
 )
 
 
@@ -997,8 +1060,8 @@ _TXINPUT = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1228,
-  serialized_end=1346,
+  serialized_start=1274,
+  serialized_end=1392,
 )
 
 
@@ -1060,8 +1123,8 @@ _TXOUTPUT = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1349,
-  serialized_end=1481,
+  serialized_start=1395,
+  serialized_end=1527,
 )
 
 _FEATURES.fields_by_name['algo'].enum_type = _ALGORITHM
@@ -1080,6 +1143,9 @@ DESCRIPTOR.message_types_by_name['Success'] = _SUCCESS
 DESCRIPTOR.message_types_by_name['Failure'] = _FAILURE
 DESCRIPTOR.message_types_by_name['GetUUID'] = _GETUUID
 DESCRIPTOR.message_types_by_name['UUID'] = _UUID
+DESCRIPTOR.message_types_by_name['ButtonRequest'] = _BUTTONREQUEST
+DESCRIPTOR.message_types_by_name['ButtonAck'] = _BUTTONACK
+DESCRIPTOR.message_types_by_name['ButtonCancel'] = _BUTTONCANCEL
 DESCRIPTOR.message_types_by_name['OtpRequest'] = _OTPREQUEST
 DESCRIPTOR.message_types_by_name['OtpAck'] = _OTPACK
 DESCRIPTOR.message_types_by_name['OtpCancel'] = _OTPCANCEL
@@ -1158,6 +1224,24 @@ class UUID(message.Message):
   DESCRIPTOR = _UUID
   
   # @@protoc_insertion_point(class_scope:UUID)
+
+class ButtonRequest(message.Message):
+  __metaclass__ = reflection.GeneratedProtocolMessageType
+  DESCRIPTOR = _BUTTONREQUEST
+  
+  # @@protoc_insertion_point(class_scope:ButtonRequest)
+
+class ButtonAck(message.Message):
+  __metaclass__ = reflection.GeneratedProtocolMessageType
+  DESCRIPTOR = _BUTTONACK
+  
+  # @@protoc_insertion_point(class_scope:ButtonAck)
+
+class ButtonCancel(message.Message):
+  __metaclass__ = reflection.GeneratedProtocolMessageType
+  DESCRIPTOR = _BUTTONCANCEL
+  
+  # @@protoc_insertion_point(class_scope:ButtonCancel)
 
 class OtpRequest(message.Message):
   __metaclass__ = reflection.GeneratedProtocolMessageType
