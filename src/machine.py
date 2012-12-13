@@ -41,6 +41,7 @@ class StateMachine(object):
             else:
                 time.sleep(3)
                 self.pin_cancel()
+                self.set_main_state()
                 return proto.Failure(code=6, message="Invalid PIN")
     
     def pin_cancel(self):
@@ -73,6 +74,7 @@ class StateMachine(object):
         else:
             time.sleep(3)
             self.otp_cancel()
+            self.set_main_state()
             return proto.Failure(code=3, message="Invalid OTP")
     
     def otp_cancel(self):
@@ -81,6 +83,8 @@ class StateMachine(object):
         self.otp_args = []
     
     def yesno_cancel(self):
+        self.yesno_pending = False
+        self.yesno_decision = None
         self.yesno_func = None
         self.yesno_args = []
         
@@ -89,19 +93,36 @@ class StateMachine(object):
         
         self.yesno_func = func
         self.yesno_args = args
+        self.yesno_pending = True # Waiting for confirmation from computer
         
-        # Don't send any response to computer, just wait for hw buttons
-        return None
+        # Tell computer that device is waiting for HW buttons
+        return proto.ButtonRequest()
         
-    def yesno_resolve(self, button):
+    def yesno_store(self, button):
         if not self.yesno_func:
             return
+
+        self.yesno_decision = button
         
+    def yesno_resolve(self):
+        if not self.yesno_func:
+            # We're not waiting for hw buttons
+            return
+        
+        if self.yesno_pending:
+            # We still didn't received ButtonAck from computer
+            return
+        
+        if self.yesno_decision == None:
+            # We still don't know user's decision (call yesno_store() firstly)
+            return
+        
+        button = self.yesno_decision
         if button == True:
             ret = self.yesno_func(*self.yesno_args)
         else:
-            ret = proto.Failure(code=4, message='Action cancelled by user')
             self.set_main_state()
+            ret = proto.Failure(code=4, message='Action cancelled by user')
             
         self.yesno_func = None
         self.yesno_args = []
@@ -129,11 +150,15 @@ class StateMachine(object):
         return self.yesno_request(yesno_message, question, yes_text, no_text, func, *args)
     
     def press_button(self, button):
-        return self.yesno_resolve(button)
+        self.yesno_store(button)
+        return self.yesno_resolve()
     
     def get_state(self, msg):
         resp = proto.DebugLinkState()
-        # TODO
+        if msg.otp and self.otp != None:
+            resp.otp.otp = self.otp
+        if msg.pin and self.pin_func != None:
+            resp.pin.pin = self.wallet.pin
         return resp
 
     def set_main_state(self):
@@ -158,11 +183,10 @@ class StateMachine(object):
         self.wallet.otp = otp
         self.wallet.pin = pin
         self.wallet.spv = spv
-        return proto.Success()
+        return proto.Success(message='Wallet loaded')
     
     def _reset_wallet(self, random):
         print "Starting setup wizard..."
-
         return proto.Success()
     
     '''
@@ -222,7 +246,6 @@ class StateMachine(object):
         
         if self.otp != None:
             '''OTP response is expected'''
-            
             if isinstance(msg, proto.OtpAck):
                 return self.otp_check(msg.otp)
         
@@ -230,9 +253,10 @@ class StateMachine(object):
                 self.otp_cancel()
                 return proto.Success(message="OTP cancelled")
             
-            return proto.Failure(code=2, message='Waiting for OTP')
+            self.set_main_state()
+            return proto.Failure(code=2, message='OTP expected')
             
-        if self.pin_func != None:
+        if self.pin_func != None:            
             '''PIN response is expected'''
             if isinstance(msg, proto.PinAck):
                 return self.pin_check(msg.pin)
@@ -241,8 +265,21 @@ class StateMachine(object):
                 self.pin_cancel()
                 return proto.Success(message="PIN request cancelled")
             
-            return proto.Failure(code=5, message='Waiting for PIN')
+            self.set_main_state()
+            return proto.Failure(code=5, message='PIN expected')
         
+        if self.yesno_pending:
+            if isinstance(msg, proto.ButtonAck):
+                self.yesno_pending = False # Now we can accept the button press
+                return self.yesno_resolve() # Process if button has been already pressed
+            
+            if isinstance(msg, proto.ButtonCancel):
+                self.set_main_state()
+                return proto.Success(message="Button confirmation cancelled")
+        
+            self.set_main_state()
+            return proto.Failure(code=2, message='Button confirmation expected')
+            
         if isinstance(msg, proto.Ping):
             return proto.Success(message=msg.message)
                 
@@ -285,5 +322,6 @@ class StateMachine(object):
                                      '', '{ Cancel', 'Confirm }',
                                      None, None,
                                      self._sign_tx, msg)
-                
-        raise Exception("Unknown message")
+        
+        self.set_main_state()
+        return proto.Failure(code=1, message="Unexpected message")

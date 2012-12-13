@@ -67,6 +67,7 @@ def get_transport(transport_string, path):
         return PipeTransport(path, is_device=True)
     
     if transport_string == 'socket':
+        print "Socket transport is for development only. NEVER use socket transport with real wallet!"
         from transport_socket import SocketTransport            
         return SocketTransport(path)
     
@@ -130,27 +131,27 @@ def main(args):
             break
             
         # Handle debug link connection
-        if debug_transport.ready_to_read():
-            msg = debug_transport.read()
-            if msg != None:
-                print "Received debuglink", msg.__class__.__name__, msg
-                if isinstance(msg, proto.DebugLinkDecision):
-                    # Press the button
-                    button = msg.yes_no
-                elif isinstance(msg, proto.DebugLinkGetState):
-                    # Report device state
-                    resp = machine.get_state(msg)
-                    print "Sending debuglink", resp.__class__.__name__, resp
-                    debug_transport.write(resp)
-                else:
-                    raise Exception("Got unexpected object %s" % msg.__class__.__name__)
+        msg = debug_transport.read()
+        if msg != None:
+            print "Received debuglink", msg.__class__.__name__, msg
+            if isinstance(msg, proto.DebugLinkDecision):
+                # Press the button
+                button = msg.yes_no
+            elif isinstance(msg, proto.DebugLinkGetState):
+                # Report device state                
+                resp = machine.get_state(msg)
+                print "Sending debuglink", resp.__class__.__name__, resp
+                debug_transport.write(resp)
+                
+            else:
+                raise Exception("Got unexpected object %s" % msg.__class__.__name__)
             
         if button != None:
             print "Button", button
             is_active = True
 
             resp = machine.press_button(button)
-            if resp:
+            if resp != None:
                 print "Sending", resp
                 transport.write(resp)
                 
@@ -164,15 +165,14 @@ def main(args):
         '''
 
         # Handle main connection
-        if transport.ready_to_read():
-            msg = transport.read()
-            if msg != None:
-                print "Received", msg.__class__.__name__, msg
-                resp = machine.process_message(msg)
-                if resp:
-                    print "Sending", resp.__class__.__name__, resp
-                    transport.write(resp)
-                    is_active = True            
+        msg = transport.read()
+        if msg != None:
+            print "Received", msg.__class__.__name__, msg
+            resp = machine.process_message(msg)
+            if resp != None:
+                print "Sending", resp.__class__.__name__, resp
+                transport.write(resp)
+                is_active = True            
                 
         # Display scrolling
         is_active |= layout.update()
