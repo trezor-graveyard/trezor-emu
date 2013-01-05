@@ -150,6 +150,9 @@ class StateMachine(object):
         return self.yesno_request(yesno_message, question, yes_text, no_text, func, *args)
     
     def press_button(self, button):
+        if button and self.custom_message:
+            self.clear_custom_message()
+            
         self.yesno_store(button)
         return self.yesno_resolve()
     
@@ -161,12 +164,21 @@ class StateMachine(object):
             resp.pin.pin = self.wallet.pin
         return resp
 
+    def clear_custom_message(self):
+        if self.custom_message:
+            self.custom_message = False
+            self.layout.show_logo(logo)
+            
     def set_main_state(self):
         # Switch device to default state
         self.yesno_cancel()
         self.otp_cancel()
         self.pin_cancel()
 
+        # Display is showing custom message which just wait for "Continue" button,
+        # but doesn't require any interaction with computer
+        self.custom_message = False
+        
         try:
             self.wallet.get_seed()
             self.layout.show_logo(logo)
@@ -294,6 +306,12 @@ class StateMachine(object):
 
         if isinstance(msg, proto.GetMasterPublicKey):
             return proto.MasterPublicKey(key=self.wallet.get_master_public_key(msg.algo))
+    
+        if isinstance(msg, proto.GetAddress):
+            address = self.wallet.get_address(msg.algo, list(msg.address_n))
+            self.layout.show_receiving_address(address)
+            self.custom_message = True # Yes button will redraw screen
+            return proto.Address(address=address)
     
         if isinstance(msg, proto.SetMaxFeeKb):
             return self.protect_call(["Current maximal fee",
