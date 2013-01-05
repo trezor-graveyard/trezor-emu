@@ -50,11 +50,14 @@ class Wallet(object):
     def get_master_public_key(self, algo):    
         af = AlgoFactory(algo)
         master_public_key = af.init_master_public_key(self.get_seed())
-        #af.get_new_address(master_public_key, [0])
+        
         return master_public_key
     
-    def get_mnemonic(self):
+    def get_address(self, algo, n):
+        af = AlgoFactory(algo)
+        return af.get_new_address(self.get_seed(), n)
         
+    def get_mnemonic(self):
         return tools.get_mnemonic(self.seed)
                     
     def load_seed(self, seed_words):
