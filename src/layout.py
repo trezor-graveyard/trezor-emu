@@ -8,6 +8,7 @@ class Layout(object):
         self.line_len_bold = 16
         self.buffer = buffer
         self.update_delta = 0.05
+        self.last_screen = None
         self.clear()
         
     def clear(self):
@@ -74,11 +75,22 @@ class Layout(object):
         self.clear()
         self.buffer.draw_bitmap(logo)
         self.need_refresh = True
+        self.last_screen = 'show_logo'
 
     def show_message(self, messages):
         # Print message to console
         self.show_question(messages, '', 'Continue }', '')
+        self.last_screen = 'show_message'
 
+    def show_receiving_address(self, address):
+        self.show_message(
+            # .....................                          
+            ['This address can be',
+             'safely used for',
+             'receiving new funds:'])
+        self._scroll_text(28, address, smallfonts.Font5x8)
+        self.last_screen = 'show_receiving_address'
+        
     def show_question(self, messages, question, yes_text, no_text):
         # Print message to console
         print '-' * len(' '.join(messages))
@@ -95,6 +107,7 @@ class Layout(object):
 
         self._show_status(question, yes_text, no_text)
         self.need_refresh = True
+        self.last_screen = 'show_question'
         
     def show_question_dummy(self):
         self.show_question(
@@ -105,6 +118,7 @@ class Layout(object):
              'internim displeji',
              'internim displeji'],
             'Question?', 'Confirm', 'Cancel')
+        self.last_screen = 'show_question_dummy'
 
     def show_pin_request(self):
         self.show_question(
@@ -112,6 +126,7 @@ class Layout(object):
              "PIN code to",
              "the computer"],
             '', '', '{ Cancel')
+        self.last_screen = 'show_pin_request'
         
     def show_otp_request(self, otp):
         self.show_question(
@@ -121,6 +136,7 @@ class Layout(object):
              '',
              otp.rjust(int(10+len(otp)/2), ' ')],
             '', '', '{ Cancel')
+        self.last_screen = 'show_otp_request'
                                  
     def show_progress(self, current, maximum, clear=False, logo=None):
         if clear:
@@ -137,6 +153,7 @@ class Layout(object):
         width = int((self.buffer.width-5) * (current / float(maximum)))
         self.buffer.box(2, self.buffer.height-8, width+2, self.buffer.height-3)
         self.need_refresh = True
+        self.last_screen = 'show_progress'
         
     def show_transactions(self, txes, more=False):
         self.clear()
@@ -156,6 +173,7 @@ class Layout(object):
             
         self._show_status('Confirm outputs?', 'More \x7e' if more else 'Confirm }', '{ Cancel')
         self.need_refresh = True
+        self.last_screen = 'show_transactions'
         
     def _prepare_amount(self, amount):
         
