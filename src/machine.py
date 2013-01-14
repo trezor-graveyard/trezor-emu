@@ -80,26 +80,27 @@ class PinStateMachine(object):
         self.func = None
         self.args = []
 
-class StateMachine(object):
-    def __init__(self, wallet, layout, is_debuglink):
-        self.wallet = wallet
+class OtpStateMachine(object):
+    def __init__(self, layout):
         self.layout = layout
-        self.is_debuglink = is_debuglink
-
-        self.pin = PinStateMachine(layout, wallet)
-        self.signing = SigningStateMachine()
         
-        self.set_main_state()                    
-
-    def otp_request(self, message, func, *args):
+        self.set_main_state()
+        
+    def set_main_state(self):
+        self.cancel()
+        
+    def is_waiting(self):
+        return self.otp != None
+            
+    def request(self, message, func, *args):
         def generate():
             # Removed l and 0
             return ''.join(random.choice('abcdefghijkmnopqrstuvwxyz123456789') for _ in range(4))
             #return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz0123456789') for _ in range(4))
         
         self.otp = generate()
-        self.otp_func = func
-        self.otp_args = args
+        self.func = func
+        self.args = args
         if message != None:
             m = proto.OtpRequest(message=message)
         else:
@@ -108,21 +109,34 @@ class StateMachine(object):
         self.layout.show_otp_request(self.otp)
         return m
         
-    def otp_check(self, otp):
+    def check(self, otp):
         if otp == self.otp:
-            msg = self.otp_func(*self.otp_args)
-            self.otp_cancel()
+            msg = self.func(*self.args)
+            self.cancel()
             return msg
         else:
             time.sleep(3)
-            self.otp_cancel()
+            self.cancel()
             self.set_main_state()
             return proto.Failure(code=3, message="Invalid OTP")
     
-    def otp_cancel(self):
+    def cancel(self):
         self.otp = None
-        self.otp_func = None
-        self.otp_args = []
+        self.func = None
+        self.args = []
+        
+        
+class StateMachine(object):
+    def __init__(self, wallet, layout, is_debuglink):
+        self.wallet = wallet
+        self.layout = layout
+        self.is_debuglink = is_debuglink
+
+        self.otp = OtpStateMachine(layout)
+        self.pin = PinStateMachine(layout, wallet)
+        self.signing = SigningStateMachine()
+        
+        self.set_main_state()                    
     
     def yesno_cancel(self):
         self.yesno_pending = False
@@ -178,11 +192,11 @@ class StateMachine(object):
             if self.wallet.pin:
                 # Require hw buttons, OTP and PIN
                 return self.yesno_request(yesno_message, question, yes_text, no_text,
-                            self.otp_request, *[otp_message, self.pin.request, pin_message, False, func]+list(args))
+                            self.otp.request, *[otp_message, self.pin.request, pin_message, False, func]+list(args))
             else:
                 # Require hw buttons and OTP
                 return self.yesno_request(yesno_message, question, yes_text, no_text,
-                            self.otp_request, *[otp_message, func]+list(args))
+                            self.otp.request, *[otp_message, func]+list(args))
         elif self.wallet.pin:
             # Require hw buttons and PIN
             return self.yesno_request(yesno_message, question, yes_text, no_text,
@@ -200,8 +214,8 @@ class StateMachine(object):
     
     def get_state(self, msg):
         resp = proto.DebugLinkState()
-        if msg.otp and self.otp != None:
-            resp.otp.otp = self.otp
+        if msg.otp and self.otp.is_waiting():
+            resp.otp.otp = self.otp.otp
         if msg.pin and self.pin.is_waiting():
             resp.pin.pin = self.wallet.pin
         return resp
@@ -214,8 +228,8 @@ class StateMachine(object):
     def set_main_state(self):
         # Switch device to default state
         self.yesno_cancel()
-        self.otp_cancel()
         
+        self.otp.set_main_state()
         self.signing.set_main_state()
         self.pin.set_main_state()
 
@@ -297,13 +311,13 @@ class StateMachine(object):
             m.debug_link = self.is_debuglink
             return m
         
-        if self.otp != None:
+        if self.otp.is_waiting():
             '''OTP response is expected'''
             if isinstance(msg, proto.OtpAck):
-                return self.otp_check(msg.otp)
+                return self.otp.check(msg.otp)
         
             if isinstance(msg, proto.OtpCancel):
-                self.otp_cancel()
+                self.otp.cancel()
                 return proto.Success(message="OTP cancelled")
             
             self.set_main_state()
