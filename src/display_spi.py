@@ -5,8 +5,8 @@ import RPi.GPIO as GPIO
 class SPIDisplay(object):
     def __init__(self, buffer):
         self.PIN_OLED_DC  = 23   # RS
-        self.PIN_OLED_CS  = 24   # CS
-        self.PIN_OLED_RST = 25   # RES
+        self.PIN_OLED_CS  = 25   # CS
+        self.PIN_OLED_RST = 24   # RES
         self.buffer  = buffer
         self.spidev = None
 
