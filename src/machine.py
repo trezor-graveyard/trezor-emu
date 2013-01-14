@@ -5,49 +5,91 @@ import tools
 import bitkey_pb2 as proto
 from logo import logo
 
-class StateMachine(object):
-    def __init__(self, wallet, layout, is_debuglink):
-        self.wallet = wallet
-        self.layout = layout
-        self.is_debuglink = is_debuglink
-
+class SigningStateMachine(object):
+    def __init__(self):
         self.set_main_state()
-                    
-    def pin_request(self, message, pass_or_check, func, *args):
-        self.pin_pass_or_check = pass_or_check
-        self.pin_func = func
-        self.pin_args = args
         
-        #self.debug_transport.write(proto.PinAck(pin=self.device.pin))
-            
+    def set_main_state(self):
+        self.inputs_count = 0
+        self.outputs_count = 0
+        self.input_index = 0
+        self.output_index = 0
+        self.random = ''
+
+    def _sign_tx(self, msg):
+        self.inputs_count = msg.inputs_count
+        self.outputs_count = msg.outputs_count
+        self.random = random
+        
+        self.input_index = 0           
+        return proto.InputRequest(request_index=self.input_index)
+    
+    def process_message(self, msg):
+        if isinstance(msg, proto.SignTx):
+            # Start signing process
+            return self._sign_tx(msg)
+        
+        
+        # return Failure message to indicate problems to upstream SM
+        return proto.Failure(code=1, message="Signing failed")
+
+class PinStateMachine(object):
+    def __init__(self, layout, wallet):
+        self.layout = layout
+        self.wallet = wallet
+        
+        self.set_main_state()
+        
+    def set_main_state(self):
+        self.cancel()
+
+    def is_waiting(self):
+        return self.func != None
+        
+    def request(self, message, pass_or_check, func, *args):
+        self.pass_or_check = pass_or_check
+        self.func = func
+        self.args = args
+        
         self.layout.show_pin_request()
         if message != None:
             return proto.PinRequest(message=message)
         else:
             return proto.PinRequest()
     
-    def pin_check(self, pin):
-        if self.pin_pass_or_check:
+    def check(self, pin):
+        if self.pass_or_check:
             # Pass PIN to method
-            msg = self.pin_func(pin, *self.pin_args)
-            self.pin_cancel()
+            msg = self.func(pin, *self.args)
+            self.cancel()
             return msg
         else:
             # Check PIN against device's internal PIN
             if pin == self.wallet.pin:
-                msg = self.pin_func(*self.pin_args)
-                self.pin_cancel()
+                msg = self.func(*self.args)
+                self.cancel()
                 return msg
             else:
                 time.sleep(3)
-                self.pin_cancel()
+                self.cancel()
                 self.set_main_state()
                 return proto.Failure(code=6, message="Invalid PIN")
     
-    def pin_cancel(self):
-        self.pin_pass_or_check = False
-        self.pin_func = None
-        self.pin_args = []
+    def cancel(self):
+        self.pass_or_check = False
+        self.func = None
+        self.args = []
+
+class StateMachine(object):
+    def __init__(self, wallet, layout, is_debuglink):
+        self.wallet = wallet
+        self.layout = layout
+        self.is_debuglink = is_debuglink
+
+        self.pin = PinStateMachine(layout, wallet)
+        self.signing = SigningStateMachine()
+        
+        self.set_main_state()                    
 
     def otp_request(self, message, func, *args):
         def generate():
@@ -136,7 +178,7 @@ class StateMachine(object):
             if self.wallet.pin:
                 # Require hw buttons, OTP and PIN
                 return self.yesno_request(yesno_message, question, yes_text, no_text,
-                            self.otp_request, *[otp_message, self.pin_request, pin_message, False, func]+list(args))
+                            self.otp_request, *[otp_message, self.pin.request, pin_message, False, func]+list(args))
             else:
                 # Require hw buttons and OTP
                 return self.yesno_request(yesno_message, question, yes_text, no_text,
@@ -144,7 +186,7 @@ class StateMachine(object):
         elif self.wallet.pin:
             # Require hw buttons and PIN
             return self.yesno_request(yesno_message, question, yes_text, no_text,
-                self.pin_request, *[pin_message, False, func]+list(args))
+                self.pin.request, *[pin_message, False, func]+list(args))
                 
         # If confirmed, call final function directly
         return self.yesno_request(yesno_message, question, yes_text, no_text, func, *args)
@@ -160,7 +202,7 @@ class StateMachine(object):
         resp = proto.DebugLinkState()
         if msg.otp and self.otp != None:
             resp.otp.otp = self.otp
-        if msg.pin and self.pin_func != None:
+        if msg.pin and self.pin.is_waiting():
             resp.pin.pin = self.wallet.pin
         return resp
 
@@ -173,7 +215,9 @@ class StateMachine(object):
         # Switch device to default state
         self.yesno_cancel()
         self.otp_cancel()
-        self.pin_cancel()
+        
+        self.signing.set_main_state()
+        self.pin.set_main_state()
 
         # Display is showing custom message which just wait for "Continue" button,
         # but doesn't require any interaction with computer
@@ -198,6 +242,7 @@ class StateMachine(object):
         return proto.Success(message='Wallet loaded')
     
     def _reset_wallet(self, random):
+        # TODO
         print "Starting setup wizard..."
         return proto.Success()
     
@@ -234,10 +279,6 @@ class StateMachine(object):
         m.entropy = ''.join([ chr(random.randrange(0, 255, 1)) for _ in xrange(0, size) ])
         self.set_main_state()
         return m 
-          
-    def _sign_tx(self, tx):
-        #self.device.sign_tx(algo=tx.algo, inputs=tx.inputs, output=tx.output)
-        return proto.Success()
         
     def process_message(self, msg):
         if isinstance(msg, proto.Initialize):
@@ -268,10 +309,10 @@ class StateMachine(object):
             self.set_main_state()
             return proto.Failure(code=2, message='OTP expected')
             
-        if self.pin_func != None:            
+        if self.pin.is_waiting():            
             '''PIN response is expected'''
             if isinstance(msg, proto.PinAck):
-                return self.pin_check(msg.pin)
+                return self.pin.check(msg.pin)
             
             if isinstance(msg, proto.PinCancel):
                 self.pin_cancel()
@@ -281,6 +322,7 @@ class StateMachine(object):
             return proto.Failure(code=5, message='PIN expected')
         
         if self.yesno_pending:
+            '''Button confirmation is expected'''
             if isinstance(msg, proto.ButtonAck):
                 self.yesno_pending = False # Now we can accept the button press
                 return self.yesno_resolve() # Process if button has been already pressed
@@ -334,12 +376,11 @@ class StateMachine(object):
                                      None, None,
                                      self._reset_wallet, msg.random)
             
-        if isinstance(msg, proto.SignTx):
-            print "<TODO: Print transaction details>"
-            return self.protect_call("Sign transaction?",
-                                     '', '{ Cancel', 'Confirm }',
-                                     None, None,
-                                     self._sign_tx, msg)
-        
+        if isinstance(msg, (proto.SignTx, proto.TxInput, proto.TxOutput)):
+            ret = self.signing.process_message(msg)
+            if isinstance(ret, proto.Failure):
+                self.set_main_state()
+            return ret
+                    
         self.set_main_state()
         return proto.Failure(code=1, message="Unexpected message")
