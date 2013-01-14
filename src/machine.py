@@ -14,21 +14,79 @@ class SigningStateMachine(object):
         self.outputs_count = 0
         self.input_index = 0
         self.output_index = 0
+        self.signing_index = 0
         self.random = ''
 
     def _sign_tx(self, msg):
+        self.set_main_state()
+        
+        if msg.inputs_count < 1:
+            return proto.Failure(message='Transaction must have at least one input')
+        
+        if msg.outputs_count < 1:
+            return proto.Failure(message='Transaction must have at least one output')
+        
         self.inputs_count = msg.inputs_count
         self.outputs_count = msg.outputs_count
         self.random = random
-        
-        self.input_index = 0           
+         
+        self.input_index = 0
         return proto.InputRequest(request_index=self.input_index)
     
+    def _tx_input(self, msg):
+        if msg.index != self.input_index:
+            self.set_main_state()
+            return proto.Failure(message="Input index doesn't correspond with internal state")
+        
+        print "RECEIVED INPUT", msg
+
+        if self.input_index < self.inputs_count - 1:
+            self.input_index += 1
+            return proto.InputRequest(request_index=self.input_index,
+                                      signed_index=-1, # Not any signature yet
+                                      signature='')
+        
+        self.output_index = 0
+        return proto.OutputRequest(request_index=self.output_index)
+    
+    def _tx_output(self, msg):
+        if msg.index != self.output_index:
+            self.set_main_state()
+            return proto.Failure(message="Output index doesn't correspond with internal state")
+        
+        print "RECEIVED OUTPUT", msg
+        
+        if self.output_index < self.outputs_count - 1:
+            self.output_index += 1
+            return proto.OutputRequest(request_index=self.output_index)
+
+        print "FINISH INPUT SIGNATURE", self.signing_index
+        signature = 'signature'
+        
+        if self.signing_index < self.inputs_count - 1:
+            # There's yet another input to sign
+            now_signed = self.signing_index
+            self.signing_index += 1
+            self.input_index = 0
+            return proto.InputRequest(request_index=self.input_index,
+                                      signed_index=now_signed,
+                                      signature=signature)
+        
+        # Looks like we're done!
+        return proto.InputRequest(request_index=-1, # Don't request any next input
+                                  signed_index=self.signing_index,
+                                  signature=signature)
+        
     def process_message(self, msg):
         if isinstance(msg, proto.SignTx):
             # Start signing process
             return self._sign_tx(msg)
         
+        if isinstance(msg, proto.TxInput):
+            return self._tx_input(msg)
+        
+        if isinstance(msg, proto.TxOutput):
+            return self._tx_output(msg)
         
         # return Failure message to indicate problems to upstream SM
         return proto.Failure(code=1, message="Signing failed")
@@ -200,10 +258,22 @@ class StateMachine(object):
         
         self.set_main_state()                        
         
+    
+    def protect_reset(self, yesno_message, question, yes_text, no_text, otp_message, random):
+        # FIXME
+        
+        if self.wallet.otp:
+            # Require hw buttons and OTP
+            return self.yesno.request(yesno_message, question, yes_text, no_text,
+                        self.otp.request, *[otp_message, self._reset_wallet]+[random,])
+                
+        # If confirmed, call final function directly
+        return self.yesno.request(yesno_message, question, yes_text, no_text, self._reset_wallet, *[random,])
+    
     def protect_call(self, yesno_message, question, yes_text, no_text,
                      otp_message, pin_message, func, *args):
-        # Um, maybe it needs some simplification?
-        
+        # FIXME: Um, maybe it needs some simplification?
+
         if self.wallet.otp:
             if self.wallet.pin:
                 # Require hw buttons, OTP and PIN
@@ -400,10 +470,9 @@ class StateMachine(object):
                                      self._load_wallet, msg.seed, msg.otp, msg.pin, msg.spv)
             
         if isinstance(msg, proto.ResetDevice):
-            return self.protect_call("Reset device?",
-                                     '', '{ Cancel', 'Confirm }',
-                                     None, None,
-                                     self._reset_wallet, msg.random)
+            return self.protect_reset("Reset device?",
+                                     '', '{ Cancel', 'Confirm }', None,
+                                     msg.random)
             
         if isinstance(msg, (proto.SignTx, proto.TxInput, proto.TxOutput)):
             ret = self.signing.process_message(msg)
