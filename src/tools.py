@@ -116,6 +116,13 @@ def var_int(i):
     else:
         return '\xff' + struct.pack('<Q', i)
 
+def get_secexp(seed):
+    # Perform seed stretching    
+    oldseed = seed
+    for _ in range(100000):
+        seed = hashlib.sha256(seed + oldseed).digest()
+    return ecdsa.util.string_to_number(seed)
+    
 # https://en.bitcoin.it/wiki/Protocol_specification#Variable_length_integer
 def raw_tx(inputs, outputs, for_sig):
     s  = '\x01\x00\x00\x00'                                  # version 

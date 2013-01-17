@@ -10,12 +10,14 @@ class Wallet(object):
         self.major_version = 0
         self.minor_version = 1
         
-        self.seed = ''
+        self.seed = '' # Seed in hex form
         self.otp = False
         self.spv = False
         self.pin = ''
         self.algo = [proto.ELECTRUM,]
         self.maxfee_kb = 100000 # == 0.001 BTC/kB
+        
+        self.secexp = 0 # Cache of secret exponent (from seed)
         
     @classmethod    
     def load(cls, filename):
@@ -47,25 +49,31 @@ class Wallet(object):
             raise Exception("Device not initialized")
         return self.seed
     
+    def get_secexp(self):
+        if self.secexp == 0:
+            self.secexp = tools.get_secexp(self.get_seed())
+        return self.secexp
+        
     def get_master_public_key(self, algo):    
         af = AlgoFactory(algo)
-        master_public_key = af.init_master_public_key(self.get_seed())
-        
+        master_public_key = af.init_master_public_key(self.get_secexp())
         return master_public_key
     
     def get_address(self, algo, n):
         af = AlgoFactory(algo)
-        return af.get_new_address(self.get_seed(), n)
+        return af.get_new_address(self.get_secexp(), n)
         
     def get_mnemonic(self):
-        return tools.get_mnemonic(self.seed)
+        return tools.get_mnemonic(self.get_seed())
                     
     def load_seed(self, seed_words):
+        self.secexp = 0 # Flush secexp cache!
         self.seed = tools.get_seed(seed_words)
         print 'seed', self.seed
         print self.get_mnemonic()
         
     def reset_seed(self, random):
+        self.secexp = 0 # Flush secexp cache!
         seed = tools.generate_seed(random)
         seed_words = tools.get_mnemonic(seed)
         self.load_seed(seed_words)
