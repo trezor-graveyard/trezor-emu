@@ -13,7 +13,7 @@ class AlgoElectrum(object):
 
     @classmethod
     def _get_sequence(cls, master_public_key, n):
-        return ecdsa.util.string_to_number(Hash( "%d:0:" % n + master_public_key ))
+        return ecdsa.util.string_to_number(Hash( "%d:%d:%s" % (n[0], n[1], master_public_key)))
 
     @classmethod
     def init_master_private_key(cls, seed):
@@ -27,8 +27,11 @@ class AlgoElectrum(object):
 
     @classmethod
     def get_new_address(cls, seed, n):
-        # Electrum has only one branch of keys
-        n = n[0]
+        # Electrum has two branches of keys - standard and change addresses
+        # n[0] represent index in branch
+        # n[1] == 0 is for standard addresses, n[1] == 1 for change addresses
+        if len(n) != 2:
+            raise Exception("n must have exactly two values")
         
         """Publickey(type,n) = Master_public_key + H(n|S|type)*point  """
         master_public_key = cls.init_master_public_key(seed)
@@ -42,7 +45,8 @@ class AlgoElectrum(object):
     @classmethod
     def get_private_key(cls, seed, n):
         # Electrum has only one branch of keys
-        n = n[0]
+        if len(n) != 2:
+            raise Exception("n must have exactly two values")
         
         """  Privatekey(type,n) = Master_private_key + H(n|S|type)  """
         order = generator_secp256k1.order()
