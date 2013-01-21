@@ -1,4 +1,5 @@
 import json
+import os
 
 import bitkey_pb2 as proto
 from algo import AlgoFactory
@@ -18,6 +19,9 @@ class Wallet(object):
         self.maxfee_kb = 100000 # == 0.001 BTC/kB
         
         self.secexp = 0 # Cache of secret exponent (from seed)
+
+        self.UUID_filename = os.path.expanduser('~/.bitkey')
+        self.init_UUID()
         
     @classmethod    
     def load(cls, filename):
@@ -40,28 +44,41 @@ class Wallet(object):
         
         json.dump(data, open(filename, 'w'))
         
+    def init_UUID(self):
+        UUID_len = 9
+        if os.path.exists(self.UUID_filename) and \
+           os.path.getsize(self.UUID_filename) == UUID_len:
+            return
+        
+        print "Generating new device UUID..."
+        f = open(self.UUID_filename, 'w')
+        f.write(os.urandom(UUID_len))
+        f.close()            
+        
     def get_UUID(self):
-        # FIXME
-        return 'uuid-should-be-hw-dependent'
+        f = open(self.UUID_filename, 'r')
+        uuid = f.read()
+        f.close()
+        return uuid
     
     def get_seed(self):
         if self.seed == '':
             raise Exception("Device not initialized")
         return self.seed
     
-    def get_secexp(self):
+    def _get_secexp(self):
         if self.secexp == 0:
             self.secexp = tools.get_secexp(self.get_seed())
         return self.secexp
         
     def get_master_public_key(self, algo):    
         af = AlgoFactory(algo)
-        master_public_key = af.init_master_public_key(self.get_secexp())
+        master_public_key = af.init_master_public_key(self._get_secexp())
         return master_public_key
     
     def get_address(self, algo, n):
         af = AlgoFactory(algo)
-        return af.get_new_address(self.get_secexp(), n)
+        return af.get_new_address(self._get_secexp(), n)
         
     def get_mnemonic(self):
         return tools.get_mnemonic(self.get_seed())
