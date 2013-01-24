@@ -127,7 +127,7 @@ class Layout(object):
 
     def show_pin_request(self):
         self.show_question(
-            ["Please write you",
+            ["Please write your",
              "PIN code to",
              "the computer"],
             '', '', '{ Cancel')
