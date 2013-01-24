@@ -1,23 +1,38 @@
 import time
 import random
+import hashlib
+import traceback
 
 import tools
 import bitkey_pb2 as proto
 from logo import logo
 
 class SigningStateMachine(object):
-    def __init__(self):
+    def __init__(self, layout, wallet):
+        self.layout = layout
+        self.wallet = wallet
+        
         self.set_main_state()
         
     def set_main_state(self):
-        self.inputs_count = 0
-        self.outputs_count = 0
-        self.input_index = 0
-        self.output_index = 0
-        self.signing_index = 0
-        self.random = ''
-
-    def _sign_tx(self, msg):
+        self.inputs_count = 0 # Count of inputs in transaction
+        self.outputs_count = 0 # Count ot outputs in transaction
+        self.input_index = 0 # Index <0, inputs_count) of currently processed input
+        self.output_index = 0 # Index <0, outputs_count) of currently processed output
+        self.signing_index = 0 # Index <0, inputs_count) of currently processed signature
+        self.algo = None # Signing algorithm (proto.ELECTRUM or proto.BIP32)
+        self.random = '' # Entropy received from computer
+        
+        self.input_hash = hashlib.sha256() # sha256 object of currently processed input
+        self.output_hash = hashlib.sha256() # sha256 object of currently processed output
+        self.tx_hash = hashlib.sha256() # sha256 object of whole transaction
+    
+    def sign_tx(self, msg):
+        '''
+        This function starts workflow of signing Bitcoin transaction.
+        Function set up the environment and send back a InputRequest message,
+        asking computer for first input.
+        '''
         self.set_main_state()
         
         if msg.inputs_count < 1:
@@ -25,53 +40,138 @@ class SigningStateMachine(object):
         
         if msg.outputs_count < 1:
             return proto.Failure(message='Transaction must have at least one output')
-        
+
         self.inputs_count = msg.inputs_count
         self.outputs_count = msg.outputs_count
+        self.algo = msg.algo
         self.random = random
          
-        self.input_index = 0
         return proto.InputRequest(request_index=self.input_index)
     
-    def _tx_input(self, msg):
+    def tx_input(self, msg):
+        '''
+        This message is called on TxInput message.
+        '''
+        
         if msg.index != self.input_index:
             self.set_main_state()
             return proto.Failure(message="Input index doesn't correspond with internal state")
         
         print "RECEIVED INPUT", msg
+        
+        '''
+        There we have received one input.
+        '''
+        if self.input_index == 0:
+            '''
+            If it is first one, we have to prepare
+            and hash the beginning of the transaction.
+            '''
+            self.tx_hash
+            # TODO
 
+        '''
+        For every input, hash the input itself.
+        '''
+        print "INPUT HASH", self.input_hash.hexdigest()
+        # TODO
+            
         if self.input_index < self.inputs_count - 1:
+            '''
+            If this is not the last input, request next input in the row.
+            '''
             self.input_index += 1
             return proto.InputRequest(request_index=self.input_index,
                                       signed_index=-1, # Not any signature yet
                                       signature='')
         
+        '''
+        We have processed all inputs. Let's request transaction outputs now.
+        '''
         self.output_index = 0
+        self.output_hash = hashlib.sha256()
         return proto.OutputRequest(request_index=self.output_index)
     
-    def _tx_output(self, msg):
+    def tx_output(self, msg):
+        '''
+        This message is called on TxInput message.
+        '''
+        
         if msg.index != self.output_index:
             self.set_main_state()
             return proto.Failure(message="Output index doesn't correspond with internal state")
+
+        if self.output_index == 0:
+            '''
+            If it is first one, we have to prepare
+            and hash the middle of the transaction (between inputs and outputs).
+            '''
+            # TODO
         
+        if len(msg.address_n):
+            # Recalculate output address and compare with msg.address
+            if msg.address != self.wallet.get_address(self.algo, msg.address_n):
+                self.set_main_state()
+                return proto.Failure(message="address_n doesn't belong to given bitcoin address")
+        
+        '''
+        Let's hash tx output
+        '''
         print "RECEIVED OUTPUT", msg
-        
+                    
+        if self.input_index == 0:
+            '''
+            This is first time we're processing this output,
+            let's display output details on screen
+            '''
+            #self.layout.show_transactions()
+            print "OUTPUT", msg.address, msg.amount
+            
         if self.output_index < self.outputs_count - 1:
+            '''
+            This was not the last tx output, so request next one.
+            '''
             self.output_index += 1
             return proto.OutputRequest(request_index=self.output_index)
 
-        print "FINISH INPUT SIGNATURE", self.signing_index
+        '''
+        Now we have processed all inputs and outputs. Let's finalize
+        hash of transaction.
+        '''
+        # Now we have hash of all outputs
+        print "OUTPUT HASH", self.output_hash.hexdigest()
+        
+        # We also have tx hash now
+        print "TX HASH", self.tx_hash.hexdigest()
+
+        '''
+        Compute signature for current signing index
+        '''
+        print "FINISH INPUT SIGNATURE", self.signing_index        
         signature = 'signature'
         
         if self.signing_index < self.inputs_count - 1:
-            # There's yet another input to sign
+            '''
+            If we didn't process all signatures yet,
+            let's restart the signing process
+            and ask for first input again.
+            
+            We're also sending signature for now_signed's input
+            back to the computer.
+            '''
             now_signed = self.signing_index
             self.signing_index += 1
             self.input_index = 0
+            self.input_hash = hashlib.sha256()
             return proto.InputRequest(request_index=self.input_index,
                                       signed_index=now_signed,
                                       signature=signature)
         
+        '''
+        We signed all inputs, so it looks like we're done!
+        Let's send last signature to the computer.
+        request_index=-1 indicates the end of the workflow...
+        '''
         # Looks like we're done!
         return proto.InputRequest(request_index=-1, # Don't request any next input
                                   signed_index=self.signing_index,
@@ -80,18 +180,18 @@ class SigningStateMachine(object):
     def process_message(self, msg):
         if isinstance(msg, proto.SignTx):
             # Start signing process
-            return self._sign_tx(msg)
+            return self.sign_tx(msg)
         
         if isinstance(msg, proto.TxInput):
-            return self._tx_input(msg)
+            return self.tx_input(msg)
         
         if isinstance(msg, proto.TxOutput):
-            return self._tx_output(msg)
+            return self.tx_output(msg)
         
         # return Failure message to indicate problems to upstream SM
         return proto.Failure(code=1, message="Signing failed")
 
-class PinStateMachine(object):
+class PinState(object):
     def __init__(self, layout, wallet):
         self.layout = layout
         self.wallet = wallet
@@ -138,7 +238,7 @@ class PinStateMachine(object):
         self.func = None
         self.args = []
 
-class OtpStateMachine(object):
+class OtpState(object):
     def __init__(self, layout):
         self.layout = layout
         
@@ -153,8 +253,9 @@ class OtpStateMachine(object):
     def request(self, message, func, *args):
         def generate():
             # Removed l and 0
-            return ''.join(random.choice('abcdefghijkmnopqrstuvwxyz123456789') for _ in range(4))
+            #return ''.join(random.choice('abcdefghijkmnopqrstuvwxyz123456789') for _ in range(4))
             #return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz0123456789') for _ in range(4))
+            return ''.join(random.choice('0123456789') for _ in range(6))
         
         self.otp = generate()
         self.func = func
@@ -168,6 +269,9 @@ class OtpStateMachine(object):
         return m
         
     def check(self, otp):
+        # OTP is displayed with spaces, but they aren't significant
+        otp = otp.replace(' ', '')
+        
         if otp == self.otp:
             msg = self.func(*self.args)
             self.cancel()
@@ -183,7 +287,7 @@ class OtpStateMachine(object):
         self.func = None
         self.args = []
         
-class YesNoStateMachine(object):
+class YesNoState(object):
     def __init__(self, layout):
         self.layout = layout
         
@@ -251,14 +355,13 @@ class StateMachine(object):
         self.layout = layout
         self.is_debuglink = is_debuglink
 
-        self.yesno = YesNoStateMachine(layout)
-        self.otp = OtpStateMachine(layout)
-        self.pin = PinStateMachine(layout, wallet)
-        self.signing = SigningStateMachine()
+        self.yesno = YesNoState(layout)
+        self.otp = OtpState(layout)
+        self.pin = PinState(layout, wallet)
+        self.signing = SigningStateMachine(layout, wallet)
         
         self.set_main_state()                        
-        
-    
+
     def protect_reset(self, yesno_message, question, yes_text, no_text, otp_message, random):
         # FIXME
         
@@ -290,6 +393,11 @@ class StateMachine(object):
                 
         # If confirmed, call final function directly
         return self.yesno.request(yesno_message, question, yes_text, no_text, func, *args)
+
+    def clear_custom_message(self):
+        if self.custom_message:
+            self.custom_message = False
+            self.layout.show_logo(logo)
     
     def press_button(self, button):
         if button and self.custom_message:
@@ -305,11 +413,6 @@ class StateMachine(object):
         if msg.pin and self.pin.is_waiting():
             resp.pin.pin = self.wallet.pin
         return resp
-
-    def clear_custom_message(self):
-        if self.custom_message:
-            self.custom_message = False
-            self.layout.show_logo(logo)
             
     def set_main_state(self):
         # Switch device to default state
@@ -379,7 +482,7 @@ class StateMachine(object):
         self.set_main_state()
         return m 
         
-    def process_message(self, msg):
+    def _process_message(self, msg):
         if isinstance(msg, proto.Initialize):
             self.set_main_state()
             
@@ -482,3 +585,13 @@ class StateMachine(object):
                     
         self.set_main_state()
         return proto.Failure(code=1, message="Unexpected message")
+            
+    def process_message(self, msg):
+        # Any exception thrown during message processing
+        # will result in Failure message instead of application crash
+        try:
+            return self._process_message(msg)
+        except Exception as exc:
+            traceback.print_exc()
+            self.set_main_state()
+            return proto.Failure(message=str(exc))
