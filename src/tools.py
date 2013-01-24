@@ -5,6 +5,8 @@ import binascii
 import mnemonic
 
 Hash = lambda x: hashlib.sha256(hashlib.sha256(x).digest()).digest()
+#Hash_obj = lambda x: hashlib.sha256(x.digest()).digest()
+
 addrtype = 0
 
 # secp256k1, http://www.oid-info.com/get/1.3.132.0.10
@@ -122,54 +124,3 @@ def get_secexp(seed):
     for _ in range(100000):
         seed = hashlib.sha256(seed + oldseed).digest()
     return ecdsa.util.string_to_number(seed)
-    
-# https://en.bitcoin.it/wiki/Protocol_specification#Variable_length_integer
-def raw_tx(inputs, outputs, for_sig):
-    s  = '\x01\x00\x00\x00'                                  # version 
-    s += var_int(len(inputs))                                # number of inputs
-    for i in range(len(inputs)):
-        inp = inputs[i] 
-        
-        s += inp.prev_hash[::-1]                              # prev hash
-        s += struct.pack('<L', inp.prev_index)             # prev index
-
-        if for_sig == i:
-            script = inp.script_sig                        # scriptsig
-        else:
-            script=''
-            
-        s += var_int(len(script))                            # script length
-        s += script
-        s += "\xff\xff\xff\xff"                              # sequence
-        
-    s += var_int(len(outputs))                               # number of outputs
-    for output in outputs:
-        s += struct.pack('<Q', output.amount)                # amount 
-        script = '\x76\xa9'                                  # op_dup, op_hash_160
-        script += '\x14'                                     # push 0x14 bytes
-        script += bc_address_to_hash_160(output.address)
-        script += '\x88\xac'                                 # op_equalverify, op_checksig
-        s += var_int(len(script))                            # script length
-        s += script                                          # script
-    s += '\x00\x00\x00\x00'                                  # lock time
-    s += '\x01\x00\x00\x00'                                  # hash type
-    return s
-
-def sign_inputs(algo, seed, inputs, outputs):
-    signatures = []
-    for i in range(len(inputs)):
-        addr_n = inputs[i].address_n
-        print addr_n
-        private_key = ecdsa.SigningKey.from_string(algo.get_private_key(seed, addr_n), curve=SECP256k1)
-
-        tx = raw_tx(inputs, outputs, for_sig=i)
-        sig = private_key.sign_digest(Hash(tx), sigencode=ecdsa.util.sigencode_der)
-        #assert public_key.verify_digest(sig, Hash(tx.decode('hex')), sigdecode=ecdsa.util.sigdecode_der)
-        #s_inputs.append((pubkey, sig))
-        
-        public_key = private_key.get_verifying_key()
-        pubkey = public_key.to_string()
-        
-        signatures.append((pubkey, sig))
-    return signatures
-
