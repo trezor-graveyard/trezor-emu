@@ -13,6 +13,7 @@ class VirtualDisplay(object):
         self.drivers = ['x11', 'dga', 'directfb', 'fbcon', 'ggi', 'vgl', 'svgalib', 'aalib']
         self.screen = None
         self.surface = None
+        self.frameno = 0
         
     def _select_driver(self):
         for driver in self.drivers:
@@ -55,3 +56,8 @@ class VirtualDisplay(object):
            
         pygame.transform.scale(self.surface, self.screen.get_size(), self.screen)
         pygame.display.flip()
+
+        # uncomment the following line to take screenshot on every refresh
+        # pygame.image.save(self.screen, "frame%06d.png" % self.frameno)
+        
+        self.frameno += 1
