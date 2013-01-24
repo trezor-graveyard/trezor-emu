@@ -1,6 +1,6 @@
 import ecdsa
 import hashlib
-from tools import Hash, SECP256k1, public_key_to_bc_address, generator_secp256k1, raw_tx
+from tools import Hash, SECP256k1, public_key_to_bc_address, generator_secp256k1
 
 class AlgoElectrum(object):    
     @classmethod
