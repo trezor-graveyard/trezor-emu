@@ -2,6 +2,8 @@ import smallfonts
 import time
 import math
 
+from logo import logo as default_logo
+
 class Layout(object):
     def __init__(self, buffer):
         self.line_len_normal = 21
@@ -71,9 +73,12 @@ class Layout(object):
         self._draw_scroll_text(0, y, text, font)
         self.scrolls.append(details)
                     
-    def show_logo(self, logo):
+    def show_logo(self, logo=None):
         self.clear()
-        self.buffer.draw_bitmap(logo)
+        if logo:
+            self.buffer.draw_bitmap(logo)
+        else:
+            self.buffer.draw_bitmap(default_logo)
         self.need_refresh = True
         self.last_screen = 'show_logo'
 

@@ -5,7 +5,6 @@ import traceback
 
 import tools
 import bitkey_pb2 as proto
-from logo import logo
 
 class SigningStateMachine(object):
     def __init__(self, layout, wallet):
@@ -397,7 +396,7 @@ class StateMachine(object):
     def clear_custom_message(self):
         if self.custom_message:
             self.custom_message = False
-            self.layout.show_logo(logo)
+            self.layout.show_logo()
     
     def press_button(self, button):
         if button and self.custom_message:
@@ -427,7 +426,7 @@ class StateMachine(object):
         
         try:
             self.wallet.get_seed()
-            self.layout.show_logo(logo)
+            self.layout.show_logo()
         except:
             raise
             self.layout.show_message(
