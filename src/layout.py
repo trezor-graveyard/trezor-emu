@@ -129,6 +129,11 @@ class Layout(object):
         self.last_screen = 'show_pin_request'
         
     def show_otp_request(self, otp):
+        # Split OTP by three characters.
+        # "012345" will be displayed as "012 345" for easier rewriting
+        otp = [ otp[i*3:i*3+3] for i in range(len(otp) / 3) ]
+        otp = ' '.join(otp)
+        
         self.show_question(
             ["Please rewrite this",
              "one time password",
