@@ -3,6 +3,7 @@ import random
 import hashlib
 import traceback
 
+import signing
 import tools
 import bitkey_pb2 as proto
 
@@ -19,17 +20,23 @@ class SigningStateMachine(object):
         self.input_index = 0 # Index <0, inputs_count) of currently processed input
         self.output_index = 0 # Index <0, outputs_count) of currently processed output
         self.signing_index = 0 # Index <0, inputs_count) of currently processed signature
+        self.signing_input = '' # Cache of currently signing input, for sending back serialized input
         self.algo = None # Signing algorithm (proto.ELECTRUM or proto.BIP32)
         self.random = '' # Entropy received from computer
         
         self.input_hash = hashlib.sha256() # sha256 object of currently processed input
         self.output_hash = hashlib.sha256() # sha256 object of currently processed output
         self.tx_hash = hashlib.sha256() # sha256 object of whole transaction
-    
+        
+        # When flag is set, tx_output streams back it's part of tx template.
+        # This is used in final phase of signing, where computer needs to know the rest
+        # of transaction template, from last signature to the end
+        self.ser_output = False 
+        
     def sign_tx(self, msg):
         '''
         This function starts workflow of signing Bitcoin transaction.
-        Function set up the environment and send back a InputRequest message,
+        Function set up the environment and send back a input request message,
         asking computer for first input.
         '''
         self.set_main_state()
@@ -45,11 +52,12 @@ class SigningStateMachine(object):
         self.algo = msg.algo
         self.random = random
          
-        return proto.InputRequest(request_index=self.input_index)
+        return proto.TxRequest(request_type=proto.TXINPUT,
+                               request_index=self.input_index)
     
     def tx_input(self, msg):
         '''
-        This message is called on TxInput message.
+        This message is called on tx input message.
         '''
         
         if msg.index != self.input_index:
@@ -61,58 +69,78 @@ class SigningStateMachine(object):
         '''
         There we have received one input.
         '''
-        if self.input_index == 0:
+        if self.signing_index == 0:
             '''
             If it is first one, we have to prepare
             and hash the beginning of the transaction.
             '''
+            
+            if self.input_index == 0:
+                # First input
+                pass
+            
             self.tx_hash
             # TODO
-
+   
+        if self.input_index == self.signing_index:
+            # Store message to cache for serializing input in tx_output
+            self.signing_input = msg
+            
         '''
         For every input, hash the input itself.
         '''
         print "INPUT HASH", self.input_hash.hexdigest()
         # TODO
-            
+        
         if self.input_index < self.inputs_count - 1:
             '''
             If this is not the last input, request next input in the row.
             '''
             self.input_index += 1
-            return proto.InputRequest(request_index=self.input_index,
-                                      signed_index=-1, # Not any signature yet
-                                      signature='')
+            return proto.TxRequest(request_type=proto.TXINPUT, 
+                                   request_index=self.input_index)
         
         '''
         We have processed all inputs. Let's request transaction outputs now.
         '''
         self.output_index = 0
         self.output_hash = hashlib.sha256()
-        return proto.OutputRequest(request_index=self.output_index)
+        return proto.TxRequest(request_type=proto.TXOUTPUT,
+                               request_index=self.output_index)
     
-    def tx_output(self, msg):
-        '''
-        This message is called on TxInput message.
-        '''
-        
+    def _check_address_n(self, msg):
+        if len(msg.address_n):
+            # Recalculate output address and compare with msg.address
+            if msg.address != self.wallet.get_address(self.algo, msg.address_n):
+                self.set_main_state()
+                return proto.Failure(message="address_n doesn't belong to given bitcoin address")
+    
+    def _check_output_index(self, msg):
         if msg.index != self.output_index:
             self.set_main_state()
             return proto.Failure(message="Output index doesn't correspond with internal state")
+    
+    def tx_output(self, msg):
+        '''
+        This message is called on TxInput message, when serialize_output is False.
+        It does all the hashing for making input signatures.
+        '''
 
+        res = self._check_output_index(msg)
+        if res != None:
+            return res
+        
+        res = self._check_address_n(msg)
+        if res != None:
+            return res
+        
         if self.output_index == 0:
             '''
             If it is first one, we have to prepare
             and hash the middle of the transaction (between inputs and outputs).
             '''
             # TODO
-        
-        if len(msg.address_n):
-            # Recalculate output address and compare with msg.address
-            if msg.address != self.wallet.get_address(self.algo, msg.address_n):
-                self.set_main_state()
-                return proto.Failure(message="address_n doesn't belong to given bitcoin address")
-        
+                    
         '''
         Let's hash tx output
         '''
@@ -131,7 +159,8 @@ class SigningStateMachine(object):
             This was not the last tx output, so request next one.
             '''
             self.output_index += 1
-            return proto.OutputRequest(request_index=self.output_index)
+            return proto.TxRequest(request_type=proto.TXOUTPUT,
+                                   request_index=self.output_index)
 
         '''
         Now we have processed all inputs and outputs. Let's finalize
@@ -143,12 +172,24 @@ class SigningStateMachine(object):
         # We also have tx hash now
         print "TX HASH", self.tx_hash.hexdigest()
 
+        # We want to send header of tx template
+        serialized_tx = ''
+        if self.signing_index == 0:
+            print "!!! SENDING TX HEADER"
+            serialized_tx += signing.raw_tx_header(self.inputs_count)
+
         '''
         Compute signature for current signing index
         '''
-        print "FINISH INPUT SIGNATURE", self.signing_index        
-        signature = 'signature'
+        print "FINISH INPUT SIGNATURE", self.signing_index
         
+        # FIXME, TODO, CHECK        
+        (_, signature) = self.wallet.sign_input(self.algo,
+                        self.signing_input.address_n,
+                        hashlib.sha256(self.tx_hash.digest()).digest())
+        
+        serialized_tx += signing.raw_tx_input(self.signing_input, signature) # FIXME, TODO, CHECK
+                
         if self.signing_index < self.inputs_count - 1:
             '''
             If we didn't process all signatures yet,
@@ -162,20 +203,76 @@ class SigningStateMachine(object):
             self.signing_index += 1
             self.input_index = 0
             self.input_hash = hashlib.sha256()
-            return proto.InputRequest(request_index=self.input_index,
-                                      signed_index=now_signed,
-                                      signature=signature)
+            return proto.TxRequest(request_type=proto.TXINPUT,
+                                   request_index=self.input_index,
+                                   signed_index=now_signed,
+                                   signature=signature,
+                                   serialized_tx=serialized_tx)
         
         '''
         We signed all inputs, so it looks like we're done!
-        Let's send last signature to the computer.
-        request_index=-1 indicates the end of the workflow...
+        Let's ask again for all outputs to finalize serialized transaction.
+        process_message knows that we're in final stage by self.ser_output flag
+        and will route messages to serialize_output instead to tx_output.
         '''
-        # Looks like we're done!
-        return proto.InputRequest(request_index=-1, # Don't request any next input
-                                  signed_index=self.signing_index,
-                                  signature=signature)
+        self.output_index = 0 # We need to reset counter
+        self.ser_output = True
+        return proto.TxRequest(request_type=proto.TXOUTPUT,
+                               request_index=0,
+                               signed_index=self.signing_index,
+                               signature=signature,
+                               serialized_tx=serialized_tx)
         
+    def serialize_output(self, msg):
+        '''
+        This message is called on TxInput message, when ser_output is True.
+        It just finalize serialized_tx structure in computer by dumping template
+        used for creating signatures.
+        '''
+        
+        res = self._check_output_index(msg)
+        if res != None:
+            return res
+        
+        res = self._check_address_n(msg)
+        if res != None:
+            return res        
+    
+        serialized_tx = ''
+        
+        if self.output_index == 0:
+            '''
+            If it is first one, we have to send middle part of tx.
+            '''
+            serialized_tx += signing.raw_tx_middle(self.outputs_count)
+        
+        '''
+        Let's serialize tx output
+        '''    
+        serialized_tx += signing.raw_tx_output(msg)
+        
+        if self.output_index < self.outputs_count - 1:
+            '''
+            This was not the last tx output, so request next one.
+            '''
+            self.output_index += 1
+            print "REQUESTING", self.output_index
+            return proto.TxRequest(request_type=proto.TXOUTPUT,
+                                   request_index=self.output_index,
+                                   serialized_tx=serialized_tx)
+        
+        '''
+        Ok, this looks like last output, so we need send tx footer
+        '''
+        serialized_tx += signing.raw_tx_footer()
+        
+        print "FINISHING"
+        # We're done with serializing outputs!
+        return proto.TxRequest(request_type=proto.TXOUTPUT,
+                               request_index=-1,
+                               serialized_tx=serialized_tx)
+        
+    
     def process_message(self, msg):
         if isinstance(msg, proto.SignTx):
             # Start signing process
@@ -185,7 +282,12 @@ class SigningStateMachine(object):
             return self.tx_input(msg)
         
         if isinstance(msg, proto.TxOutput):
-            return self.tx_output(msg)
+            if self.ser_output:
+                # We just want to serialize part of output
+                # and send it back to computer
+                return self.serialize_output(msg)
+            else:
+                return self.tx_output(msg)
         
         # return Failure message to indicate problems to upstream SM
         return proto.Failure(code=1, message="Signing failed")
