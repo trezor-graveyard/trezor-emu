@@ -4,6 +4,7 @@ import os
 import bitkey_pb2 as proto
 from algo import AlgoFactory
 import tools
+import signing
  
 class Wallet(object):
     def __init__(self):
@@ -104,8 +105,11 @@ class Wallet(object):
     
     def set_spv(self, spv):
         self.spv = spv
-     
-    def sign_tx(self, algo, inputs, outputs):
-        # TODO
-        pass
     '''
+        
+    def sign_input(self, algo, addr_n, tx_hash):
+        if algo not in self.algo:
+            raise Exception("Unsupported algo")
+        
+        af = AlgoFactory(algo)
+        return signing.sign_input(af, self._get_secexp(), addr_n, tx_hash)
