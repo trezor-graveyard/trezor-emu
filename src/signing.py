@@ -10,13 +10,13 @@ def raw_tx_header(inputs_count):
     s += tools.var_int(inputs_count)                               # number of inputs
     return s
 
-def raw_tx_input(inp, add_sig):
+def raw_tx_input(inp, script_sig):
     s = ''
     s += inp.prev_hash[::-1]                              # prev hash
     s += struct.pack('<L', inp.prev_index)             # prev index
-    if add_sig == True:
-        s += tools.var_int(len(inp.script_sig))                            # script length
-        s += inp.script_sig                             # script sig
+    if script_sig != '':
+        s += tools.var_int(len(script_sig))              # script length
+        s += script_sig                                  # script sig
     s += "\xff\xff\xff\xff"                              # sequence
     return s
 
@@ -49,7 +49,8 @@ def raw_tx_footer():
     s = ''
     s += '\x00\x00\x00\x00'                                  # lock time
     s += '\x01\x00\x00\x00'                                  # hash type
-    
+    return s
+
 # https://en.bitcoin.it/wiki/Protocol_specification#Variable_length_integer
 def raw_tx(inputs, outputs, for_sig):
     s = ''
@@ -59,11 +60,11 @@ def raw_tx(inputs, outputs, for_sig):
         inp = inputs[i] 
     
         if for_sig == i:
-            add_sig = True
+            script_sig = inp.script_sig
         else:
-            add_sig = False
+            script_sig = ''
 
-        s += raw_tx_input(inp, add_sig)
+        s += raw_tx_input(inp, script_sig)
         
     s += raw_tx_middle(len(outputs))
     
