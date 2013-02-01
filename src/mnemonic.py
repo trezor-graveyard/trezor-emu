@@ -1649,14 +1649,14 @@ words = [
 "weary"
 ]
 
-
-
 n = 1626
+if len(words) != n:
+    raise Exception("Sanity check failed")
 
 # Note about US patent no 5892470: Here each word does not represent a given digit.
 # Instead, the digit represented by a word is variable, it depends on the previous word.
 
-def mn_encode( message ):
+def mn_encode(message):
     out = []
     for i in range(len(message)/8):
         word = message[8*i:8*i+8]
@@ -1664,26 +1664,25 @@ def mn_encode( message ):
         w1 = (x%n)
         w2 = ((x/n) + w1)%n
         w3 = ((x/n/n) + w2)%n
-        out += [ words[w1], words[w2], words[w3] ]
+        out += [words[w1], words[w2], words[w3]]
     return out
 
-def mn_decode( wlist ):
+def mn_decode(wlist):
     out = ''
     for i in range(len(wlist)/3):
         word1, word2, word3 = wlist[3*i:3*i+3]
         w1 =  words.index(word1)
         w2 = (words.index(word2))%n
         w3 = (words.index(word3))%n
-        x = w1 +n*((w2-w1)%n) +n*n*((w3-w2)%n)
+        x = w1 + n*((w2-w1)%n) + n*n*((w3-w2)%n)
         out += '%08x'%x
     return out
 
-
 if __name__ == '__main__':
     import sys
-    if len( sys.argv ) == 1:
+    if len(sys.argv) == 1:
         print 'I need arguments: a hex string to encode, or a list of words to decode'
-    elif len( sys.argv ) == 2:
+    elif len(sys.argv) == 2:
         print ' '.join(mn_encode(sys.argv[1]))
     else:
         print mn_decode(sys.argv[1:])
