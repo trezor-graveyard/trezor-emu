@@ -1656,7 +1656,7 @@ if len(words) != n:
 # Note about US patent no 5892470: Here each word does not represent a given digit.
 # Instead, the digit represented by a word is variable, it depends on the previous word.
 
-def mn_encode(message):
+def encode(message):
     out = []
     for i in range(len(message)/8):
         word = message[8*i:8*i+8]
@@ -1667,7 +1667,7 @@ def mn_encode(message):
         out += [words[w1], words[w2], words[w3]]
     return out
 
-def mn_decode(wlist):
+def decode(wlist):
     out = ''
     for i in range(len(wlist)/3):
         word1, word2, word3 = wlist[3*i:3*i+3]
@@ -1683,6 +1683,6 @@ if __name__ == '__main__':
     if len(sys.argv) == 1:
         print 'I need arguments: a hex string to encode, or a list of words to decode'
     elif len(sys.argv) == 2:
-        print ' '.join(mn_encode(sys.argv[1]))
+        print ' '.join(encode(sys.argv[1]))
     else:
-        print mn_decode(sys.argv[1:])
+        print decode(sys.argv[1:])

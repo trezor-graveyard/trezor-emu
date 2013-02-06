@@ -99,10 +99,10 @@ def public_key_to_bc_address(public_key):
     return hash_160_to_bc_address(h160)
 
 def get_mnemonic(seed):
-    return ' '.join(mnemonic.mn_encode(seed))
+    return ' '.join(mnemonic.encode(seed))
 
 def get_seed(seed_words):
-    return mnemonic.mn_decode(seed_words.split(' '))
+    return mnemonic.decode(seed_words.split(' '))
 
 def generate_seed(random):
     print "TODO: generate_seed: mix random and randrange together"  
