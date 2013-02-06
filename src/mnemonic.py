@@ -1678,6 +1678,48 @@ def decode(wlist):
         out += '%08x'%x
     return out
 
+def lookup_word(word_prefix):
+    # Return first possible word matching given prefix
+    index = None
+    for w in words:
+        if w.startswith(word_prefix) and (index == None or w < words[index]):
+            index = words.index(w)
+
+    if index != None:
+        return words[index]
+    return None
+
+def suggest(word_prefix, pos):
+    # Return next suggestion for given word prefix.
+    # Pos parameter can be in <0, get_suggestion_count).
+    # Return None if no word correspond to the prefix
+
+    nfc = 0 # not-found-counter; counter for prefixes which doesn't match any word
+    fc = 0 # found-counter; counter for prefixes which match some word
+
+    while fc<=pos:
+        # We want to find pos-th prefix, which correspond to some word
+
+        char_index = ord('a') + nfc + fc - 1
+        if char_index > ord('z'):
+            return None
+
+        prefix = word_prefix + chr(char_index)
+        w = lookup_word(prefix)
+        if w == None:
+            nfc += 1
+        else:
+            fc += 1
+
+    return (prefix, lookup_word(prefix))
+
+def get_suggestion_count(word_prefix):
+    # Return count of possible combination of words for given prefix
+    # Use for suggest(), where pos parameter can be in <0, get_suggestion_count)
+    for pos in range(26):
+        if suggest(word_prefix, pos) == None:
+            return pos
+
 if __name__ == '__main__':
     import sys
     if len(sys.argv) == 1:
