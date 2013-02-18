@@ -137,15 +137,23 @@ def main(args):
             if isinstance(msg, proto.DebugLinkDecision):
                 # Press the button
                 button = msg.yes_no
+            else:
+                resp = machine.process_debug_message(msg)
+                if resp != None:
+                    print "Sending debuglink", resp.__class__.__name__, resp
+                    debug_transport.write(resp)
+                    is_active = True            
+                
+            '''
             elif isinstance(msg, proto.DebugLinkGetState):
                 # Report device state                
                 resp = machine.get_state(msg)
                 print "Sending debuglink", resp.__class__.__name__, resp
-                debug_transport.write(resp)
-                
+                debug_transport.write(resp)    
             else:
                 raise Exception("Got unexpected object %s" % msg.__class__.__name__)
-            
+            '''
+                
         if button != None:
             print "Button", button
             is_active = True
