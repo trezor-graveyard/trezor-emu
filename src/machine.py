@@ -507,7 +507,7 @@ class StateMachine(object):
         self.yesno.store(button)
         return self.yesno.resolve()
     
-    def get_state(self, msg):
+    def debug_get_state(self, msg):
         resp = proto.DebugLinkState()
         if msg.otp and self.otp.is_waiting():
             resp.otp.otp = self.otp.otp
@@ -537,7 +537,7 @@ class StateMachine(object):
                  "Please initialize it",
                  "from desktop client."])
 
-    def _load_wallet(self, seed_words, otp, pin, spv):
+    def debug_load_wallet(self, seed_words, otp, pin, spv):
         self.wallet.load_seed(seed_words)
         self.wallet.otp = otp
         self.wallet.pin = pin
@@ -666,13 +666,7 @@ class StateMachine(object):
                                      '', '{ Cancel', 'Confirm }',
                                      None, None,
                                      self._set_maxfee_kb, msg.maxfee_kb)    
-            
-        if isinstance(msg, proto.LoadDevice):
-            return self.protect_call(["Load device with", "custom seed?"],
-                                     '', '{ Cancel', 'Confirm }',
-                                     None, None,
-                                     self._load_wallet, msg.seed, msg.otp, msg.pin, msg.spv)
-            
+                        
         if isinstance(msg, proto.ResetDevice):
             return self.protect_reset("Reset device?",
                                      '', '{ Cancel', 'Confirm }', None,
@@ -687,6 +681,17 @@ class StateMachine(object):
         self.set_main_state()
         return proto.Failure(code=1, message="Unexpected message")
             
+    def _process_debug_message(self, msg):
+        if isinstance(msg, proto.DebugLinkGetState):
+            # Report device state                
+            return self.debug_get_state(msg)
+        
+        if isinstance(msg, proto.LoadDevice):
+            return self.debug_load_wallet(msg.seed, msg.otp, msg.pin, msg.spv)
+
+        self.set_main_state()
+        return proto.Failure(code=1, message="Unexpected message")
+
     def process_message(self, msg):
         # Any exception thrown during message processing
         # will result in Failure message instead of application crash
@@ -696,3 +701,13 @@ class StateMachine(object):
             traceback.print_exc()
             self.set_main_state()
             return proto.Failure(message=str(exc))
+        
+    def process_debug_message(self, msg):
+        # Process messages handled by debugging connection
+        try:
+            return self._process_debug_message(msg)
+        except Exception as exc:
+            traceback.print_exc()
+            self.set_main_state()
+            return proto.Failure(message=str(exc))
+        
