@@ -1697,6 +1697,9 @@ def suggest(word_prefix, pos):
     nfc = 0 # not-found-counter; counter for prefixes which doesn't match any word
     fc = 0 # found-counter; counter for prefixes which match some word
 
+    if pos < 0:
+        return None
+    
     while fc<=pos:
         # We want to find pos-th prefix, which correspond to some word
 
