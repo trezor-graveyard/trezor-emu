@@ -474,7 +474,7 @@ class StateMachine(object):
         # If confirmed, call final function directly
         return self.yesno.request(yesno_message, question, yes_text, no_text, self._reset_wallet, *[random,])
     
-    def protect_call(self, yesno_message, question, yes_text, no_text,
+    def protect_call(self, yesno_message, question, no_text, yes_text,
                      otp_message, pin_message, func, *args):
         # FIXME: Um, maybe it needs some simplification?
 
@@ -710,4 +710,3 @@ class StateMachine(object):
             traceback.print_exc()
             self.set_main_state()
             return proto.Failure(message=str(exc))
-        
