@@ -4,4 +4,4 @@ sudo apt-get install python-serial python-setuptools
 sudo easy_install ecdsa
 
 # Setup
-./setup_hw.sh
+sudo ./setup_hw.sh

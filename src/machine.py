@@ -530,7 +530,6 @@ class StateMachine(object):
             self.wallet.get_seed()
             self.layout.show_logo()
         except:
-            raise
             self.layout.show_message(
                 ["Device hasn't been",
                  "initialized yet.",
