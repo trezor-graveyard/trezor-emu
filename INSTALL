@@ -1,7 +1,8 @@
-# Installation
+# Installation on Raspberry Pi
 
-sudo apt-get install python-serial python-setuptools
-sudo easy_install ecdsa
+sudo apt-get install python-dev python-setuptools python-serial
+sudo easy_install -U distribute
+sudo easy_install -U ecdsa RPi.GPIO spidev
 
 # Setup
 sudo ./setup_hw.sh

@@ -48,12 +48,12 @@ DISPLAY_HEIGHT = 64
 def parse_args():
     parser = argparse.ArgumentParser(description='Bitkey simulator optimized for Raspberry Pi (but works on any Linux machine).')
     parser.add_argument('-w', '--wallet', dest='wallet', default='wallet.dat', help='Wallet file')
-    parser.add_argument('-s', '--shield', dest='shield', action='store_true', help="Use RPi shield with OLED display and hardware buttons.")
+    parser.add_argument('-s', '--shield', dest='shield', action='store_true', help="Use Raspberry Pi shield with OLED display and hardware buttons.")
     parser.add_argument('-t', '--transport', dest='transport', default='serial', help="Transport used for talking with the main computer")
     parser.add_argument('-p', '--path', dest='path', default='/dev/ttyAMA0', help="Path used by the transport (usually serial port)")
     parser.add_argument('-d', '--debuglink', dest='debuglink', action='store_true', help="Enable debugging connection to the main computer")
     parser.add_argument('-dt', '--debuglink-transport', dest='debuglink_transport', default='socket', help="Debuglink transport")
-    parser.add_argument('-dp', '--debuglink-path', dest='debuglink_path', default='0.0.0.0:8001', help="Path used by the transport (usually serial port)")         
+    parser.add_argument('-dp', '--debuglink-path', dest='debuglink_path', default='0.0.0.0:8001', help="Path used by the transport (usually serial port)")
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_true', help='Enable low-level debugging messages')
     return parser.parse_args()
 
