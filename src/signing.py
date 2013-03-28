@@ -45,12 +45,14 @@ def raw_tx_output(out):
     s += script                                          # script
     return s
 
-def raw_tx_footer():
+def raw_tx_footer(for_sign):
     s = ''
     s += '\x00\x00\x00\x00'                                  # lock time
-    s += '\x01\x00\x00\x00'                                  # hash type
+    if for_sign:
+        s += '\x01\x00\x00\x00'                             # hash type
     return s
 
+'''
 # https://en.bitcoin.it/wiki/Protocol_specification#Variable_length_integer
 def raw_tx(inputs, outputs, for_sig):
     s = ''
@@ -73,6 +75,7 @@ def raw_tx(inputs, outputs, for_sig):
 
     s += raw_tx_footer()
     return s
+'''
 
 def sign_input(algo, secexp, addr_n, tx_hash):
     private_key = ecdsa.SigningKey.from_string(algo.get_private_key(secexp, addr_n), curve=tools.SECP256k1)
@@ -82,6 +85,7 @@ def sign_input(algo, secexp, addr_n, tx_hash):
     pubkey = public_key.to_string()
     return (pubkey, sig)
 
+'''
 def sign_inputs(algo, secexp, inputs, outputs):
     # This is reworked but backward compatible (non-streaming) method from Electrum
     signatures = []
@@ -93,3 +97,4 @@ def sign_inputs(algo, secexp, inputs, outputs):
         tx_hash = tools.Hash(tx)
         signatures.append(sign_input(algo, secexp, addr_n, tx_hash))
     return signatures
+'''
