@@ -7,6 +7,33 @@ import signing
 import tools
 import bitkey_pb2 as proto
 
+'''
+Workflow for two inputs and two outputs:
+
+C SignTx
+S TxRequest(type=input, index=0)
+C TxInput
+S TxRequest(type=input, index=1)
+C TxInput
+S TxRequest(type=output, index=0)
+C TxOutput
+S TxRequest(type=output, index=1)
+C TxOutput
+S TxRequest(type=input, index=0, signed_index=0, signature=<str>, serialized_tx=<str>
+C TxInput
+S TxRequest(type=input, index=1)
+C TxInput
+S TxRequest(type=output, index=0)
+C TxOutput
+S TxRequest(type=output, index=1)
+C TxOutput
+S TxRequest(type=output, index=0, signed_index=1, signature=<str>, serialized_tx=<str>
+C TxOutput
+S TxRequest(type=output, index=1, serialized_tx=<str>)
+C TxOutput
+S TxRequest(type=output, index=-1, serialized_tx=<str>)
+'''
+
 class SigningStateMachine(object):
     def __init__(self, layout, wallet):
         self.layout = layout
@@ -20,13 +47,13 @@ class SigningStateMachine(object):
         self.input_index = 0 # Index <0, inputs_count) of currently processed input
         self.output_index = 0 # Index <0, outputs_count) of currently processed output
         self.signing_index = 0 # Index <0, inputs_count) of currently processed signature
-        self.signing_input = '' # Cache of currently signing input, for sending back serialized input
+        self.signing_input = None # Cache of currently signing input, for sending back serialized input
         self.algo = None # Signing algorithm (proto.ELECTRUM or proto.BIP32)
         self.random = '' # Entropy received from computer
         
-        self.input_hash = hashlib.sha256() # sha256 object of currently processed input
-        self.output_hash = hashlib.sha256() # sha256 object of currently processed output
-        self.tx_hash = hashlib.sha256() # sha256 object of whole transaction
+        self.input_hash = None # sha256 object of currently processed input
+        self.output_hash = None # sha256 object of currently processed output
+        self.tx_hash = None # sha256 object of whole transaction
         
         # When flag is set, tx_output streams back it's part of tx template.
         # This is used in final phase of signing, where computer needs to know the rest
@@ -47,10 +74,13 @@ class SigningStateMachine(object):
         if msg.outputs_count < 1:
             return proto.Failure(message='Transaction must have at least one output')
 
+        if msg.random == '':
+            return proto.Failure(message='No random data received')
+        
         self.inputs_count = msg.inputs_count
         self.outputs_count = msg.outputs_count
         self.algo = msg.algo
-        self.random = random
+        self.random = msg.random
          
         return proto.TxRequest(request_type=proto.TXINPUT,
                                request_index=self.input_index)
@@ -65,6 +95,10 @@ class SigningStateMachine(object):
             return proto.Failure(message="Input index doesn't correspond with internal state")
         
         print "RECEIVED INPUT", msg
+
+        if msg.index == self.signing_index:
+            # Store message to cache for serializing input in tx_output
+            self.signing_input = msg
         
         '''
         There we have received one input.
@@ -76,15 +110,15 @@ class SigningStateMachine(object):
             '''
             
             if self.input_index == 0:
-                # First input
-                pass
+                # First input, let's hash the beginning of tx
+                self.input_hash = hashlib.sha256(signing.raw_tx_header(self.inputs_count))
+                self.tx_hash = self.input_hash
             
-            self.tx_hash
+            #self.tx_hash.update()
+            
+        #self.input_hash.update(signing.raw_tx_input())
+        #self.tx_hash.update(signing.raw_tx_input())
             # TODO
-   
-        if self.input_index == self.signing_index:
-            # Store message to cache for serializing input in tx_output
-            self.signing_input = msg
             
         '''
         For every input, hash the input itself.
@@ -188,7 +222,7 @@ class SigningStateMachine(object):
                         self.signing_input.address_n,
                         hashlib.sha256(self.tx_hash.digest()).digest())
         
-        serialized_tx += signing.raw_tx_input(self.signing_input, signature) # FIXME, TODO, CHECK
+        serialized_tx += 'aaaa' + signing.raw_tx_input(self.signing_input, signature) + 'aaaa'# FIXME, TODO, CHECK
                 
         if self.signing_index < self.inputs_count - 1:
             '''
@@ -264,7 +298,7 @@ class SigningStateMachine(object):
         '''
         Ok, this looks like last output, so we need send tx footer
         '''
-        serialized_tx += signing.raw_tx_footer()
+        serialized_tx += signing.raw_tx_footer(for_sign=False)
         
         print "FINISHING"
         # We're done with serializing outputs!
@@ -474,7 +508,7 @@ class StateMachine(object):
         # If confirmed, call final function directly
         return self.yesno.request(yesno_message, question, yes_text, no_text, self._reset_wallet, *[random,])
     
-    def protect_call(self, yesno_message, question, yes_text, no_text,
+    def protect_call(self, yesno_message, question, no_text, yes_text,
                      otp_message, pin_message, func, *args):
         # FIXME: Um, maybe it needs some simplification?
 
@@ -505,7 +539,10 @@ class StateMachine(object):
             self.clear_custom_message()
             
         self.yesno.store(button)
-        return self.yesno.resolve()
+        ret = self.yesno.resolve()
+        if isinstance(ret, proto.Failure):
+            self.set_main_state()
+        return ret
     
     def debug_get_state(self, msg):
         resp = proto.DebugLinkState()
@@ -673,10 +710,7 @@ class StateMachine(object):
                                      msg.random)
             
         if isinstance(msg, (proto.SignTx, proto.TxInput, proto.TxOutput)):
-            ret = self.signing.process_message(msg)
-            if isinstance(ret, proto.Failure):
-                self.set_main_state()
-            return ret
+            return self.signing.process_message(msg)
                     
         self.set_main_state()
         return proto.Failure(code=1, message="Unexpected message")
@@ -696,7 +730,10 @@ class StateMachine(object):
         # Any exception thrown during message processing
         # will result in Failure message instead of application crash
         try:
-            return self._process_message(msg)
+            ret = self._process_message(msg)
+            if isinstance(ret, proto.Failure):
+                self.set_main_state()
+            return ret
         except Exception as exc:
             traceback.print_exc()
             self.set_main_state()
