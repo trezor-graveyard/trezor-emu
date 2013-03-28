@@ -52,6 +52,8 @@ class SPIDisplay(object):
         self.__writePin(self.PIN_OLED_CS, 1) # deselect
         self.__writePin(self.PIN_OLED_DC, 1) # data
         self.__writePin(self.PIN_OLED_CS, 0) # select
-        self.__sendSPI(self.buffer.data)
+        # rotate display data
+        data = [ ( (x & 0x01) << 7 | (x & 0x02) << 5 | (x & 0x04) << 3 | (x & 0x08) << 1 | (x & 0x10) >> 1 | (x & 0x20) >> 3 | (x & 0x40) >> 5 | (x & 0x80) >> 7 ) for x in self.buffer.data[::-1] ]
+        self.__sendSPI(data)
         self.__writePin(self.PIN_OLED_CS, 1) # deselect
         self.__writePin(self.PIN_OLED_DC, 0) # cmd

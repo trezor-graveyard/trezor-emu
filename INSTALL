@@ -1,0 +1,12 @@
+# Installation on Raspberry Pi
+
+sudo apt-get install python-dev python-setuptools python-serial python-protobuf
+sudo easy_install -U distribute
+sudo easy_install -U ecdsa RPi.GPIO spidev
+
+# Add one of the following lines into /etc/rc.local
+# to invoke the script automatically on boot
+
+screen -AmdS bitkey bash -i /home/pi/bitkey-python/bitkey-rpi-eth.sh
+
+screen -AmdS bitkey bash -i /home/pi/bitkey-python/bitkey-rpi-serial.sh

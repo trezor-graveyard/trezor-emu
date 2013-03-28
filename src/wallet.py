@@ -63,8 +63,8 @@ class Wallet(object):
         return uuid
     
     def get_seed(self):
-        if self.seed == '':
-            raise Exception("Device not initialized")
+        #if self.seed == '':
+        #    raise Exception("Device not initialized")
         return self.seed
     
     def _get_secexp(self):
