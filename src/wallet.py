@@ -2,48 +2,55 @@ import json
 import os
 
 import bitkey_pb2 as proto
+import wallet_pb2 as proto_wallet 
 from algo import AlgoFactory
 import tools
 import signing
  
 class Wallet(object):
-    def __init__(self):
-        self.vendor = 'slush'
+    def __init__(self, filename):
+        self.vendor = 'bitcointrezor.com'
         self.major_version = 0
         self.minor_version = 1
+                
+        self.maxfee_kb = 1000000 # == 0.01 BTC/kB
+        self.algo_available = [proto.ELECTRUM,]
         
-        self.seed = '' # Seed in hex form
-        self.otp = False
-        self.spv = False
-        self.pin = ''
-        self.algo = [proto.ELECTRUM,]
-        self.maxfee_kb = 100000 # == 0.001 BTC/kB
-        
-        self.secexp = 0 # Cache of secret exponent (from seed)
+        self.secexp = 0 # Cache of secret exponent in numeric form
 
         self.UUID_filename = os.path.expanduser('~/.bitkey')
         self.init_UUID()
+    
+        self.filename = filename
+        self.load() # Wallet protobuf object
         
-    @classmethod    
-    def load(cls, filename):
-        data = json.load(open(filename, 'r'))
-        dev = cls()
-        dev.seed = str(data['seed'])
-        dev.otp = data['otp']
-        dev.spv = data['spv']
-        dev.pin = data['pin']
-        dev.maxfee_kb = data['maxfee_kb']
-        return dev
+    def get_features(self):
+        m = proto.Features()
+        m.vendor = self.vendor
+        m.major_version = self.major_version
+        m.minor_version = self.minor_version
+        m.has_otp = self.struct.has_otp
+        m.has_spv = self.struct.has_spv == True
+        m.pin = self.struct.pin != ''
+        m.algo = self.struct.algo
+        m.algo_available.extend(self.algo_available)
+        m.maxfee_kb = self.maxfee_kb
+        return m
+            
+    def load(self):
+        try:
+            self.struct = proto_wallet.Wallet()
+            self.struct.ParseFromString(open(self.filename, 'r').read())
+        except IOError:
+            # Wallet load failed, let's initialize new one
+            self.struct = proto_wallet.Wallet(algo=proto.BIP32, seed='')
+            
+    def _deserialize_secexp(self):
+        # Deserialize secexp to number format
+        self.secexp = int(self.struct.secexp, 16)
         
-    def save(self, filename):
-        data = {}
-        data['seed'] = self.seed
-        data['otp'] = self.otp
-        data['spv'] = self.spv
-        data['pin'] = self.pin
-        data['maxfee_kb'] = self.maxfee_kb
-        
-        json.dump(data, open(filename, 'w'))
+    def save(self):
+        open(self.filename, 'w').write(self.struct.SerializeToString())
         
     def init_UUID(self):
         UUID_len = 9
@@ -61,55 +68,33 @@ class Wallet(object):
         uuid = f.read()
         f.close()
         return uuid
-    
-    def get_seed(self):
-        #if self.seed == '':
-        #    raise Exception("Device not initialized")
-        return self.seed
-    
-    def _get_secexp(self):
-        if self.secexp == 0:
-            self.secexp = tools.get_secexp(self.get_seed())
-        return self.secexp
-        
-    def get_master_public_key(self, algo):    
-        af = AlgoFactory(algo)
-        master_public_key = af.init_master_public_key(self._get_secexp())
+           
+    def get_master_public_key(self):    
+        af = AlgoFactory(self.algo)
+        master_public_key = af.init_master_public_key(self.secexp)
         return master_public_key
     
-    def get_address(self, algo, n):
-        af = AlgoFactory(algo)
+    def get_address(self, n):
+        af = AlgoFactory(self.algo)
         return af.get_new_address(self._get_secexp(), n)
-        
-    def get_mnemonic(self):
-        return tools.get_mnemonic(self.get_seed())
-                    
+                        
     def load_seed(self, seed_words):
-        self.secexp = 0 # Flush secexp cache!
-        self.seed = tools.get_seed(seed_words)
-        print 'seed', self.seed
-        print self.get_mnemonic()
+        af = AlgoFactory(self.algo)
+        seed = tools.get_seed(seed_words)
         
+        print 'seed', seed
+        print 'mnemonic', tools.get_mnemonic(seed)
+        if seed_words != tools.get_mnemonic(seed):
+            raise Exception("Seed words mismatch")
+        
+        self.wallet.secexp = af.get_secexp_from_seed(seed)
+        self._deserialize_secexp()        
+                
     def reset_seed(self, random):
-        self.secexp = 0 # Flush secexp cache!
         seed = tools.generate_seed(random)
         seed_words = tools.get_mnemonic(seed)
         self.load_seed(seed_words)
         
-    '''
-    def set_otp(self, is_otp):
-        self.otp = is_otp
-    
-    def set_pin(self, pin):
-        self.pin = pin
-    
-    def set_spv(self, spv):
-        self.spv = spv
-    '''
-        
-    def sign_input(self, algo, addr_n, tx_hash):
-        if algo not in self.algo:
-            raise Exception("Unsupported algo")
-        
-        af = AlgoFactory(algo)
+    def sign_input(self, addr_n, tx_hash):
+        af = AlgoFactory(self.algo)
         return signing.sign_input(af, self._get_secexp(), addr_n, tx_hash)
