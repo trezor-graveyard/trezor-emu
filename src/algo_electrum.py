@@ -1,5 +1,6 @@
 import ecdsa
 import hashlib
+import ecdsa
 from tools import Hash, SECP256k1, public_key_to_bc_address, generator_secp256k1
 
 class AlgoElectrum(object):    
@@ -7,6 +8,14 @@ class AlgoElectrum(object):
     def _get_sequence(cls, master_public_key, n):
         return ecdsa.util.string_to_number(Hash("%d:%d:%s" % (n[0], n[1], master_public_key)))
 
+    @classmethod
+    def get_secexp_from_seed(cls, seed):
+        # Perform seed stretching    
+        oldseed = seed
+        for _ in range(100000):
+            seed = hashlib.sha256(seed + oldseed).digest()
+        return ecdsa.util.string_to_number(seed)
+        
     @classmethod
     def init_master_private_key(cls, secexp):
         private_key = ecdsa.SigningKey.from_secret_exponent(secexp, curve=SECP256k1)
