@@ -117,10 +117,3 @@ def var_int(i):
         return '\xfe' + struct.pack('<Q', i)
     else:
         return '\xff' + struct.pack('<Q', i)
-
-def get_secexp(seed):
-    # Perform seed stretching    
-    oldseed = seed
-    for _ in range(100000):
-        seed = hashlib.sha256(seed + oldseed).digest()
-    return ecdsa.util.string_to_number(seed)
