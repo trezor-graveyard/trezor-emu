@@ -43,7 +43,7 @@ class Wallet(object):
             self.struct.ParseFromString(open(self.filename, 'r').read())
         except IOError:
             # Wallet load failed, let's initialize new one
-            self.struct = proto_wallet.Wallet(algo=proto.BIP32, seed='')
+            self.struct = proto_wallet.Wallet(algo=proto.BIP32, secexp='')
             
     def _deserialize_secexp(self):
         # Deserialize secexp to number format
