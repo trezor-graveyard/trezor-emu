@@ -1,0 +1,15 @@
+/*
+	Structure of wallet file
+	
+	Author: slush <info@bitcoin.cz>
+*/
+
+import "bitkey.proto";
+
+message Wallet {
+	required Algorithm algo = 1;
+    required bytes secexp = 2;
+    optional bool has_otp = 3;
+    optional bool has_spv = 4;
+    optional bytes pin = 5;
+}
