@@ -48,7 +48,6 @@ class SigningStateMachine(object):
         self.output_index = 0 # Index <0, outputs_count) of currently processed output
         self.signing_index = 0 # Index <0, inputs_count) of currently processed signature
         self.signing_input = None # Cache of currently signing input, for sending back serialized input
-        self.algo = None # Signing algorithm (proto.ELECTRUM or proto.BIP32)
         self.random = '' # Entropy received from computer
         
         self.input_hash = None # sha256 object of currently processed input
@@ -79,7 +78,6 @@ class SigningStateMachine(object):
         
         self.inputs_count = msg.inputs_count
         self.outputs_count = msg.outputs_count
-        self.algo = msg.algo
         self.random = msg.random
          
         return proto.TxRequest(request_type=proto.TXINPUT,
@@ -145,7 +143,7 @@ class SigningStateMachine(object):
     def _check_address_n(self, msg):
         if len(msg.address_n):
             # Recalculate output address and compare with msg.address
-            if msg.address != self.wallet.get_address(self.algo, msg.address_n):
+            if msg.address != self.wallet.get_address(msg.address_n):
                 self.set_main_state()
                 return proto.Failure(message="address_n doesn't belong to given bitcoin address")
     
@@ -218,8 +216,7 @@ class SigningStateMachine(object):
         print "FINISH INPUT SIGNATURE", self.signing_index
         
         # FIXME, TODO, CHECK        
-        (_, signature) = self.wallet.sign_input(self.algo,
-                        self.signing_input.address_n,
+        (_, signature) = self.wallet.sign_input(self.signing_input.address_n,
                         hashlib.sha256(self.tx_hash.digest()).digest())
         
         serialized_tx += 'aaaa' + signing.raw_tx_input(self.signing_input, signature) + 'aaaa'# FIXME, TODO, CHECK
@@ -358,7 +355,7 @@ class PinState(object):
             return msg
         else:
             # Check PIN against device's internal PIN
-            if pin == self.wallet.pin:
+            if pin == self.wallet.struct.pin:
                 msg = self.func(*self.args)
                 self.cancel()
                 return msg
@@ -485,10 +482,9 @@ class YesNoState(object):
         return ret
         
 class StateMachine(object):
-    def __init__(self, wallet, layout, is_debuglink):
+    def __init__(self, wallet, layout):
         self.wallet = wallet
         self.layout = layout
-        self.is_debuglink = is_debuglink
 
         self.yesno = YesNoState(layout)
         self.otp = OtpState(layout)
@@ -500,7 +496,7 @@ class StateMachine(object):
     def protect_reset(self, yesno_message, question, yes_text, no_text, otp_message, random):
         # FIXME
         
-        if self.wallet.otp:
+        if self.wallet.struct.has_otp:
             # Require hw buttons and OTP
             return self.yesno.request(yesno_message, question, yes_text, no_text,
                         self.otp.request, *[otp_message, self._reset_wallet]+[random,])
@@ -512,8 +508,8 @@ class StateMachine(object):
                      otp_message, pin_message, func, *args):
         # FIXME: Um, maybe it needs some simplification?
 
-        if self.wallet.otp:
-            if self.wallet.pin:
+        if self.wallet.struct.has_otp:
+            if self.wallet.struct.pin:
                 # Require hw buttons, OTP and PIN
                 return self.yesno.request(yesno_message, question, yes_text, no_text,
                             self.otp.request, *[otp_message, self.pin.request, pin_message, False, func]+list(args))
@@ -521,7 +517,7 @@ class StateMachine(object):
                 # Require hw buttons and OTP
                 return self.yesno.request(yesno_message, question, yes_text, no_text,
                             self.otp.request, *[otp_message, func]+list(args))
-        elif self.wallet.pin:
+        elif self.wallet.struct.pin:
             # Require hw buttons and PIN
             return self.yesno.request(yesno_message, question, yes_text, no_text,
                 self.pin.request, *[pin_message, False, func]+list(args))
@@ -549,7 +545,7 @@ class StateMachine(object):
         if msg.otp and self.otp.is_waiting():
             resp.otp.otp = self.otp.otp
         if msg.pin and self.pin.is_waiting():
-            resp.pin.pin = self.wallet.pin
+            resp.pin.pin = self.wallet.struct.pin
         return resp
             
     def set_main_state(self):
@@ -573,11 +569,12 @@ class StateMachine(object):
                  "Please initialize it",
                  "from desktop client."])
 
-    def debug_load_wallet(self, seed_words, otp, pin, spv):
+    def debug_load_wallet(self, algo, seed_words, otp, pin, spv):
         self.wallet.load_seed(seed_words)
-        self.wallet.otp = otp
-        self.wallet.pin = pin
-        self.wallet.spv = spv
+        self.wallet.struct.algo = algo
+        self.wallet.struct.has_otp = otp
+        self.wallet.struct.pin = pin
+        self.wallet.struct.has_spv = spv
         return proto.Success(message='Wallet loaded')
     
     def _reset_wallet(self, random):
@@ -622,18 +619,8 @@ class StateMachine(object):
     def _process_message(self, msg):
         if isinstance(msg, proto.Initialize):
             self.set_main_state()
-            
-            m = proto.Features()
+            m = self.wallet.get_features()
             m.session_id = msg.session_id
-            m.vendor = self.wallet.vendor
-            m.major_version = self.wallet.major_version
-            m.minor_version = self.wallet.minor_version
-            m.otp = self.wallet.otp == True
-            m.pin = self.wallet.pin != ''
-            m.spv = self.wallet.spv == True
-            m.algo.extend(self.wallet.algo)
-            m.maxfee_kb = self.wallet.maxfee_kb
-            m.debug_link = self.is_debuglink
             return m
         
         if self.otp.is_waiting():
@@ -686,10 +673,10 @@ class StateMachine(object):
                                      self._get_entropy, msg.size)
 
         if isinstance(msg, proto.GetMasterPublicKey):
-            return proto.MasterPublicKey(key=self.wallet.get_master_public_key(msg.algo))
+            return proto.MasterPublicKey(key=self.wallet.get_master_public_key())
     
         if isinstance(msg, proto.GetAddress):
-            address = self.wallet.get_address(msg.algo, list(msg.address_n))
+            address = self.wallet.get_address(list(msg.address_n))
             self.layout.show_receiving_address(address)
             self.custom_message = True # Yes button will redraw screen
             return proto.Address(address=address)
