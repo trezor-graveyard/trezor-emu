@@ -89,15 +89,11 @@ def main(args):
     # Initialize main transport
     transport = get_transport(args.transport, args.path)
     
-    # Load persisted data
-    try:
-        print "Loading wallet..."
-        wallet = Wallet.load(args.wallet)
-        if args.verbose:
-            print "Using seed:", wallet.get_mnemonic()
-    except IOError:
-        print "Load failed, starting with new wallet..."
-        wallet = Wallet()
+    # Load persisted data. Create new wallet if file doesn't exist
+    print "Loading wallet..."
+    wallet = Wallet(args.wallet)
+    if args.verbose:
+        print "Using seed:", wallet.get_mnemonic()
     
     # Initialize hardware (screen, buttons)
     but = Buttons(hw=args.shield, stdin=not args.shield, pygame=not args.shield)
@@ -109,7 +105,7 @@ def main(args):
     layout = Layout(buff)
     
     # Startup state machine and switch it to default state
-    machine = StateMachine(wallet, layout, is_debuglink=bool(args.debuglink))
+    machine = StateMachine(wallet, layout)
 
     #tx1 = proto.TxOutput(address='1BRMLAB7nryYgFGrG8x9SYaokb8r2ZwAsX', amount=112000000)
     #tx2 = proto.TxOutput(address='1MarekMKDKRb6PEeHeVuiCGayk9avyBGBB', amount=12340123400)
@@ -194,7 +190,7 @@ def main(args):
             time.sleep(0.1)
     
     # Save wallet file
-    wallet.save(args.wallet)
+    wallet.save()
     
     # Close transports
     transport.close()
