@@ -2,4 +2,4 @@
 
 cd `dirname $0`
 
-protoc --python_out=../src/ bitkey.proto
+protoc --python_out=../src/ *.proto
