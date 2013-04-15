@@ -6,6 +6,7 @@ import traceback
 import signing
 import tools
 import bitkey_pb2 as proto
+from wallet import NoSeedException
 
 '''
 Workflow for two inputs and two outputs:
@@ -215,12 +216,15 @@ class SigningStateMachine(object):
         '''
         print "FINISH INPUT SIGNATURE", self.signing_index
         
-        # FIXME, TODO, CHECK        
+        # FIXME, TODO, CHECK
+        start = time.time()        
         (_, signature) = self.wallet.sign_input(self.signing_input.address_n,
                         hashlib.sha256(self.tx_hash.digest()).digest())
+        print 'xxxx', time.time() - start
         
         serialized_tx += 'aaaa' + signing.raw_tx_input(self.signing_input, signature) + 'aaaa'# FIXME, TODO, CHECK
-                
+        
+        
         if self.signing_index < self.inputs_count - 1:
             '''
             If we didn't process all signatures yet,
@@ -560,9 +564,9 @@ class StateMachine(object):
         self.custom_message = False
         
         try:
-            self.wallet.get_seed()
+            self.wallet.get_secexp()
             self.layout.show_logo()
-        except:
+        except NoSeedException:
             self.layout.show_message(
                 ["Device hasn't been",
                  "initialized yet.",
@@ -575,11 +579,13 @@ class StateMachine(object):
         self.wallet.struct.has_otp = otp
         self.wallet.struct.pin = pin
         self.wallet.struct.has_spv = spv
+        self.wallet.save()
         return proto.Success(message='Wallet loaded')
     
     def _reset_wallet(self, random):
         # TODO
         print "Starting setup wizard..."
+        # self.wallet.save()
         return proto.Success()
     
     '''
@@ -707,7 +713,7 @@ class StateMachine(object):
             return self.debug_get_state(msg)
         
         if isinstance(msg, proto.LoadDevice):
-            return self.debug_load_wallet(msg.seed, msg.otp, msg.pin, msg.spv)
+            return self.debug_load_wallet(msg.algo, msg.seed, msg.otp, msg.pin, msg.spv)
 
         self.set_main_state()
         return proto.Failure(code=1, message="Unexpected message")
