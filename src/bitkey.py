@@ -92,8 +92,7 @@ def main(args):
     # Load persisted data. Create new wallet if file doesn't exist
     print "Loading wallet..."
     wallet = Wallet(args.wallet)
-    if args.verbose:
-        print "Using seed:", wallet.get_mnemonic()
+    print wallet.struct
     
     # Initialize hardware (screen, buttons)
     but = Buttons(hw=args.shield, stdin=not args.shield, pygame=not args.shield)
