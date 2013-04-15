@@ -78,9 +78,9 @@ def raw_tx(inputs, outputs, for_sig):
 '''
 
 def sign_input(algo, secexp, addr_n, tx_hash):
-    private_key = ecdsa.SigningKey.from_string(algo.get_private_key(secexp, addr_n), curve=tools.SECP256k1)
+    pk = algo.get_private_key(secexp, addr_n)
+    private_key = ecdsa.SigningKey.from_string(pk, curve=tools.SECP256k1)
     sig = private_key.sign_digest(tx_hash, sigencode=ecdsa.util.sigencode_der)
-        
     public_key = private_key.get_verifying_key()
     pubkey = public_key.to_string()
     return (pubkey, sig)
