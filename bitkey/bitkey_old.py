@@ -207,7 +207,7 @@ class MessageBroker(object):
 
         if self.device.otp:
             if self.device.pin:
-                return self.otp_request(otp_message, self.pin_request, *[pin_message, False, func]+list(args))
+                return self.otp_request(otp_message, self.pin_request, *[pin_message, False, func] + list(args))
             else:
                 return self.otp_request(otp_message, func, *args)
 

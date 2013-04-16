@@ -38,7 +38,7 @@ class AlgoElectrum(object):
         master_public_key = cls.init_master_public_key(secexp)
         z = cls._get_sequence(master_public_key, n)
         master_public_key = ecdsa.VerifyingKey.from_string(master_public_key, curve=SECP256k1)
-        pubkey_point = master_public_key.pubkey.point + z*SECP256k1.generator
+        pubkey_point = master_public_key.pubkey.point + z * SECP256k1.generator
         public_key2 = ecdsa.VerifyingKey.from_public_point(pubkey_point, curve=SECP256k1)
         address = public_key_to_bc_address('04'.decode('hex') + public_key2.to_string())
         return address

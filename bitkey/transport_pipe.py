@@ -14,14 +14,14 @@ class PipeTransport(Transport):
 
     def _open(self):
         if self.is_device:
-            self.filename_read = self.device+'.to'
-            self.filename_write = self.device+'.from'
+            self.filename_read = self.device + '.to'
+            self.filename_write = self.device + '.from'
 
             os.mkfifo(self.filename_read, 0600)
             os.mkfifo(self.filename_write, 0600)
         else:
-            self.filename_read = self.device+'.from'
-            self.filename_write = self.device+'.to'
+            self.filename_read = self.device + '.from'
+            self.filename_write = self.device + '.to'
 
             if not os.path.exists(self.filename_write):
                 raise Exception("Not connected")

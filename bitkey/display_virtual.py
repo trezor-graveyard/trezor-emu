@@ -29,7 +29,7 @@ class VirtualDisplay(object):
         driver = self._select_driver()
         if driver == 'x11':
             # Start in window
-            self.screen = pygame.display.set_mode((self.buffer.width*self.scale, self.buffer.height*self.scale))
+            self.screen = pygame.display.set_mode((self.buffer.width * self.scale, self.buffer.height * self.scale))
         else:
             # Start in fullscreen
             size = (pygame.display.Info().current_w, pygame.display.Info().current_h)

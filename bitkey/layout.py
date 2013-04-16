@@ -38,7 +38,7 @@ class Layout(object):
         for item in self.scrolls:
             (direction, wait, pos_x, y, text, font) = item
 
-            width = len(text) * (font.width+1)
+            width = len(text) * (font.width + 1)
 
             if wait:
                 item[1] -= 1
@@ -63,7 +63,7 @@ class Layout(object):
         return True
 
     def _draw_scroll_text(self, x, y, text, font):
-        self.buffer.clear(0, y, self.buffer.width-1, y+font.height)
+        self.buffer.clear(0, y, self.buffer.width - 1, y + font.height)
         self.buffer.draw_string(x, y, text, font)
 
     def _scroll_text(self, y, text, font):
@@ -107,7 +107,7 @@ class Layout(object):
 
         for i in range(len(messages)):
             msg = messages[i]
-            self.buffer.draw_string(0, i*font.height+1, msg, font)
+            self.buffer.draw_string(0, i * font.height + 1, msg, font)
 
         self._show_status(question, yes_text, no_text)
         self.need_refresh = True
@@ -143,7 +143,7 @@ class Layout(object):
              "one time password",
              "to computer:",
              '',
-             otp.rjust(int(10+len(otp)/2), ' ')],
+             otp.rjust(int(10 + len(otp) / 2), ' ')],
             '', '', '{ Cancel')
         self.last_screen = 'show_otp_request'
 
@@ -206,7 +206,7 @@ class Layout(object):
             pos = self.buffer.width / 2 - len(status) * (smallfonts.Font5x8.width + 1) / 2
             self.buffer.clear(0, self.buffer.height - 20, self.buffer.width - 1, self.buffer.height - 1)
             self.buffer.frame(0, self.buffer.height - 20, self.buffer.width - 1, self.buffer.height - 20)
-            self.buffer.draw_string(pos, self.buffer.height-18, status, smallfonts.Font5x8)
+            self.buffer.draw_string(pos, self.buffer.height - 18, status, smallfonts.Font5x8)
         else:
             self.buffer.clear(0, self.buffer.height - 11, self.buffer.width - 1, self.buffer.height - 1)
             self.buffer.frame(0, self.buffer.height - 12, self.buffer.width - 1, self.buffer.height - 12)

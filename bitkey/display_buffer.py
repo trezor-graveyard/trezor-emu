@@ -8,8 +8,8 @@ class DisplayBuffer(object):
         if x1 is None:
             self.data = [0] * (self.width * self.height / 8)
         else:
-            for x in range(x1, x2+1):
-                for y in range(y1, y2+1):
+            for x in range(x1, x2 + 1):
+                for y in range(y1, y2 + 1):
                     #self.clear_pixel(x, y)
                     self.data[x + (y / 8) * self.width] &= ~(1 << (y % 8))
 
@@ -58,19 +58,19 @@ class DisplayBuffer(object):
     def invert(self, x1, y1, x2, y2):
         if (x1 >= self.width) or (y1 >= self.height) or (x2 >= self.width) or (y2 >= self.height):
             return
-        for x in range(x1, x2+1):
-            for y in range(y1, y2+1):
+        for x in range(x1, x2 + 1):
+            for y in range(y1, y2 + 1):
                 self.data[x + (y / 8) * self.width] ^= (1 << (y % 8))
 
     def box(self, x1, y1, x2, y2):
-        for x in range(x1, x2+1):
-            for y in range(y1, y2+1):
+        for x in range(x1, x2 + 1):
+            for y in range(y1, y2 + 1):
                 self.draw_pixel(x, y)
 
     def frame(self, x1, y1, x2, y2):
-        for x in range(x1, x2+1):
+        for x in range(x1, x2 + 1):
             self.draw_pixel(x, y1)
             self.draw_pixel(x, y2)
-        for y in range(y1+1, y2):
+        for y in range(y1 + 1, y2):
             self.draw_pixel(x1, y)
             self.draw_pixel(x2, y)
