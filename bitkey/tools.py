@@ -29,7 +29,7 @@ def b58encode(v):
 
     long_value = 0L
     for (i, c) in enumerate(v[::-1]):
-        long_value += (256**i) * ord(c)
+        long_value += (256 ** i) * ord(c)
 
     result = ''
     while long_value >= __b58base:
@@ -84,7 +84,7 @@ def EncodeBase58Check(vchIn):
 
 def SecretToASecret(secret):
     # Used only for debug prints of private keys
-    vchIn = chr(addrtype+128) + secret
+    vchIn = chr(addrtype + 128) + secret
     return EncodeBase58Check(vchIn)
 
 
