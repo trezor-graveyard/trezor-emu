@@ -149,12 +149,12 @@ def main(args):
                 raise Exception("Got unexpected object %s" % msg.__class__.__name__)
             '''
                 
-        if button != None:
+        if button is not None:
             print "Button", button
             is_active = True
 
             resp = machine.press_button(button)
-            if resp != None:
+            if resp is not None:
                 print "Sending", resp
                 transport.write(resp)
                 
@@ -169,10 +169,10 @@ def main(args):
 
         # Handle main connection
         msg = transport.read()
-        if msg != None:
+        if msg is not None:
             print "Received", msg.__class__.__name__, msg
             resp = machine.process_message(msg)
-            if resp != None:
+            if resp is not None:
                 print "Sending", resp.__class__.__name__, resp
                 transport.write(resp)
                 is_active = True            
@@ -194,7 +194,10 @@ def main(args):
     # Close transports
     transport.close()
     debug_transport.close()
-    
-if __name__ == '__main__':
+
+def run():
     args = parse_args()
     main(args)
+    
+if __name__ == '__main__':
+    run()
