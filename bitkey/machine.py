@@ -7,7 +7,6 @@ import machine_signing
 from wallet import NoSeedException
 
 
-
 class PinState(object):
     def __init__(self, layout, wallet):
         self.layout = layout
