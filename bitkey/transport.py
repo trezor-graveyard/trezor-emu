@@ -1,29 +1,30 @@
 import struct
 import mapping
 
+
 class Transport(object):
     def __init__(self, device, *args, **kwargs):
         self.device = device
         self._open()
-    
+
     def _open(self):
         raise NotImplemented
-    
+
     def _close(self):
         raise NotImplemented
-    
+
     def _write(self, msg):
         raise NotImplemented
-    
+
     def _read(self):
         raise NotImplemented
-    
+
     def ready_to_read(self):
         raise NotImplemented
-        
+
     def close(self):
         self._close()
-        
+
     def write(self, msg):
         ser = msg.SerializeToString()
         header = struct.pack(">HL", mapping.get_type(msg), len(ser))
@@ -34,17 +35,17 @@ class Transport(object):
             return None
 
         data = self._read()
-        if data == None:
+        if data is None:
             return None
-        
+
         return self._parse_message(data)
-        
+
     def read_blocking(self):
         while True:
             data = self._read()
-            if data != None:
+            if data is not None:
                 break
-        
+
         return self._parse_message(data)
 
     def _parse_message(self, data):
@@ -52,7 +53,7 @@ class Transport(object):
         inst = mapping.get_class(msg_type)()
         inst.ParseFromString(data)
         return inst
-    
+
     def _read_headers(self, read_f):
         # Try to read headers until some sane value are detected
         is_ok = False
@@ -78,5 +79,5 @@ class Transport(object):
                 break
             except:
                 raise Exception("Cannot parse header length")
-       
+
         return (msg_type, datalen)
