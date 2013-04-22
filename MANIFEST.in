@@ -1,0 +1,2 @@
+recursive-include protobuf *.proto
+include README.rst
