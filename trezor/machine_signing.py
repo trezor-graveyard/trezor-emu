@@ -2,7 +2,7 @@ import hashlib
 import time
 
 import signing
-import bitkey_pb2 as proto
+import trezor_pb2 as proto
 
 '''
 Workflow for two inputs and two outputs:

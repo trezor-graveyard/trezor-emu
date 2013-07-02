@@ -7,12 +7,12 @@ from google.protobuf import descriptor_pb2
 # @@protoc_insertion_point(imports)
 
 
-import bitkey_pb2
+import trezor_pb2
 
 DESCRIPTOR = descriptor.FileDescriptor(
   name='wallet.proto',
   package='',
-  serialized_pb='\n\x0cwallet.proto\x1a\x0c\x62itkey.proto\"a\n\x06Wallet\x12\x18\n\x04\x61lgo\x18\x01 \x02(\x0e\x32\n.Algorithm\x12\x0e\n\x06secexp\x18\x02 \x02(\x0c\x12\x0f\n\x07has_otp\x18\x03 \x01(\x08\x12\x0f\n\x07has_spv\x18\x04 \x01(\x08\x12\x0b\n\x03pin\x18\x05 \x01(\x0c')
+  serialized_pb='\n\x0cwallet.proto\x1a\x0ctrezor.proto\"a\n\x06Wallet\x12\x18\n\x04\x61lgo\x18\x01 \x02(\x0e\x32\n.Algorithm\x12\x0e\n\x06secexp\x18\x02 \x02(\x0c\x12\x0f\n\x07has_otp\x18\x03 \x01(\x08\x12\x0f\n\x07has_spv\x18\x04 \x01(\x08\x12\x0b\n\x03pin\x18\x05 \x01(\x0c')
 
 
 
@@ -72,7 +72,7 @@ _WALLET = descriptor.Descriptor(
   serialized_end=127,
 )
 
-_WALLET.fields_by_name['algo'].enum_type = bitkey_pb2._ALGORITHM
+_WALLET.fields_by_name['algo'].enum_type = trezor_pb2._ALGORITHM
 DESCRIPTOR.message_types_by_name['Wallet'] = _WALLET
 
 class Wallet(message.Message):

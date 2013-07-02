@@ -15,7 +15,7 @@
 import argparse
 import time
 
-import bitkey_pb2 as proto
+import trezor_pb2 as proto
 from buttons import Buttons
 from layout import Layout
 from display import Display

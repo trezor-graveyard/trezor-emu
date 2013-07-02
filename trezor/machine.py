@@ -2,7 +2,7 @@ import time
 import random
 import traceback
 
-import bitkey_pb2 as proto
+import trezor_pb2 as proto
 import machine_signing
 from wallet import NoSeedException
 

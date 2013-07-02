@@ -1,4 +1,4 @@
-import bitkey_pb2 as proto
+import trezor_pb2 as proto
 
 map_type_to_class = {
     0: proto.Initialize,

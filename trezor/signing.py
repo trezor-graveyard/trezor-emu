@@ -1,7 +1,7 @@
 import struct
 import ecdsa
 
-import bitkey_pb2 as proto
+import trezor_pb2 as proto
 import tools
 
 

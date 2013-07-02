@@ -1,6 +1,6 @@
 import os
 
-import bitkey_pb2 as proto
+import trezor_pb2 as proto
 import wallet_pb2 as proto_wallet
 from algo import AlgoFactory
 import tools
