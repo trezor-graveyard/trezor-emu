@@ -6,9 +6,8 @@ Python implementation of Trezor-compatible Bitcoin hardware wallet. See http://b
 How to install
 ==============
 * git clone https://github.com/trezor/trezor-emu.git
-* apt-get install python-virtualenv python-pip
+* apt-get install python-setuptools
 * cd trezor-emu
-* virtualenv venv
-* cd venv
-* . bin/activate
-* pip install -e ../
+* sudo python setup.py develop
+* Running on standard desktop: ./emu.sh
+* Running on Raspberry Pi: ./rpi-serial.sh
