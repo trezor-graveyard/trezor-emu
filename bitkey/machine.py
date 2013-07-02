@@ -247,7 +247,7 @@ class StateMachine(object):
         self.custom_message = False
 
         try:
-            self.wallet.get_secexp()
+            #self.wallet.get_secexp()
             self.layout.show_logo()
         except NoSeedException:
             self.layout.show_message(
