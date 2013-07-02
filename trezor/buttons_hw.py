@@ -6,6 +6,7 @@ class HwButtons(object):
         self.PIN_BTN_YES = 7
         self.PIN_BTN_NO = 8
         GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
         GPIO.setup(self.PIN_BTN_YES, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(self.PIN_BTN_NO, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
