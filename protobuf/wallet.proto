@@ -4,7 +4,7 @@
 	Author: slush <info@bitcoin.cz>
 */
 
-import "bitkey.proto";
+import "trezor.proto";
 
 message Wallet {
     required Algorithm algo = 1;
