@@ -35,6 +35,7 @@ map_type_to_class = {
     100: proto.DebugLinkDecision,
     101: proto.DebugLinkGetState,
     102: proto.DebugLinkState,
+    103: proto.DebugLinkStop,
 }
 
 map_class_to_type = {}

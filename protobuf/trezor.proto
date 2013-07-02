@@ -78,6 +78,10 @@ message DebugLinkState {
 //	optional string state = 5;
 }
 
+// Ask device to shutdown/restart
+message DebugLinkStop {
+}
+
 // Response object defining success of the previous request
 message Success {
     optional string message = 1;	//	May contain human readable description of the action or request-specific payload

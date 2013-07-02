@@ -394,6 +394,10 @@ class StateMachine(object):
         if isinstance(msg, proto.LoadDevice):
             return self.debug_load_wallet(msg.algo, msg.seed, msg.otp, msg.pin, msg.spv)
 
+        if isinstance(msg, proto.DebugLinkStop):
+            import sys
+            sys.exit()
+
         self.set_main_state()
         return proto.Failure(code=1, message="Unexpected message")
 
