@@ -1,0 +1,33 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          trezor
+# Required-Start:    $all
+# Required-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:
+# Short-Description: Run trezor-emu
+### END INIT INFO
+
+. /lib/init/vars.sh
+. /lib/lsb/init-functions
+
+do_start() {
+        cd /home/pi/trezor-emu
+        screen -AmdS trezor bash -i rpi-autorun.sh
+}
+
+case "$1" in
+    start)
+        do_start
+        ;;
+    restart|reload|force-reload)
+        echo "Error: argument '$1' not supported" >&2
+        exit 3
+        ;;
+    stop)
+        ;;
+    *)
+        echo "Usage: $0 start|stop" >&2
+        exit 3
+        ;;
+esac
