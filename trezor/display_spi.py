@@ -13,6 +13,7 @@ class SPIDisplay(object):
 
     def init(self):
         GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
         GPIO.setup(self.PIN_OLED_DC, GPIO.OUT)
         GPIO.setup(self.PIN_OLED_CS, GPIO.OUT)
         GPIO.setup(self.PIN_OLED_RST, GPIO.OUT)
