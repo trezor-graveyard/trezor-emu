@@ -1,5 +1,5 @@
 '''TransportFake implements fake wire transport over local named pipe.
-Use this transport for talking with bitkey simulator.'''
+Use this transport for talking with TREZOR simulator.'''
 
 import os
 from select import select

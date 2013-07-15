@@ -22,7 +22,7 @@ class Wallet(object):
 
         self._secexp = 0  # Cache of secret exponent in numeric form
 
-        self.UUID_filename = os.path.expanduser('~/.bitkey')
+        self.UUID_filename = os.path.expanduser('~/.trezor')
         self.init_UUID()
 
         self.filename = filename

@@ -8,7 +8,7 @@ setup(
     version='0.1.0',
     author='slush',
     author_email='info@bitcoin.cz',
-    description='Python implementation of Trezor hardware wallet',
+    description='Python implementation of TREZOR hardware wallet',
     long_description=open(join(here, 'README.rst')).read(),
     packages=find_packages(),
     test_suite='tests',

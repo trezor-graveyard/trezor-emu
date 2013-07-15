@@ -1,5 +1,5 @@
 import unittest
-from bitkey import mnemonic
+from trezor import mnemonic
 
 mnem = 'beyond neighbor scratch swirl embarrass doll cause also stick softly physical nice'.split(' ')
 seed = '13ee91e3c7e49dd620a5dd5a51d9d766'

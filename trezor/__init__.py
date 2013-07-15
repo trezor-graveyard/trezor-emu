@@ -47,7 +47,7 @@ DISPLAY_HEIGHT = 64
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Bitkey simulator optimized for Raspberry Pi (but works on any '
+    parser = argparse.ArgumentParser(description='TREZOR simulator optimized for Raspberry Pi (but works on any '
                                                  'Linux machine).')
 
     parser.add_argument('-w', '--wallet', dest='wallet', default='wallet.dat', help='Wallet file')
