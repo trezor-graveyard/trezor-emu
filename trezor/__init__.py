@@ -20,6 +20,7 @@ from buttons import Buttons
 from layout import Layout
 from display import Display
 from display_buffer import DisplayBuffer
+#from logo import logo                          # uncomment this line if you uncomment 'layout.show_logo(logo)' on line 180
 
 from wallet import Wallet
 from machine import StateMachine
