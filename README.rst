@@ -9,7 +9,7 @@ How to install
 --------------
 
 * git clone https://github.com/trezor/trezor-emu.git
-* apt-get install python-setuptools
+* sudo apt-get install python-dev python-setuptools
 * cd trezor-emu
 * sudo python setup.py develop
 * Running on standard desktop: ./emu.sh

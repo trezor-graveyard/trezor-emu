@@ -11,7 +11,7 @@ setup(
     long_description = open(join(here, 'README.rst')).read(),
     packages = find_packages(),
     test_suite = 'tests',
-    requires = ['ecdsa', 'RPi.GPIO', 'spidev', 'pyserial', 'protobuf', ],
+    install_requires = ['ecdsa', 'RPi.GPIO', 'spidev', 'pyserial', 'protobuf', ],
     entry_points = {'console_scripts': ['trezor-emu  =  trezor:run', ], },
     include_package_data = True,
     package_data = {'protobuf': ['*.proto'], },
