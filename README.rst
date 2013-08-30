@@ -13,4 +13,4 @@ How to install
 * cd trezor-emu
 * sudo python setup.py develop
 * Running on standard desktop: ./emu.sh
-* Running on Raspberry Pi: ./rpi-serial.sh
+* Running on Raspberry Pi: sudo ./rpi-serial.sh
