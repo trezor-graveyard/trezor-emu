@@ -7,9 +7,6 @@
 import "trezor.proto";
 
 message Wallet {
-    required Algorithm algo = 1;
-    required bytes secexp = 2;
-    optional bool has_otp = 3;
-    optional bool has_spv = 4;
-    optional bytes pin = 5;
+    required bytes seed = 1;
+    optional bytes pin = 2;
 }
