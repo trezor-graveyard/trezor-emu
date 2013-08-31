@@ -58,7 +58,7 @@ message DebugLinkGetState {
 // Response object reflecting device's current state. It can be received only over debug link connection.
 message DebugLinkState {
 	optional bytes layout = 1;	// Raw buffer of display
-	optional PinAck pin = 3;	// Current PIN matrix, blank if PIN is not set/enabled
+	optional PinMatrixAck pin = 3;	// Current PIN matrix, blank if PIN is not set/enabled
 	optional bytes seed = 4;	// Current seed (in mnemonic format)
 //	optional bytes state = 5;
 }
@@ -106,9 +106,9 @@ message ButtonCancel {
 }
  
 // Message can be sent by the *device* as a response to any request.
-// Message asks computer to send back PinAck with the password encoded in pin matrix scheme.
+// Message asks computer to send back PinMatrixAck with the password encoded in pin matrix scheme.
 //
-// Response: PinAck, PinCancel
+// Response: PinMatrixAck, PinMatrixCancel
 message PinMatrixRequest {
    optional bytes message = 1;	// Human readable message
 }
