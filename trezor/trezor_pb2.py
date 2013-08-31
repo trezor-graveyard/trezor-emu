@@ -11,29 +11,7 @@ from google.protobuf import descriptor_pb2
 DESCRIPTOR = descriptor.FileDescriptor(
   name='trezor.proto',
   package='',
-  serialized_pb='\n\x0ctrezor.proto\" \n\nInitialize\x12\x12\n\nsession_id\x18\x01 \x02(\x0c\"\xdc\x01\n\x08\x46\x65\x61tures\x12\x12\n\nsession_id\x18\x01 \x01(\x0c\x12\x0e\n\x06vendor\x18\x02 \x01(\t\x12\x15\n\rmajor_version\x18\x03 \x01(\r\x12\x15\n\rminor_version\x18\x04 \x01(\r\x12\x0f\n\x07has_otp\x18\x05 \x01(\x08\x12\x0f\n\x07has_spv\x18\x06 \x01(\x08\x12\x0b\n\x03pin\x18\x07 \x01(\x08\x12\x18\n\x04\x61lgo\x18\x08 \x01(\x0e\x32\n.Algorithm\x12\"\n\x0e\x61lgo_available\x18\t \x03(\x0e\x32\n.Algorithm\x12\x11\n\tmaxfee_kb\x18\n \x01(\x04\"\x17\n\x04Ping\x12\x0f\n\x07message\x18\x01 \x01(\t\"#\n\x11\x44\x65\x62ugLinkDecision\x12\x0e\n\x06yes_no\x18\x01 \x02(\x08\"K\n\x11\x44\x65\x62ugLinkGetState\x12\x0e\n\x06layout\x18\x01 \x01(\x08\x12\x0b\n\x03otp\x18\x02 \x01(\x08\x12\x0b\n\x03pin\x18\x03 \x01(\x08\x12\x0c\n\x04seed\x18\x04 \x01(\x08\"Z\n\x0e\x44\x65\x62ugLinkState\x12\x0e\n\x06layout\x18\x01 \x01(\x0c\x12\x14\n\x03otp\x18\x02 \x01(\x0b\x32\x07.OtpAck\x12\x14\n\x03pin\x18\x03 \x01(\x0b\x32\x07.PinAck\x12\x0c\n\x04seed\x18\x04 \x01(\t\"\x0f\n\rDebugLinkStop\"\x1a\n\x07Success\x12\x0f\n\x07message\x18\x01 \x01(\t\"(\n\x07\x46\x61ilure\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\"\t\n\x07GetUUID\"\x14\n\x04UUID\x12\x0c\n\x04UUID\x18\x01 \x02(\x0c\"\x0f\n\rButtonRequest\"\x0b\n\tButtonAck\"\x0e\n\x0c\x42uttonCancel\"\x1d\n\nOtpRequest\x12\x0f\n\x07message\x18\x01 \x01(\t\"\x15\n\x06OtpAck\x12\x0b\n\x03otp\x18\x01 \x02(\t\"\x0b\n\tOtpCancel\"\x1d\n\nPinRequest\x12\x0f\n\x07message\x18\x01 \x01(\t\"\x15\n\x06PinAck\x12\x0b\n\x03pin\x18\x01 \x02(\t\"\x0b\n\tPinCancel\"\x1a\n\nGetEntropy\x12\x0c\n\x04size\x18\x01 \x02(\r\"\x1a\n\x07\x45ntropy\x12\x0f\n\x07\x65ntropy\x18\x01 \x02(\x0c\" \n\x0bSetMaxFeeKb\x12\x11\n\tmaxfee_kb\x18\x01 \x02(\x04\"\x14\n\x12GetMasterPublicKey\"\x1e\n\x0fMasterPublicKey\x12\x0b\n\x03key\x18\x01 \x02(\x0c\"\x1f\n\nGetAddress\x12\x11\n\taddress_n\x18\x01 \x03(\r\"\x1a\n\x07\x41\x64\x64ress\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x02(\t\"n\n\nLoadDevice\x12\x1f\n\x04\x61lgo\x18\x01 \x01(\x0e\x32\n.Algorithm:\x05\x42IP32\x12\x0c\n\x04seed\x18\x02 \x02(\t\x12\x11\n\x03otp\x18\x03 \x01(\x08:\x04true\x12\x0b\n\x03pin\x18\x04 \x01(\x0c\x12\x11\n\x03spv\x18\x05 \x01(\x08:\x04true\"\x1d\n\x0bResetDevice\x12\x0e\n\x06random\x18\x07 \x01(\x0c\"E\n\x06SignTx\x12\x15\n\routputs_count\x18\x03 \x02(\r\x12\x14\n\x0cinputs_count\x18\x05 \x02(\r\x12\x0e\n\x06random\x18\x06 \x01(\x0c\"\x86\x01\n\tTxRequest\x12\x15\n\rrequest_index\x18\x01 \x01(\x05\x12\"\n\x0crequest_type\x18\x02 \x01(\x0e\x32\x0c.RequestType\x12\x14\n\x0csigned_index\x18\x03 \x01(\x05\x12\x11\n\tsignature\x18\x04 \x01(\x0c\x12\x15\n\rserialized_tx\x18\x05 \x01(\x0c\"v\n\x07TxInput\x12\r\n\x05index\x18\x01 \x02(\r\x12\x11\n\taddress_n\x18\x02 \x03(\r\x12\x0e\n\x06\x61mount\x18\x03 \x02(\x04\x12\x11\n\tprev_hash\x18\x04 \x02(\x0c\x12\x12\n\nprev_index\x18\x05 \x02(\r\x12\x12\n\nscript_sig\x18\x06 \x01(\x0c\"\x84\x01\n\x08TxOutput\x12\r\n\x05index\x18\x01 \x02(\r\x12\x0f\n\x07\x61\x64\x64ress\x18\x02 \x02(\t\x12\x11\n\taddress_n\x18\x03 \x03(\r\x12\x0e\n\x06\x61mount\x18\x04 \x02(\x04\x12 \n\x0bscript_type\x18\x05 \x02(\x0e\x32\x0b.ScriptType\x12\x13\n\x0bscript_args\x18\x06 \x03(\x0c*$\n\tAlgorithm\x12\t\n\x05\x42IP32\x10\x00\x12\x0c\n\x08\x45LECTRUM\x10\x01*3\n\nScriptType\x12\x10\n\x0cPAYTOADDRESS\x10\x00\x12\x13\n\x0fPAYTOSCRIPTHASH\x10\x01*(\n\x0bRequestType\x12\x0b\n\x07TXINPUT\x10\x00\x12\x0c\n\x08TXOUTPUT\x10\x01')
-
-_ALGORITHM = descriptor.EnumDescriptor(
-  name='Algorithm',
-  full_name='Algorithm',
-  filename=None,
-  file=DESCRIPTOR,
-  values=[
-    descriptor.EnumValueDescriptor(
-      name='BIP32', index=0, number=0,
-      options=None,
-      type=None),
-    descriptor.EnumValueDescriptor(
-      name='ELECTRUM', index=1, number=1,
-      options=None,
-      type=None),
-  ],
-  containing_type=None,
-  options=None,
-  serialized_start=1615,
-  serialized_end=1651,
-)
-
+  serialized_pb='\n\x0ctrezor.proto\"\x0c\n\nInitialize\"[\n\x08\x46\x65\x61tures\x12\x0e\n\x06vendor\x18\x02 \x01(\t\x12\x15\n\rmajor_version\x18\x03 \x01(\r\x12\x15\n\rminor_version\x18\x04 \x01(\r\x12\x11\n\tmaxfee_kb\x18\n \x01(\x04\"\x17\n\x04Ping\x12\x0f\n\x07message\x18\x01 \x01(\t\"#\n\x11\x44\x65\x62ugLinkDecision\x12\x0e\n\x06yes_no\x18\x01 \x02(\x08\"A\n\x11\x44\x65\x62ugLinkGetState\x12\x0e\n\x06layout\x18\x01 \x01(\x08\x12\x0e\n\x06matrix\x18\x03 \x01(\x08\x12\x0c\n\x04seed\x18\x04 \x01(\x08\"J\n\x0e\x44\x65\x62ugLinkState\x12\x0e\n\x06layout\x18\x01 \x01(\x0c\x12\x1a\n\x03pin\x18\x03 \x01(\x0b\x32\r.PinMatrixAck\x12\x0c\n\x04seed\x18\x04 \x01(\x0c\"\x0f\n\rDebugLinkStop\"\x1a\n\x07Success\x12\x0f\n\x07message\x18\x01 \x01(\x0c\"(\n\x07\x46\x61ilure\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\x0c\"\t\n\x07GetUUID\"\x14\n\x04UUID\x12\x0c\n\x04UUID\x18\x01 \x02(\x0c\"\x0f\n\rButtonRequest\"\x0b\n\tButtonAck\"\x0e\n\x0c\x42uttonCancel\"#\n\x10PinMatrixRequest\x12\x0f\n\x07message\x18\x01 \x01(\x0c\"\x1b\n\x0cPinMatrixAck\x12\x0b\n\x03pin\x18\x01 \x02(\x0c\"\x11\n\x0fPinMatrixCancel\"\x1a\n\nGetEntropy\x12\x0c\n\x04size\x18\x01 \x02(\r\"\x1a\n\x07\x45ntropy\x12\x0f\n\x07\x65ntropy\x18\x01 \x02(\x0c\" \n\x0bSetMaxFeeKb\x12\x11\n\tmaxfee_kb\x18\x01 \x02(\x04\"\x14\n\x12GetMasterPublicKey\"\x1e\n\x0fMasterPublicKey\x12\x0b\n\x03key\x18\x01 \x02(\x0c\"\x1f\n\nGetAddress\x12\x11\n\taddress_n\x18\x01 \x03(\r\"\x1a\n\x07\x41\x64\x64ress\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x02(\t\"\'\n\nLoadDevice\x12\x0c\n\x04seed\x18\x01 \x02(\t\x12\x0b\n\x03pin\x18\x02 \x01(\x0c\"\x1d\n\x0bResetDevice\x12\x0e\n\x06random\x18\x07 \x01(\x0c\"5\n\x06SignTx\x12\x15\n\routputs_count\x18\x03 \x02(\r\x12\x14\n\x0cinputs_count\x18\x05 \x02(\r\"\x86\x01\n\tTxRequest\x12\x15\n\rrequest_index\x18\x01 \x01(\x05\x12\"\n\x0crequest_type\x18\x02 \x01(\x0e\x32\x0c.RequestType\x12\x14\n\x0csigned_index\x18\x03 \x01(\x05\x12\x11\n\tsignature\x18\x04 \x01(\x0c\x12\x15\n\rserialized_tx\x18\x05 \x01(\x0c\"v\n\x07TxInput\x12\r\n\x05index\x18\x01 \x02(\r\x12\x11\n\taddress_n\x18\x02 \x03(\r\x12\x0e\n\x06\x61mount\x18\x03 \x02(\x04\x12\x11\n\tprev_hash\x18\x04 \x02(\x0c\x12\x12\n\nprev_index\x18\x05 \x02(\r\x12\x12\n\nscript_sig\x18\x06 \x01(\x0c\"\x84\x01\n\x08TxOutput\x12\r\n\x05index\x18\x01 \x02(\r\x12\x0f\n\x07\x61\x64\x64ress\x18\x02 \x02(\t\x12\x11\n\taddress_n\x18\x03 \x03(\r\x12\x0e\n\x06\x61mount\x18\x04 \x02(\x04\x12 \n\x0bscript_type\x18\x05 \x02(\x0e\x32\x0b.ScriptType\x12\x13\n\x0bscript_args\x18\x06 \x03(\x0c*3\n\nScriptType\x12\x10\n\x0cPAYTOADDRESS\x10\x00\x12\x13\n\x0fPAYTOSCRIPTHASH\x10\x01*(\n\x0bRequestType\x12\x0b\n\x07TXINPUT\x10\x00\x12\x0c\n\x08TXOUTPUT\x10\x01')
 
 _SCRIPTTYPE = descriptor.EnumDescriptor(
   name='ScriptType',
@@ -52,8 +30,8 @@ _SCRIPTTYPE = descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1653,
-  serialized_end=1704,
+  serialized_start=1303,
+  serialized_end=1354,
 )
 
 
@@ -74,13 +52,11 @@ _REQUESTTYPE = descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1706,
-  serialized_end=1746,
+  serialized_start=1356,
+  serialized_end=1396,
 )
 
 
-BIP32 = 0
-ELECTRUM = 1
 PAYTOADDRESS = 0
 PAYTOSCRIPTHASH = 1
 TXINPUT = 0
@@ -95,13 +71,6 @@ _INITIALIZE = descriptor.Descriptor(
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
-    descriptor.FieldDescriptor(
-      name='session_id', full_name='Initialize.session_id', index=0,
-      number=1, type=12, cpp_type=9, label=2,
-      has_default_value=False, default_value="",
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
   ],
   extensions=[
   ],
@@ -112,7 +81,7 @@ _INITIALIZE = descriptor.Descriptor(
   is_extendable=False,
   extension_ranges=[],
   serialized_start=16,
-  serialized_end=48,
+  serialized_end=28,
 )
 
 
@@ -124,70 +93,28 @@ _FEATURES = descriptor.Descriptor(
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(
-      name='session_id', full_name='Features.session_id', index=0,
-      number=1, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value="",
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    descriptor.FieldDescriptor(
-      name='vendor', full_name='Features.vendor', index=1,
+      name='vendor', full_name='Features.vendor', index=0,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     descriptor.FieldDescriptor(
-      name='major_version', full_name='Features.major_version', index=2,
+      name='major_version', full_name='Features.major_version', index=1,
       number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     descriptor.FieldDescriptor(
-      name='minor_version', full_name='Features.minor_version', index=3,
+      name='minor_version', full_name='Features.minor_version', index=2,
       number=4, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     descriptor.FieldDescriptor(
-      name='has_otp', full_name='Features.has_otp', index=4,
-      number=5, type=8, cpp_type=7, label=1,
-      has_default_value=False, default_value=False,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    descriptor.FieldDescriptor(
-      name='has_spv', full_name='Features.has_spv', index=5,
-      number=6, type=8, cpp_type=7, label=1,
-      has_default_value=False, default_value=False,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    descriptor.FieldDescriptor(
-      name='pin', full_name='Features.pin', index=6,
-      number=7, type=8, cpp_type=7, label=1,
-      has_default_value=False, default_value=False,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    descriptor.FieldDescriptor(
-      name='algo', full_name='Features.algo', index=7,
-      number=8, type=14, cpp_type=8, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    descriptor.FieldDescriptor(
-      name='algo_available', full_name='Features.algo_available', index=8,
-      number=9, type=14, cpp_type=8, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    descriptor.FieldDescriptor(
-      name='maxfee_kb', full_name='Features.maxfee_kb', index=9,
+      name='maxfee_kb', full_name='Features.maxfee_kb', index=3,
       number=10, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -202,8 +129,8 @@ _FEATURES = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=51,
-  serialized_end=271,
+  serialized_start=30,
+  serialized_end=121,
 )
 
 
@@ -230,8 +157,8 @@ _PING = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=273,
-  serialized_end=296,
+  serialized_start=123,
+  serialized_end=146,
 )
 
 
@@ -258,8 +185,8 @@ _DEBUGLINKDECISION = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=298,
-  serialized_end=333,
+  serialized_start=148,
+  serialized_end=183,
 )
 
 
@@ -278,21 +205,14 @@ _DEBUGLINKGETSTATE = descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     descriptor.FieldDescriptor(
-      name='otp', full_name='DebugLinkGetState.otp', index=1,
-      number=2, type=8, cpp_type=7, label=1,
-      has_default_value=False, default_value=False,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    descriptor.FieldDescriptor(
-      name='pin', full_name='DebugLinkGetState.pin', index=2,
+      name='matrix', full_name='DebugLinkGetState.matrix', index=1,
       number=3, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     descriptor.FieldDescriptor(
-      name='seed', full_name='DebugLinkGetState.seed', index=3,
+      name='seed', full_name='DebugLinkGetState.seed', index=2,
       number=4, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
@@ -307,8 +227,8 @@ _DEBUGLINKGETSTATE = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=335,
-  serialized_end=410,
+  serialized_start=185,
+  serialized_end=250,
 )
 
 
@@ -327,23 +247,16 @@ _DEBUGLINKSTATE = descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     descriptor.FieldDescriptor(
-      name='otp', full_name='DebugLinkState.otp', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    descriptor.FieldDescriptor(
-      name='pin', full_name='DebugLinkState.pin', index=2,
+      name='pin', full_name='DebugLinkState.pin', index=1,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     descriptor.FieldDescriptor(
-      name='seed', full_name='DebugLinkState.seed', index=3,
-      number=4, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
+      name='seed', full_name='DebugLinkState.seed', index=2,
+      number=4, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value="",
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -356,8 +269,8 @@ _DEBUGLINKSTATE = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=412,
-  serialized_end=502,
+  serialized_start=252,
+  serialized_end=326,
 )
 
 
@@ -377,8 +290,8 @@ _DEBUGLINKSTOP = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=504,
-  serialized_end=519,
+  serialized_start=328,
+  serialized_end=343,
 )
 
 
@@ -391,8 +304,8 @@ _SUCCESS = descriptor.Descriptor(
   fields=[
     descriptor.FieldDescriptor(
       name='message', full_name='Success.message', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value="",
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -405,8 +318,8 @@ _SUCCESS = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=521,
-  serialized_end=547,
+  serialized_start=345,
+  serialized_end=371,
 )
 
 
@@ -426,8 +339,8 @@ _FAILURE = descriptor.Descriptor(
       options=None),
     descriptor.FieldDescriptor(
       name='message', full_name='Failure.message', index=1,
-      number=2, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
+      number=2, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value="",
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -440,8 +353,8 @@ _FAILURE = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=549,
-  serialized_end=589,
+  serialized_start=373,
+  serialized_end=413,
 )
 
 
@@ -461,8 +374,8 @@ _GETUUID = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=591,
-  serialized_end=600,
+  serialized_start=415,
+  serialized_end=424,
 )
 
 
@@ -489,8 +402,8 @@ _UUID = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=602,
-  serialized_end=622,
+  serialized_start=426,
+  serialized_end=446,
 )
 
 
@@ -510,8 +423,8 @@ _BUTTONREQUEST = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=624,
-  serialized_end=639,
+  serialized_start=448,
+  serialized_end=463,
 )
 
 
@@ -531,8 +444,8 @@ _BUTTONACK = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=641,
-  serialized_end=652,
+  serialized_start=465,
+  serialized_end=476,
 )
 
 
@@ -552,22 +465,22 @@ _BUTTONCANCEL = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=654,
-  serialized_end=668,
+  serialized_start=478,
+  serialized_end=492,
 )
 
 
-_OTPREQUEST = descriptor.Descriptor(
-  name='OtpRequest',
-  full_name='OtpRequest',
+_PINMATRIXREQUEST = descriptor.Descriptor(
+  name='PinMatrixRequest',
+  full_name='PinMatrixRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(
-      name='message', full_name='OtpRequest.message', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
+      name='message', full_name='PinMatrixRequest.message', index=0,
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value="",
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -580,22 +493,22 @@ _OTPREQUEST = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=670,
-  serialized_end=699,
+  serialized_start=494,
+  serialized_end=529,
 )
 
 
-_OTPACK = descriptor.Descriptor(
-  name='OtpAck',
-  full_name='OtpAck',
+_PINMATRIXACK = descriptor.Descriptor(
+  name='PinMatrixAck',
+  full_name='PinMatrixAck',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(
-      name='otp', full_name='OtpAck.otp', index=0,
-      number=1, type=9, cpp_type=9, label=2,
-      has_default_value=False, default_value=unicode("", "utf-8"),
+      name='pin', full_name='PinMatrixAck.pin', index=0,
+      number=1, type=12, cpp_type=9, label=2,
+      has_default_value=False, default_value="",
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -608,14 +521,14 @@ _OTPACK = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=701,
-  serialized_end=722,
+  serialized_start=531,
+  serialized_end=558,
 )
 
 
-_OTPCANCEL = descriptor.Descriptor(
-  name='OtpCancel',
-  full_name='OtpCancel',
+_PINMATRIXCANCEL = descriptor.Descriptor(
+  name='PinMatrixCancel',
+  full_name='PinMatrixCancel',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
@@ -629,85 +542,8 @@ _OTPCANCEL = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=724,
-  serialized_end=735,
-)
-
-
-_PINREQUEST = descriptor.Descriptor(
-  name='PinRequest',
-  full_name='PinRequest',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    descriptor.FieldDescriptor(
-      name='message', full_name='PinRequest.message', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  extension_ranges=[],
-  serialized_start=737,
-  serialized_end=766,
-)
-
-
-_PINACK = descriptor.Descriptor(
-  name='PinAck',
-  full_name='PinAck',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    descriptor.FieldDescriptor(
-      name='pin', full_name='PinAck.pin', index=0,
-      number=1, type=9, cpp_type=9, label=2,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  extension_ranges=[],
-  serialized_start=768,
-  serialized_end=789,
-)
-
-
-_PINCANCEL = descriptor.Descriptor(
-  name='PinCancel',
-  full_name='PinCancel',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  extension_ranges=[],
-  serialized_start=791,
-  serialized_end=802,
+  serialized_start=560,
+  serialized_end=577,
 )
 
 
@@ -734,8 +570,8 @@ _GETENTROPY = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=804,
-  serialized_end=830,
+  serialized_start=579,
+  serialized_end=605,
 )
 
 
@@ -762,8 +598,8 @@ _ENTROPY = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=832,
-  serialized_end=858,
+  serialized_start=607,
+  serialized_end=633,
 )
 
 
@@ -790,8 +626,8 @@ _SETMAXFEEKB = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=860,
-  serialized_end=892,
+  serialized_start=635,
+  serialized_end=667,
 )
 
 
@@ -811,8 +647,8 @@ _GETMASTERPUBLICKEY = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=894,
-  serialized_end=914,
+  serialized_start=669,
+  serialized_end=689,
 )
 
 
@@ -839,8 +675,8 @@ _MASTERPUBLICKEY = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=916,
-  serialized_end=946,
+  serialized_start=691,
+  serialized_end=721,
 )
 
 
@@ -867,8 +703,8 @@ _GETADDRESS = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=948,
-  serialized_end=979,
+  serialized_start=723,
+  serialized_end=754,
 )
 
 
@@ -895,8 +731,8 @@ _ADDRESS = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=981,
-  serialized_end=1007,
+  serialized_start=756,
+  serialized_end=782,
 )
 
 
@@ -908,37 +744,16 @@ _LOADDEVICE = descriptor.Descriptor(
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(
-      name='algo', full_name='LoadDevice.algo', index=0,
-      number=1, type=14, cpp_type=8, label=1,
-      has_default_value=True, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    descriptor.FieldDescriptor(
-      name='seed', full_name='LoadDevice.seed', index=1,
-      number=2, type=9, cpp_type=9, label=2,
+      name='seed', full_name='LoadDevice.seed', index=0,
+      number=1, type=9, cpp_type=9, label=2,
       has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     descriptor.FieldDescriptor(
-      name='otp', full_name='LoadDevice.otp', index=2,
-      number=3, type=8, cpp_type=7, label=1,
-      has_default_value=True, default_value=True,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    descriptor.FieldDescriptor(
-      name='pin', full_name='LoadDevice.pin', index=3,
-      number=4, type=12, cpp_type=9, label=1,
+      name='pin', full_name='LoadDevice.pin', index=1,
+      number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value="",
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    descriptor.FieldDescriptor(
-      name='spv', full_name='LoadDevice.spv', index=4,
-      number=5, type=8, cpp_type=7, label=1,
-      has_default_value=True, default_value=True,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -951,8 +766,8 @@ _LOADDEVICE = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1009,
-  serialized_end=1119,
+  serialized_start=784,
+  serialized_end=823,
 )
 
 
@@ -979,8 +794,8 @@ _RESETDEVICE = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1121,
-  serialized_end=1150,
+  serialized_start=825,
+  serialized_end=854,
 )
 
 
@@ -1005,13 +820,6 @@ _SIGNTX = descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
-    descriptor.FieldDescriptor(
-      name='random', full_name='SignTx.random', index=2,
-      number=6, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value="",
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
   ],
   extensions=[
   ],
@@ -1021,8 +829,8 @@ _SIGNTX = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1152,
-  serialized_end=1221,
+  serialized_start=856,
+  serialized_end=909,
 )
 
 
@@ -1077,8 +885,8 @@ _TXREQUEST = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1224,
-  serialized_end=1358,
+  serialized_start=912,
+  serialized_end=1046,
 )
 
 
@@ -1140,8 +948,8 @@ _TXINPUT = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1360,
-  serialized_end=1478,
+  serialized_start=1048,
+  serialized_end=1166,
 )
 
 
@@ -1203,15 +1011,11 @@ _TXOUTPUT = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1481,
-  serialized_end=1613,
+  serialized_start=1169,
+  serialized_end=1301,
 )
 
-_FEATURES.fields_by_name['algo'].enum_type = _ALGORITHM
-_FEATURES.fields_by_name['algo_available'].enum_type = _ALGORITHM
-_DEBUGLINKSTATE.fields_by_name['otp'].message_type = _OTPACK
-_DEBUGLINKSTATE.fields_by_name['pin'].message_type = _PINACK
-_LOADDEVICE.fields_by_name['algo'].enum_type = _ALGORITHM
+_DEBUGLINKSTATE.fields_by_name['pin'].message_type = _PINMATRIXACK
 _TXREQUEST.fields_by_name['request_type'].enum_type = _REQUESTTYPE
 _TXOUTPUT.fields_by_name['script_type'].enum_type = _SCRIPTTYPE
 DESCRIPTOR.message_types_by_name['Initialize'] = _INITIALIZE
@@ -1228,12 +1032,9 @@ DESCRIPTOR.message_types_by_name['UUID'] = _UUID
 DESCRIPTOR.message_types_by_name['ButtonRequest'] = _BUTTONREQUEST
 DESCRIPTOR.message_types_by_name['ButtonAck'] = _BUTTONACK
 DESCRIPTOR.message_types_by_name['ButtonCancel'] = _BUTTONCANCEL
-DESCRIPTOR.message_types_by_name['OtpRequest'] = _OTPREQUEST
-DESCRIPTOR.message_types_by_name['OtpAck'] = _OTPACK
-DESCRIPTOR.message_types_by_name['OtpCancel'] = _OTPCANCEL
-DESCRIPTOR.message_types_by_name['PinRequest'] = _PINREQUEST
-DESCRIPTOR.message_types_by_name['PinAck'] = _PINACK
-DESCRIPTOR.message_types_by_name['PinCancel'] = _PINCANCEL
+DESCRIPTOR.message_types_by_name['PinMatrixRequest'] = _PINMATRIXREQUEST
+DESCRIPTOR.message_types_by_name['PinMatrixAck'] = _PINMATRIXACK
+DESCRIPTOR.message_types_by_name['PinMatrixCancel'] = _PINMATRIXCANCEL
 DESCRIPTOR.message_types_by_name['GetEntropy'] = _GETENTROPY
 DESCRIPTOR.message_types_by_name['Entropy'] = _ENTROPY
 DESCRIPTOR.message_types_by_name['SetMaxFeeKb'] = _SETMAXFEEKB
@@ -1332,41 +1133,23 @@ class ButtonCancel(message.Message):
   
   # @@protoc_insertion_point(class_scope:ButtonCancel)
 
-class OtpRequest(message.Message):
+class PinMatrixRequest(message.Message):
   __metaclass__ = reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _OTPREQUEST
+  DESCRIPTOR = _PINMATRIXREQUEST
   
-  # @@protoc_insertion_point(class_scope:OtpRequest)
+  # @@protoc_insertion_point(class_scope:PinMatrixRequest)
 
-class OtpAck(message.Message):
+class PinMatrixAck(message.Message):
   __metaclass__ = reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _OTPACK
+  DESCRIPTOR = _PINMATRIXACK
   
-  # @@protoc_insertion_point(class_scope:OtpAck)
+  # @@protoc_insertion_point(class_scope:PinMatrixAck)
 
-class OtpCancel(message.Message):
+class PinMatrixCancel(message.Message):
   __metaclass__ = reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _OTPCANCEL
+  DESCRIPTOR = _PINMATRIXCANCEL
   
-  # @@protoc_insertion_point(class_scope:OtpCancel)
-
-class PinRequest(message.Message):
-  __metaclass__ = reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _PINREQUEST
-  
-  # @@protoc_insertion_point(class_scope:PinRequest)
-
-class PinAck(message.Message):
-  __metaclass__ = reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _PINACK
-  
-  # @@protoc_insertion_point(class_scope:PinAck)
-
-class PinCancel(message.Message):
-  __metaclass__ = reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _PINCANCEL
-  
-  # @@protoc_insertion_point(class_scope:PinCancel)
+  # @@protoc_insertion_point(class_scope:PinMatrixCancel)
 
 class GetEntropy(message.Message):
   __metaclass__ = reflection.GeneratedProtocolMessageType
