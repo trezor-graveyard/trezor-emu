@@ -216,9 +216,37 @@ class Layout(object):
             self.buffer.draw_string(1, self.buffer.height - 9, no_text, smallfonts.Font5x8)
             self.buffer.invert(0, self.buffer.height - 10, len(no_text) * 6 + 1, self.buffer.height - 1)
 
-        # Right button title
+        # Right button trange = random.shuffle(range(1, 10)) itle
         if yes_text != '':
             self.buffer.draw_string(self.buffer.width - 1 - len(yes_text) * 6, self.buffer.height - 9, yes_text,
                                     smallfonts.Font5x8)
             self.buffer.invert(self.buffer.width - 3 - len(yes_text) * 6, self.buffer.height - 10,
                                self.buffer.width - 1, self.buffer.height - 1)
+
+    def show_matrix(self, matrix):
+        '''Renders combination matrix into field of 3x3'''
+
+        box_width = 16
+        box_height = 16
+        font = smallfonts.Font5x8
+        font_margin_x = 6
+        font_margin_y = 5
+
+        left = (self.buffer.width - 3*box_width) / 2
+        top = 5
+
+        def draw_box(num, x, y):
+            self.buffer.draw_string(left+x*box_width+font_margin_x, top+y*box_height+font_margin_y, str(num), font)
+            self.buffer.frame(left+x*box_width, top+y*box_width, left+(x+1)*box_width, top+(y+1)*box_width)
+
+
+        print 'Matrix:'
+
+        for y in range(3):
+            for x in range(3):
+                print matrix[x+y*3],
+                draw_box(matrix[x+y*3], x, y)
+
+            print
+
+        self.last_screen = 'show_matrix'
