@@ -11,6 +11,7 @@ class PinState(object):
     def __init__(self, layout, wallet):
         self.layout = layout
         self.wallet = wallet
+        self.matrix = None
 
         self.set_main_state()
 
@@ -20,18 +21,37 @@ class PinState(object):
     def is_waiting(self):
         return self.func is not None
 
+    def _generate_matrix(self):
+        # Generate random order of numbers 1-9
+        matrix = range(1, 10)
+        random.shuffle(matrix)
+        return matrix
+
+    def _decode_from_matrix(self, pin_encoded):
+        print "ENCODED", pin_encoded
+        # Receive pin encoded using a matrix
+        # Return original PIN sequence
+        
+        pin = ''.join([ str(self.matrix[int(x) - 1]) for x in pin_encoded ])
+        
+        print "PLAIN", pin
+        return pin    
+        
     def request(self, message, pass_or_check, func, *args):
         self.pass_or_check = pass_or_check
         self.func = func
         self.args = args
-
-        self.layout.show_pin_request()
+        self.matrix = self._generate_matrix()
+        
+        self.layout.show_matrix(self.matrix)
         if message is not None:
-            return proto.PinRequest(message=message)
+            return proto.PinMatrixRequest(message=message)
         else:
-            return proto.PinRequest()
+            return proto.PinMatrixRequest()
 
-    def check(self, pin):
+    def check(self, pin_encoded):
+        pin = self._decode_from_matrix(pin_encoded)
+        
         if self.pass_or_check:
             # Pass PIN to method
             msg = self.func(pin, *self.args)
@@ -53,57 +73,7 @@ class PinState(object):
         self.pass_or_check = False
         self.func = None
         self.args = []
-
-
-class OtpState(object):
-    def __init__(self, layout):
-        self.layout = layout
-
-        self.set_main_state()
-
-    def set_main_state(self):
-        self.cancel()
-
-    def is_waiting(self):
-        return self.otp is not None
-
-    def request(self, message, func, *args):
-        def generate():
-            # Removed l and 0
-            #return ''.join(random.choice('abcdefghijkmnopqrstuvwxyz123456789') for _ in range(4))
-            #return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz0123456789') for _ in range(4))
-            return ''.join(random.choice('0123456789') for _ in range(6))
-
-        self.otp = generate()
-        self.func = func
-        self.args = args
-        if message is not None:
-            m = proto.OtpRequest(message=message)
-        else:
-            m = proto.OtpRequest()
-
-        self.layout.show_otp_request(self.otp)
-        return m
-
-    def check(self, otp):
-        # OTP is displayed with spaces, but they aren't significant
-        otp = otp.replace(' ', '')
-
-        if otp == self.otp:
-            msg = self.func(*self.args)
-            self.cancel()
-            return msg
-        else:
-            time.sleep(3)
-            self.cancel()
-            self.set_main_state()
-            return proto.Failure(code=3, message="Invalid OTP")
-
-    def cancel(self):
-        self.otp = None
-        self.func = None
-        self.args = []
-
+        self.matrix = None
 
 class YesNoState(object):
     def __init__(self, layout):
@@ -174,7 +144,6 @@ class StateMachine(object):
         self.layout = layout
 
         self.yesno = YesNoState(layout)
-        self.otp = OtpState(layout)
         self.pin = PinState(layout, wallet)
         self.signing = machine_signing.SigningStateMachine(layout, wallet)
 
@@ -183,11 +152,6 @@ class StateMachine(object):
     def protect_reset(self, yesno_message, question, yes_text, no_text, otp_message, random):
         # FIXME
 
-        if self.wallet.struct.has_otp:
-            # Require hw buttons and OTP
-            return self.yesno.request(yesno_message, question, yes_text, no_text,
-                                      self.otp.request, *[otp_message, self._reset_wallet] + [random, ])
-
         # If confirmed, call final function directly
         return self.yesno.request(yesno_message, question, yes_text, no_text, self._reset_wallet, *[random, ])
 
@@ -195,16 +159,7 @@ class StateMachine(object):
                      otp_message, pin_message, func, *args):
         # FIXME: Um, maybe it needs some simplification?
 
-        if self.wallet.struct.has_otp:
-            if self.wallet.struct.pin:
-                # Require hw buttons, OTP and PIN
-                return self.yesno.request(yesno_message, question, yes_text, no_text, self.otp.request,
-                                          *[otp_message, self.pin.request, pin_message, False, func] + list(args))
-            else:
-                # Require hw buttons and OTP
-                return self.yesno.request(yesno_message, question, yes_text, no_text, self.otp.request,
-                                          *[otp_message, func] + list(args))
-        elif self.wallet.struct.pin:
+        if self.wallet.struct.pin:            
             # Require hw buttons and PIN
             return self.yesno.request(yesno_message, question, yes_text, no_text, self.pin.request,
                                       *[pin_message, False, func] + list(args))
@@ -229,16 +184,15 @@ class StateMachine(object):
 
     def debug_get_state(self, msg):
         resp = proto.DebugLinkState()
-        if msg.otp and self.otp.is_waiting():
-            resp.otp.otp = self.otp.otp
         if msg.pin and self.pin.is_waiting():
-            resp.pin.pin = self.wallet.struct.pin
+            resp.pin = self.wallet.struct.pin
+        if msg.matrix and self.pin.is_waiting():
+            resp.matrix = ''.join([ str(x) for x in self.pin.matrix ])
         return resp
 
     def set_main_state(self):
         # Switch device to default state
         self.yesno.set_main_state()
-        self.otp.set_main_state()
         self.signing.set_main_state()
         self.pin.set_main_state()
 
@@ -256,13 +210,11 @@ class StateMachine(object):
                  "Please initialize it",
                  "from desktop client."])
 
-    def debug_load_wallet(self, algo, seed_words, otp, pin, spv):
-        self.wallet.load_seed(seed_words)
-        self.wallet.struct.algo = algo
-        self.wallet.struct.has_otp = otp
+    def load_wallet(self, seed, pin):
+        self.wallet.load_seed(seed)
         self.wallet.struct.pin = pin
-        self.wallet.struct.has_spv = spv
         self.wallet.save()
+        self.set_main_state()
         return proto.Success(message='Wallet loaded')
 
     def _reset_wallet(self, random):
@@ -272,8 +224,6 @@ class StateMachine(object):
         return proto.Success()
 
     '''
-        is_otp = self.yesno("Use OTP?")
-        is_spv = self.yesno("Use SPV?")
         is_pin = self.yesno("Use PIN?")
 
         if is_pin:
@@ -308,28 +258,14 @@ class StateMachine(object):
     def _process_message(self, msg):
         if isinstance(msg, proto.Initialize):
             self.set_main_state()
-            m = self.wallet.get_features()
-            m.session_id = msg.session_id
-            return m
-
-        if self.otp.is_waiting():
-            '''OTP response is expected'''
-            if isinstance(msg, proto.OtpAck):
-                return self.otp.check(msg.otp)
-
-            if isinstance(msg, proto.OtpCancel):
-                self.otp.cancel()
-                return proto.Success(message="OTP cancelled")
-
-            self.set_main_state()
-            return proto.Failure(code=2, message='OTP expected')
+            return self.wallet.get_features()
 
         if self.pin.is_waiting():
             '''PIN response is expected'''
-            if isinstance(msg, proto.PinAck):
+            if isinstance(msg, proto.PinMatrixAck):
                 return self.pin.check(msg.pin)
 
-            if isinstance(msg, proto.PinCancel):
+            if isinstance(msg, proto.PinMatrixCancel):
                 self.pin_cancel()
                 return proto.Success(message="PIN request cancelled")
 
@@ -377,8 +313,9 @@ class StateMachine(object):
                                      None, None,
                                      self._set_maxfee_kb, msg.maxfee_kb)
 
-        if isinstance(msg, proto.ResetDevice):
-            return self.protect_reset("Reset device?", '', '{ Cancel', 'Confirm }', None, msg.random)
+        if isinstance(msg, proto.LoadDevice):
+            return self.protect_call(["Load custom seed?"], '', '{ Cancel', 'Confirm }', None, None, self.load_wallet, msg.seed, msg.pin)
+
 
         if isinstance(msg, (proto.SignTx, proto.TxInput, proto.TxOutput)):
             return self.signing.process_message(msg)
@@ -390,9 +327,6 @@ class StateMachine(object):
         if isinstance(msg, proto.DebugLinkGetState):
             # Report device state
             return self.debug_get_state(msg)
-
-        if isinstance(msg, proto.LoadDevice):
-            return self.debug_load_wallet(msg.algo, msg.seed, msg.otp, msg.pin, msg.spv)
 
         if isinstance(msg, proto.DebugLinkStop):
             import sys
