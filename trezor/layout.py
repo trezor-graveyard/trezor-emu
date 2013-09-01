@@ -124,6 +124,7 @@ class Layout(object):
             'Question?', 'Confirm', 'Cancel')
         self.last_screen = 'show_question_dummy'
 
+    '''
     def show_pin_request(self):
         self.show_question(
             ["Please write your",
@@ -131,21 +132,7 @@ class Layout(object):
              "the computer"],
             '', '', '{ Cancel')
         self.last_screen = 'show_pin_request'
-
-    def show_otp_request(self, otp):
-        # Split OTP by three characters.
-        # "012345" will be displayed as "012 345" for easier rewriting
-        otp = [otp[i * 3:i * 3 + 3] for i in range(len(otp) / 3)]
-        otp = ' '.join(otp)
-
-        self.show_question(
-            ["Please rewrite this",
-             "one time password",
-             "to computer:",
-             '',
-             otp.rjust(int(10 + len(otp) / 2), ' ')],
-            '', '', '{ Cancel')
-        self.last_screen = 'show_otp_request'
+    '''
 
     def show_progress(self, current, maximum, clear=False, logo=None):
         if clear:
@@ -239,9 +226,9 @@ class Layout(object):
             self.buffer.draw_string(left+x*box_width+font_margin_x, top+y*box_height+font_margin_y, str(num), font)
             self.buffer.frame(left+x*box_width, top+y*box_width, left+(x+1)*box_width, top+(y+1)*box_width)
 
-
+        self.clear()
         print 'Matrix:'
-
+        
         for y in range(3):
             for x in range(3):
                 print matrix[x+y*3],
