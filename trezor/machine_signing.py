@@ -46,7 +46,6 @@ class SigningStateMachine(object):
         self.output_index = 0  # Index <0, outputs_count) of currently processed output
         self.signing_index = 0  # Index <0, inputs_count) of currently processed signature
         self.signing_input = None  # Cache of currently signing input, for sending back serialized input
-        self.random = ''  # Entropy received from computer
 
         self.input_hash = None  # sha256 object of currently processed input
         self.output_hash = None  # sha256 object of currently processed output
@@ -71,12 +70,8 @@ class SigningStateMachine(object):
         if msg.outputs_count < 1:
             return proto.Failure(message='Transaction must have at least one output')
 
-        if msg.random == '':
-            return proto.Failure(message='No random data received')
-
         self.inputs_count = msg.inputs_count
         self.outputs_count = msg.outputs_count
-        self.random = msg.random
 
         return proto.TxRequest(request_type=proto.TXINPUT,
                                request_index=self.input_index)
