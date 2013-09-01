@@ -2,7 +2,7 @@ import os
 
 import trezor_pb2 as proto
 import wallet_pb2 as proto_wallet
-from algo import AlgoFactory
+from algo_bip32 import AlgoBIP32
 import tools
 import signing
 
@@ -18,7 +18,6 @@ class Wallet(object):
         self.minor_version = 1
 
         self.maxfee_kb = 1000000  # == 0.01 BTC/kB
-        self.algo_available = [proto.ELECTRUM, ]
 
         self._secexp = 0  # Cache of secret exponent in numeric form
 
@@ -33,11 +32,6 @@ class Wallet(object):
         m.vendor = self.vendor
         m.major_version = self.major_version
         m.minor_version = self.minor_version
-        m.has_otp = self.struct.has_otp
-        m.has_spv = self.struct.has_spv is True
-        m.pin = self.struct.pin != ''
-        m.algo = self.struct.algo
-        m.algo_available.extend(self.algo_available)
         m.maxfee_kb = self.maxfee_kb
         return m
 
@@ -47,17 +41,17 @@ class Wallet(object):
             self.struct.ParseFromString(open(self.filename, 'r').read())
         except IOError:
             # Wallet load failed, let's initialize new one
-            self.struct = proto_wallet.Wallet(algo=proto.ELECTRUM, secexp='')
+            self.struct = proto_wallet.Wallet(seed='')
 
         self._deserialize_secexp()
 
     def _deserialize_secexp(self):
         # Deserialize secexp to number format
-        if self.struct.secexp != '':
-            self._secexp = int(self.struct.secexp, 16)
+        if self.struct.seed != '':
+            self._secexp = int(self.struct.seed, 16)
         else:
             self._secexp = 0  # Device not initialized
-
+            
     def get_secexp(self):
         if self._secexp == 0:
             raise NoSeedException("Device not initalized")
@@ -84,16 +78,13 @@ class Wallet(object):
         return uuid
 
     def get_master_public_key(self):
-        af = AlgoFactory(self.struct.algo)
-        master_public_key = af.init_master_public_key(self.get_secexp())
+        master_public_key = AlgoBIP32.init_master_public_key(self.get_secexp())
         return master_public_key
 
     def get_address(self, n):
-        af = AlgoFactory(self.struct.algo)
-        return af.get_new_address(self.get_secexp(), n)
+        return AlgoBIP32.get_new_address(self.get_secexp(), n)
 
     def load_seed(self, seed_words):
-        af = AlgoFactory(self.struct.algo)
         seed = tools.get_seed(seed_words)
 
         print 'seed', seed
@@ -101,7 +92,7 @@ class Wallet(object):
         if seed_words != tools.get_mnemonic(seed):
             raise Exception("Seed words mismatch")
 
-        self.struct.secexp = "%x" % af.get_secexp_from_seed(seed)
+        self.struct.seed = "%x" % AlgoBIP32.get_secexp_from_seed(seed)
         self._deserialize_secexp()
 
     def reset_seed(self, random):
@@ -111,5 +102,4 @@ class Wallet(object):
         return seed_words
 
     def sign_input(self, addr_n, tx_hash):
-        af = AlgoFactory(self.struct.algo)
-        return signing.sign_input(af, self.get_secexp(), addr_n, tx_hash)
+        return signing.sign_input(self.get_secexp(), addr_n, tx_hash)
