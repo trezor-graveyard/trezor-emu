@@ -50,7 +50,10 @@ class PinState(object):
             return proto.PinMatrixRequest()
 
     def check(self, pin_encoded):
-        pin = self._decode_from_matrix(pin_encoded)
+        try:
+            pin = self._decode_from_matrix(pin_encoded)
+        except ValueError:
+            return proto.Failure(code=6, message="Syntax error")
         
         if self.pass_or_check:
             # Pass PIN to method
@@ -184,7 +187,7 @@ class StateMachine(object):
 
     def debug_get_state(self, msg):
         resp = proto.DebugLinkState()
-        if msg.pin and self.pin.is_waiting():
+        if msg.pin:
             resp.pin = self.wallet.struct.pin
         if msg.matrix and self.pin.is_waiting():
             resp.matrix = ''.join([ str(x) for x in self.pin.matrix ])
