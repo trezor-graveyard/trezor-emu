@@ -119,10 +119,6 @@ def main(args):
     # Startup state machine and switch it to default state
     machine = StateMachine(wallet, layout)
 
-    #tx1 = proto.TxOutput(address='1BRMLAB7nryYgFGrG8x9SYaokb8r2ZwAsX', amount=112000000)
-    #tx2 = proto.TxOutput(address='1MarekMKDKRb6PEeHeVuiCGayk9avyBGBB', amount=12340123400)
-    #layout.show_transactions([tx1, tx2 ], False)
-
     display.refresh()
 
     # Main cycle
@@ -152,16 +148,6 @@ def main(args):
                     debug_transport.write(resp)
                     is_active = True
 
-            '''
-            elif isinstance(msg, proto.DebugLinkGetState):
-                # Report device state
-                resp = machine.get_state(msg)
-                print "Sending debuglink", resp.__class__.__name__, resp
-                debug_transport.write(resp)
-            else:
-                raise Exception("Got unexpected object %s" % msg.__class__.__name__)
-            '''
-
         if button is not None:
             print "Button", button
             is_active = True
@@ -170,15 +156,6 @@ def main(args):
             if resp is not None:
                 print "Sending", resp
                 transport.write(resp)
-
-        '''
-        if button == True:
-            layout.show_transactions([tx1, tx2 ], False)
-            layout.show_question_dummy()
-
-        if button == False:
-            layout.show_logo(logo)
-        '''
 
         # Handle main connection
         msg = transport.read()
