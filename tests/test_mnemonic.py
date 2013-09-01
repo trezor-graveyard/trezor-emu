@@ -4,6 +4,7 @@ from trezor import mnemonic
 mnem = 'beyond neighbor scratch swirl embarrass doll cause also stick softly physical nice'.split(' ')
 seed = '13ee91e3c7e49dd620a5dd5a51d9d766'
 
+# This code is obsolete, because we're moving to BIP39
 
 class TestMnemonic(unittest.TestCase):
     def test_decode(self):
