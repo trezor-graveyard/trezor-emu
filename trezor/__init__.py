@@ -54,7 +54,7 @@ def parse_args():
     parser.add_argument('-w', '--wallet', dest='wallet', default='wallet.dat', help='Wallet file')
     parser.add_argument('-s', '--shield', dest='shield', action='store_true',
                         help="Use Raspberry Pi shield with OLED display and hardware buttons.")
-    parser.add_argument('-t', '--transport', dest='transport', default='serial',
+    parser.add_argument('-t', '--transport', dest='transport', default='cp2110',
                         help="Transport used for talking with the main computer")
     parser.add_argument('-p', '--path', dest='path', default='/dev/ttyAMA0',
                         help="Path used by the transport (usually serial port)")
@@ -70,6 +70,12 @@ def parse_args():
 
 
 def get_transport(transport_string, path):
+    if transport_string == 'cp2110':
+        # Transport compatible with CP2110 HID-to-UART chip
+        # (used by Trezor shield)
+        from transport_cp2110 import Cp2110Transport
+        return Cp2110Transport(path)
+
     if transport_string == 'serial':
         from transport_serial import SerialTransport
         return SerialTransport(path)
