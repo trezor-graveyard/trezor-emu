@@ -29,7 +29,7 @@ def main():
     if args.text:
       layout.show_message(args.text.split('|'))
     if args.image:
-      im = [ord(x) ^ 0xFF for x in open(args.image, 'rb').read()[-1024:]]
+      im = [ord(x) ^ 0xFF for x in open(args.image, 'rb').read()[-(DISPLAY_WIDTH * DISPLAY_HEIGHT / 8):]]
       layout.show_logo(im)
 
     display.refresh()
