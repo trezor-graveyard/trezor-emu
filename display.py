@@ -2,7 +2,6 @@
 
 import argparse
 import time
-import Image
 
 from trezor.display_buffer import DisplayBuffer
 from trezor.display import Display
@@ -30,14 +29,8 @@ def main():
     if args.text:
       layout.show_message(args.text.split('|'))
     if args.image:
-      im = Image.open(args.image) # has to be PBM
-      imd = list(im.getdata())
-      img = [0] * (DISPLAY_WIDTH*DISPLAY_HEIGHT/8)
-      for y in range(DISPLAY_HEIGHT):
-        for x in range(DISPLAY_WIDTH):
-          if imd[x + y * DISPLAY_WIDTH] > 127:
-            img[(x / 8) + y * DISPLAY_WIDTH / 8] |= (1 << (7 - x % 8))
-      layout.show_logo(img)
+      im = [ord(x) ^ 0xFF for x in open(args.image, 'rb').read()[-(DISPLAY_WIDTH * DISPLAY_HEIGHT / 8):]]
+      layout.show_logo(im)
 
     display.refresh()
 
