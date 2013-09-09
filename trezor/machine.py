@@ -28,26 +28,19 @@ class PinState(object):
         return matrix
 
     def _decode_from_matrix(self, pin_encoded):
-        print "ENCODED", pin_encoded
         # Receive pin encoded using a matrix
         # Return original PIN sequence
-        
-        pin = ''.join([ str(self.matrix[int(x) - 1]) for x in pin_encoded ])
-        
-        print "PLAIN", pin
+        pin = ''.join([ str(self.matrix[int(x) - 1]) for x in pin_encoded ])        
         return pin    
         
-    def request(self, message, pass_or_check, func, *args):
+    def request(self, pass_or_check, func, *args):
         self.pass_or_check = pass_or_check
         self.func = func
         self.args = args
         self.matrix = self._generate_matrix()
         
         self.layout.show_matrix(self.matrix)
-        if message is not None:
-            return proto.PinMatrixRequest(message=message)
-        else:
-            return proto.PinMatrixRequest()
+        return proto.PinMatrixRequest()
 
     def check(self, pin_encoded):
         try:
@@ -158,14 +151,20 @@ class StateMachine(object):
         # If confirmed, call final function directly
         return self.yesno.request(yesno_message, question, yes_text, no_text, self._reset_wallet, *[random, ])
 
-    def protect_call(self, yesno_message, question, no_text, yes_text,
-                     otp_message, pin_message, func, *args):
-        # FIXME: Um, maybe it needs some simplification?
-
+    def protect_call(self, yesno_message, question, no_text, yes_text, func, *args):
+        '''
+            yesno_message - display text on the main part of the display
+            question - short question in status bar (above buttons)
+            no_text - text of the left button
+            yes_text - text of the right button
+            func - which function to call when user passes the protection
+            *args - arguments for func
+        '''  
+            
         if self.wallet.struct.pin:            
             # Require hw buttons and PIN
             return self.yesno.request(yesno_message, question, yes_text, no_text, self.pin.request,
-                                      *[pin_message, False, func] + list(args))
+                                      *[False, func] + list(args))
 
         # If confirmed, call final function directly
         return self.yesno.request(yesno_message, question, yes_text, no_text, func, *args)
@@ -296,7 +295,7 @@ class StateMachine(object):
 
         if isinstance(msg, proto.GetEntropy):
             return self.protect_call(["Send %d bytes" % msg.size, "of entropy", "to computer?"], '',
-                                     '{ Cancel', 'Confirm }', None, None, self._get_entropy, msg.size)
+                                     '{ Cancel', 'Confirm }', self._get_entropy, msg.size)
 
         if isinstance(msg, proto.GetMasterPublicKey):
             return proto.MasterPublicKey(key=self.wallet.get_master_public_key())
@@ -313,11 +312,10 @@ class StateMachine(object):
                                      "Set transaction fee",
                                      "to %s per kB?" % msg.maxfee_kb],
                                      '', '{ Cancel', 'Confirm }',
-                                     None, None,
                                      self._set_maxfee_kb, msg.maxfee_kb)
 
         if isinstance(msg, proto.LoadDevice):
-            return self.protect_call(["Load custom seed?"], '', '{ Cancel', 'Confirm }', None, None, self.load_wallet, msg.seed, msg.pin)
+            return self.protect_call(["Load custom seed?"], '', '{ Cancel', 'Confirm }', self.load_wallet, msg.seed, msg.pin)
 
 
         if isinstance(msg, (proto.SignTx, proto.TxInput, proto.TxOutput)):
