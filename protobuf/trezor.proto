@@ -1,9 +1,9 @@
 /*
 	This file describes Protocol buffers messages for bitcoin hardware wallet devices.
 	
-	Author: slush <info@bitcoin.cz>
-
-        Version: 0.1
+	Author: Marek "slush" Palatinus <info@bitcoin.cz>
+	
+	Version: 0.1
 */
 
 // Specifies which script will be used for given transaction output. 
