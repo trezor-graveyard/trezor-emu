@@ -30,15 +30,13 @@ def main():
     if args.text:
       layout.show_message(args.text.split('|'))
     if args.image:
-      im = Image.open(args.image) # has to be 1-bit-per-pixel PNG (black-white)
+      im = Image.open(args.image) # has to be PBM
       imd = list(im.getdata())
       img = [0] * (DISPLAY_WIDTH*DISPLAY_HEIGHT/8)
       for y in range(DISPLAY_HEIGHT):
         for x in range(DISPLAY_WIDTH):
-          c = imd[x + y * DISPLAY_WIDTH]
-          if c[0] + c[1] + c[2] > 384:
+          if imd[x + y * DISPLAY_WIDTH] > 127:
             img[(x / 8) + y * DISPLAY_WIDTH / 8] |= (1 << (7 - x % 8))
-
       layout.show_logo(img)
 
     display.refresh()
