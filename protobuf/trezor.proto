@@ -26,10 +26,10 @@ message Initialize {
 
 // Response object for Initialize.
 message Features {
-    optional bytes vendor = 0;	// Name of the manufacturer, e.g. "trezor" 
-    optional uint32 major_version = 1; // Major version of the device, e.g. 1
-    optional uint32 minor_version = 2;  // Minor version of the device, e.g. 0
-    optional uint64 maxfee_kb = 3;	// Maximum accepted fee per kilobyte of signed transaction
+    optional bytes vendor = 1;	// Name of the manufacturer, e.g. "trezor" 
+    optional uint32 major_version = 2; // Major version of the device, e.g. 1
+    optional uint32 minor_version = 3;  // Minor version of the device, e.g. 0
+    optional uint64 maxfee_kb = 4;	// Maximum accepted fee per kilobyte of signed transaction
 }
 
 // Test if device is live, device will send back the message on success
