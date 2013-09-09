@@ -5,6 +5,7 @@ import mapping
 class Transport(object):
     def __init__(self, device, *args, **kwargs):
         self.device = device
+        self.session_depth = 0
         self._open()
 
     def _open(self):
@@ -19,8 +20,25 @@ class Transport(object):
     def _read(self):
         raise NotImplemented
 
+    def _session_begin(self):
+        pass
+    
+    def _session_end(self):
+        pass
+
     def ready_to_read(self):
         raise NotImplemented
+
+    def session_begin(self):
+        if self.session_depth == 0:
+            self._session_begin()
+        self.session_depth += 1
+    
+    def session_end(self):
+        self.session_depth -= 1
+        self.session_depth = max(0, self.session_depth)
+        if self.session_depth == 0:
+            self._session_end()
 
     def close(self):
         self._close()
@@ -62,9 +80,9 @@ class Transport(object):
             # Align cursor to the beginning of the header ("##")
             c = read_f.read(1)
             while c != '#':
-                if c == '':
-                    # timeout
-                    raise Exception("Timed out while waiting for the magic character")
+                #if c == '':
+                #    # timeout
+                #    raise Exception("Timed out while waiting for the magic character")
                 print "Warning: Aligning to magic characters"
                 c = read_f.read(1)
 
