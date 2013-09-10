@@ -1,6 +1,7 @@
 import ecdsa
 import hashlib
-from tools import Hash, SECP256k1, public_key_to_bc_address, generator_secp256k1
+from tools import Hash, public_key_to_bc_address
+from ecdsa.curves import SECP256k1
 
 '''
     This is a mega-hack; implementation of Electrum seed in class 'BIP32'. I just need to test new structure,
@@ -54,6 +55,6 @@ class AlgoBIP32(object):
             raise Exception("n must have exactly two values")
 
         """  Privatekey(type,n) = Master_private_key + H(n|S|type)  """
-        order = generator_secp256k1.order()
+        order = SECP256k1.generator.order()
         secexp2 = (secexp + cls._get_sequence(cls.init_master_public_key(secexp), n)) % order
         return ecdsa.util.number_to_string(secexp2, order)

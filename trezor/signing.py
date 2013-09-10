@@ -1,5 +1,6 @@
 import struct
 import ecdsa
+from ecdsa import curves
 
 from algo_bip32 import AlgoBIP32
 import trezor_pb2 as proto
@@ -86,7 +87,7 @@ def raw_tx(inputs, outputs, for_sig):
 
 def sign_input(secexp, addr_n, tx_hash):
     pk = AlgoBIP32.get_private_key(secexp, addr_n)
-    private_key = ecdsa.SigningKey.from_string(pk, curve=tools.SECP256k1)
+    private_key = ecdsa.SigningKey.from_string(pk, curve=curves.SECP256k1)
     sig = private_key.sign_digest(tx_hash, sigencode=ecdsa.util.sigencode_der)
     public_key = private_key.get_verifying_key()
     pubkey = public_key.to_string()
