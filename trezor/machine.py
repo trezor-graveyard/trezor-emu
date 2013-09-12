@@ -296,9 +296,6 @@ class StateMachine(object):
         if isinstance(msg, proto.Ping):
             return proto.Success(message=msg.message)
 
-        if isinstance(msg, proto.GetUUID):
-            return proto.UUID(UUID=self.storage.get_UUID())
-
         if isinstance(msg, proto.GetEntropy):
             return self.protect_call(["Send %d bytes" % msg.size, "of entropy", "to computer?"], '',
                                      '{ Cancel', 'Confirm }', self._get_entropy, msg.size)

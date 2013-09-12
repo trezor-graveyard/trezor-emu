@@ -18,12 +18,12 @@ class Storage(object):
         self.minor_version = 1
 
         self.default_settings = proto.SettingsType(
-            language='en',
+            language='english',
             coin=coindef.BTC,
         )
 
-        self.UUID_filename = os.path.expanduser('~/.trezor')
-        self._init_UUID()
+        self.serial_number_filename = os.path.expanduser('~/.trezor')
+        self._init_serial_number()
 
         self.filename = filename
         self.load()  # Storage protobuf object
@@ -34,17 +34,18 @@ class Storage(object):
         m.major_version = self.major_version
         m.minor_version = self.minor_version
         m.settings.CopyFrom(self.struct.settings)
+        m.serial_number = self.get_serial_number()
         return m
 
-    def _init_UUID(self):
-        UUID_len = 9
-        if os.path.exists(self.UUID_filename) and \
-           os.path.getsize(self.UUID_filename) == UUID_len:
+    def _init_serial_number(self):
+        serial_number_len = 12
+        if os.path.exists(self.serial_number_filename) and \
+           os.path.getsize(self.serial_number_filename) == serial_number_len:
             return
 
-        print "Generating new device UUID..."
-        f = open(self.UUID_filename, 'w')
-        f.write(os.urandom(UUID_len))
+        print "Generating new device serial number..."
+        f = open(self.serial_number_filename, 'w')
+        f.write(os.urandom(serial_number_len))
         f.close()
 
     def load(self):
@@ -56,11 +57,11 @@ class Storage(object):
             self.struct = proto_storage.Storage()
             self.struct.settings.CopyFrom(self.default_settings)
 
-    def get_UUID(self):
-        f = open(self.UUID_filename, 'r')
-        uuid = f.read()
+    def get_serial_number(self):
+        f = open(self.serial_number_filename, 'r')
+        sernum = f.read()
         f.close()
-        return uuid
+        return sernum
 
     def get_pin(self):
         return self.struct.pin
@@ -80,7 +81,6 @@ class Storage(object):
         open(self.filename, 'w').write(self.struct.SerializeToString())
 
     def load_from_mnemonic(self, words):
-        print "WORDS", words
         seed = mnemonic.Mnemonic('english').decode(words)
 
         print 'seed', seed
