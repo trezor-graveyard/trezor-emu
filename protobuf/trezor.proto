@@ -3,7 +3,7 @@
 	
 	Author: Marek "slush" Palatinus <info@bitcoin.cz>
 	
-	Version: 0.3
+	Version: 0.4
 */
 
 // Specifies which script will be used for given transaction output. 
@@ -37,11 +37,12 @@ message CoinType {
 }
 
 message SettingsType {
-	optional bytes language = 1;
+	optional bytes language = 1;	// Trezor uses 'english' as default
 	optional CoinType coin = 2;
+	optional bytes label = 3;		// Human readable wallet name
 }
 
-// Ask for device details
+// Reset device to default state and ask for device details
 //
 // Response: Features
 message Initialize {
@@ -53,6 +54,11 @@ message Features {
     optional uint32 major_version = 2; // Major version of the device, e.g. 1
     optional uint32 minor_version = 3;  // Minor version of the device, e.g. 0
     optional SettingsType settings = 4;	// User-level settings of the device
+    optional bytes serial_number = 5;	// Device's unique identifier
+}
+
+message ApplySettings {
+	optional SettingsType settings = 1;	// Overwrites only filled fields of the structure
 }
 
 // Test if device is live, device will send back the message on success
@@ -103,18 +109,6 @@ message Success {
 message Failure {
     optional int32 code = 1;		// May contain computer-readable definition of the error state
     optional bytes message = 2;		// May contain human-readable message of the error state
-}
-
-// Ask device for unique identifier.
-//
-// Response: UUID 
-message GetUUID {
-}
-
-// Identifier of the device. This identifier must be composed from CPU serial number
-// or other persistent source and must be the same for consecutive requests.
-message UUID {
-    required bytes UUID = 1;
 }
 
 // Message can be sent by the *device* as a resopnse to any request.
@@ -188,8 +182,9 @@ message Address {
 //
 // Response: Success, PinMatrixRequest, Failure
 message LoadDevice {
-    required bytes seed = 1;	// Seed encoded as a mnemonic (12 english words)
-    optional bytes pin = 2;				// Set PIN protection for important actions
+    optional bytes seed = 1;	// Seed encoded as a mnemonic (12 english words)
+    optional XprvType xprv = 2;
+    optional bytes pin = 3;				// Set PIN protection for important actions
 }
 
 // Request device to do full-reset, to generate new seed
