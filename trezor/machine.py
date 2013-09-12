@@ -189,7 +189,7 @@ class StateMachine(object):
     def debug_get_state(self, msg):
         resp = proto.DebugLinkState()
         if msg.pin:
-            resp.pin = self.wallet.struct.pin
+            resp.pin = self.storage.get_pin()
         if msg.matrix and self.pin.is_waiting():
             resp.matrix = ''.join([ str(x) for x in self.pin.matrix ])
         return resp
@@ -214,8 +214,8 @@ class StateMachine(object):
                  "Please initialize it",
                  "from desktop client."])
 
-    def load_wallet(self, seed, pin):
-        self.storage.load_from_seed(seed)
+    def load_wallet(self, mnemonic, pin):
+        self.storage.load_from_mnemonic(mnemonic)
         self.storage.struct.pin = pin
         self.storage.save()
         self.set_main_state()
@@ -308,7 +308,7 @@ class StateMachine(object):
             return proto.MasterPublicKey(key=key)
 
         if isinstance(msg, proto.GetAddress):
-            address = BIP32(self.storage.get_xprv()).get_address(list(msg.address_n))
+            address = BIP32(self.storage.get_xprv()).get_address(list(msg.address_n), self.storage.get_address_type())
             self.layout.show_receiving_address(address)
             self.custom_message = True  # Yes button will redraw screen
             return proto.Address(address=address)

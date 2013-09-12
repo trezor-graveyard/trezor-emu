@@ -66,12 +66,13 @@ class Storage(object):
         return self.struct.pin
 
     def get_maxfee_kb(self):
-        if self.struct.maxfee_kb is None:
-            return self.default_maxfee_kb
         return self.struct.maxfee_kb
 
+    def get_address_type(self):
+        return self.struct.settings.coin.address_type
+
     def get_xprv(self):
-        if self.struct.xprv is None:
+        if not self.struct.xprv.private_key:
             raise NoXprvException("Device not initalized")
         return self.struct.xprv
 
@@ -79,11 +80,12 @@ class Storage(object):
         open(self.filename, 'w').write(self.struct.SerializeToString())
 
     def load_from_mnemonic(self, words):
-        seed = mnemonic.decode(words)
+        print "WORDS", words
+        seed = mnemonic.Mnemonic('english').decode(words)
 
         print 'seed', seed
-        print 'mnemonic', mnemonic.encode(seed)
-        if words != mnemonic.encode(seed):
+        print 'mnemonic', mnemonic.Mnemonic('english').encode(seed)
+        if words != mnemonic.Mnemonic('english').encode(seed):
             raise Exception("Seed words mismatch")
 
         xprv = BIP32.get_xprv_from_seed(seed)
