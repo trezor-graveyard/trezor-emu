@@ -1,0 +1,13 @@
+/*
+	Structure of wallet file in Trezor emu
+	
+	Author: slush <info@bitcoin.cz>
+*/
+
+import "trezor.proto";
+
+message Storage {
+    optional XprvType xprv = 1;
+    optional bytes pin = 2;
+    optional SettingsType settings = 3;
+}
