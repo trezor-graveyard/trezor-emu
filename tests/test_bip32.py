@@ -37,14 +37,12 @@ class TestBIP32(unittest.TestCase):
 
     def test_vector_bip32(self):
         seed = unhexlify('000102030405060708090a0b0c0d0e0f')
-        xprv = BIP32.get_xprv_from_seed(seed)
-        bip32 = BIP32(xprv)
+        bip32 = BIP32.from_seed(seed)
 
         self.assertEqual(bip32._secexp(), int('e8f32e723decf4051aefac8e2c93c9c5b214313817cdb01a1494b917c8436b35', 16))
 
-        print "test_vector_bip32: TODO"
-        # master_public = bip32.get_master_public_key()
-        # print master_public
+        self.assertEqual(bip32.get_address([], 0), '15mKKb2eos1hWa6tisdPwwDC1a5J1y9nma')
+        self.assertEqual(bip32.get_address([0], 0), '19Q2WoS5hSS6T8GjhK8KZLMgmWaq4neXrh')
 
     def test_vector_pycoin(self):
         wallet = pywallet.Wallet.from_master_secret(unhexlify('000102030405060708090a0b0c0d0e0f'))
@@ -84,10 +82,8 @@ class TestBIP32(unittest.TestCase):
         # ...and compare them
         self.assertEqual(xprv1.wallet_key(as_private=True), xprv2.wallet_key(as_private=True))
 
-    ''
+    '''
     def test_pycoin_2(self):
-        import pycoin.wallet as pywallet
-
         wallet = pywallet.Wallet.from_master_secret(unhexlify('000102030405060708090a0b0c0d0e0f'))
 
         x1 = wallet.subkey_for_path("0/1/1")
@@ -104,6 +100,7 @@ class TestBIP32(unittest.TestCase):
 
         print x1.wif(compressed=False)
         print x2.wif(compressed=False)
+    '''
 
     def test_subkey_simple(self):
         seed = unhexlify('000102030405060708090a0b0c0d0e0f')
@@ -128,6 +125,12 @@ class TestBIP32(unittest.TestCase):
         secexp2 = wallet.subkey_for_path(path_string)
 
         self.assertEqual(secexp1, secexp2.secret_exponent)
+
+    def test_address(self):
+        seed = unhexlify('000102030405060708090a0b0c0d0e0f')
+        bip32 = BIP32.from_seed(seed)
+
+        self.assertEqual(bip32.get_address([0, ], 0), '19Q2WoS5hSS6T8GjhK8KZLMgmWaq4neXrh')
 
 if __name__ == '__main__':
     unittest.main()
