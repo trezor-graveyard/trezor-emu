@@ -22,7 +22,7 @@ from display import Display
 from display_buffer import DisplayBuffer
 #from logo import logo                          # uncomment this line if you uncomment 'layout.show_logo(logo)' on line 180
 
-from wallet import Wallet
+from storage import Storage
 from machine import StateMachine
 
 '''
@@ -110,8 +110,8 @@ def main(args):
 
     # Load persisted data. Create new wallet if file doesn't exist
     print "Loading wallet..."
-    wallet = Wallet(args.wallet)
-    print wallet.struct
+    storage = Storage(args.wallet)
+    print storage.struct
 
     # Initialize hardware (screen, buttons)
     but = Buttons(hw=args.shield, stdin=not args.shield, pygame=not args.shield)
@@ -123,7 +123,7 @@ def main(args):
     layout = Layout(buff)
 
     # Startup state machine and switch it to default state
-    machine = StateMachine(wallet, layout)
+    machine = StateMachine(storage, layout)
 
     display.refresh()
 
@@ -185,7 +185,7 @@ def main(args):
             time.sleep(0.1)
 
     # Save wallet file
-    wallet.save()
+    storage.save()
 
     # Close transports
     transport.close()

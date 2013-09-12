@@ -2,15 +2,17 @@ import time
 import random
 import traceback
 
+import tools
 import trezor_pb2 as proto
 import machine_signing
-from wallet import NoSeedException
+from storage import NoXprvException
+from bip32 import BIP32
 
 
 class PinState(object):
-    def __init__(self, layout, wallet):
+    def __init__(self, layout, storage):
         self.layout = layout
-        self.wallet = wallet
+        self.storage = storage
         self.matrix = None
 
         self.set_main_state()
@@ -55,7 +57,7 @@ class PinState(object):
             return msg
         else:
             # Check PIN against device's internal PIN
-            if pin == self.wallet.struct.pin:
+            if pin == self.storage.get_pin():
                 msg = self.func(*self.args)
                 self.cancel()
                 return msg
@@ -135,13 +137,13 @@ class YesNoState(object):
 
 
 class StateMachine(object):
-    def __init__(self, wallet, layout):
-        self.wallet = wallet
+    def __init__(self, storage, layout):
+        self.storage = storage
         self.layout = layout
 
         self.yesno = YesNoState(layout)
-        self.pin = PinState(layout, wallet)
-        self.signing = machine_signing.SigningStateMachine(layout, wallet)
+        self.pin = PinState(layout, storage)
+        self.signing = machine_signing.SigningStateMachine(layout, storage)
 
         self.set_main_state()
 
@@ -161,7 +163,7 @@ class StateMachine(object):
             *args - arguments for func
         '''  
             
-        if self.wallet.struct.pin:            
+        if self.storage.get_pin():
             # Require hw buttons and PIN
             return self.yesno.request(yesno_message, question, yes_text, no_text, self.pin.request,
                                       *[False, func] + list(args))
@@ -203,9 +205,9 @@ class StateMachine(object):
         self.custom_message = False
 
         try:
-            #self.wallet.get_secexp()
+            self.storage.get_xprv()
             self.layout.show_logo()
-        except NoSeedException:
+        except NoXprvException:
             self.layout.show_message(
                 ["Device hasn't been",
                  "initialized yet.",
@@ -213,9 +215,9 @@ class StateMachine(object):
                  "from desktop client."])
 
     def load_wallet(self, seed, pin):
-        self.wallet.load_seed(seed)
-        self.wallet.struct.pin = pin
-        self.wallet.save()
+        self.storage.load_from_seed(seed)
+        self.storage.struct.pin = pin
+        self.storage.save()
         self.set_main_state()
         return proto.Success(message='Wallet loaded')
 
@@ -253,14 +255,18 @@ class StateMachine(object):
     def _get_entropy(self, size):
         random.seed()
         m = proto.Entropy()
-        m.entropy = ''.join([chr(random.randrange(0, 255, 1)) for _ in xrange(0, size)])
+        d = ''
+        while len(d) < size:
+            d += tools.generate_seed(tools.STRENGTH_HIGH, '')
+
+        m.entropy = d[:size]
         self.set_main_state()
         return m
 
     def _process_message(self, msg):
         if isinstance(msg, proto.Initialize):
             self.set_main_state()
-            return self.wallet.get_features()
+            return self.storage.get_features()
 
         if self.pin.is_waiting():
             '''PIN response is expected'''
@@ -291,28 +297,21 @@ class StateMachine(object):
             return proto.Success(message=msg.message)
 
         if isinstance(msg, proto.GetUUID):
-            return proto.UUID(UUID=self.wallet.get_UUID())
+            return proto.UUID(UUID=self.storage.get_UUID())
 
         if isinstance(msg, proto.GetEntropy):
             return self.protect_call(["Send %d bytes" % msg.size, "of entropy", "to computer?"], '',
                                      '{ Cancel', 'Confirm }', self._get_entropy, msg.size)
 
         if isinstance(msg, proto.GetMasterPublicKey):
-            return proto.MasterPublicKey(key=self.wallet.get_master_public_key())
+            key = BIP32(self.storage.get_xprv()).get_master_public_key()
+            return proto.MasterPublicKey(key=key)
 
         if isinstance(msg, proto.GetAddress):
-            address = self.wallet.get_address(list(msg.address_n))
+            address = BIP32(self.storage.get_xprv()).get_address(list(msg.address_n))
             self.layout.show_receiving_address(address)
             self.custom_message = True  # Yes button will redraw screen
             return proto.Address(address=address)
-
-        if isinstance(msg, proto.SetMaxFeeKb):
-            return self.protect_call(["Current maximal fee",
-                                     "is %s per kB." % self.wallet.maxfee_kb,
-                                     "Set transaction fee",
-                                     "to %s per kB?" % msg.maxfee_kb],
-                                     '', '{ Cancel', 'Confirm }',
-                                     self._set_maxfee_kb, msg.maxfee_kb)
 
         if isinstance(msg, proto.LoadDevice):
             return self.protect_call(["Load custom seed?"], '', '{ Cancel', 'Confirm }', self.load_wallet, msg.seed, msg.pin)

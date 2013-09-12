@@ -1,24 +1,10 @@
 import ecdsa
 import struct
 import hashlib
-import mnemonic
+import binascii
 
 Hash = lambda x: hashlib.sha256(hashlib.sha256(x).digest()).digest()
 #Hash_obj = lambda x: hashlib.sha256(x.digest()).digest()
-
-addrtype = 0
-
-# secp256k1, http://www.oid-info.com/get/1.3.132.0.10
-#_p = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2FL
-#_r = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141L
-#_b = 0x0000000000000000000000000000000000000000000000000000000000000007L
-#_a = 0x0000000000000000000000000000000000000000000000000000000000000000L
-#_Gx = 0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798L
-#_Gy = 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8L
-#curve_secp256k1 = ecdsa.ellipticcurve.CurveFp(_p, _a, _b)
-#generator_secp256k1 = ecdsa.ellipticcurve.Point(curve_secp256k1, _Gx, _Gy, _r)
-#oid_secp256k1 = (1, 3, 132, 0, 10)
-#SECP256k1 = ecdsa.curves.Curve("SECP256k1", curve_secp256k1, generator_secp256k1, oid_secp256k1)
 
 __b58chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 __b58base = len(__b58chars)
@@ -82,11 +68,12 @@ def EncodeBase58Check(vchIn):
     return b58encode(vchIn + Hash(vchIn)[0:4])
 
 
+'''
 def SecretToASecret(secret):
     # Used only for debug prints of private keys
     vchIn = chr(addrtype + 128) + secret
     return EncodeBase58Check(vchIn)
-
+'''
 
 def hash_160(public_key):
     md = hashlib.new('ripemd160')
@@ -94,8 +81,8 @@ def hash_160(public_key):
     return md.digest()
 
 
-def hash_160_to_bc_address(h160):
-    vh160 = chr(addrtype) + h160
+def hash_160_to_bc_address(h160, address_type):
+    vh160 = chr(address_type) + h160
     h = Hash(vh160)
     addr = vh160 + h[0:4]
     return b58encode(addr)
@@ -105,23 +92,31 @@ def bc_address_to_hash_160(addr):
     return b58decode(addr, 25)[1:21]
 
 
-def public_key_to_bc_address(public_key):
+def public_key_to_bc_address(public_key, address_type):
     h160 = hash_160(public_key)
-    return hash_160_to_bc_address(h160)
+    return hash_160_to_bc_address(h160, address_type)
 
+STRENGTH_LOW = 0
+STRENGTH_NORMAL = 1
+STRENGTH_HIGH = 2
 
-def get_mnemonic(seed):
-    return ' '.join(mnemonic.encode(seed))
+def generate_seed(strength, random):
+    '''
+    strength - length of produced seed. One of STRENGTH_LOW, STRENGTH_NORMAL, STRENGTH_HIGH
+    random - binary stream of random data from external HRNG
+    '''
 
+    strength = int(strength)
+    if strength < STRENGTH_LOW or strength > STRENGTH_HIGH:
+        raise Exception("Invalid seed strength")
 
-def get_seed(seed_words):
-    return mnemonic.decode(seed_words.split(' '))
+    # Generate random stream using internal HRNG
+    seed = binascii.unhexlify("%064x" % ecdsa.util.randrange(pow(2, 256)))
 
+    # Apply hash function on top of concatenated entropy
+    seed = hashlib.sha256(seed + random).digest()
 
-def generate_seed(random):
-    print "TODO: generate_seed: mix random and randrange together"
-    return "%032x" % ecdsa.util.randrange(pow(2, 128))
-
+    return seed[:(128 + 64 * strength) / 8]
 
 def var_int(i):
     if i < 0xfd:
