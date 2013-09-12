@@ -8,6 +8,11 @@ class DisplayBuffer(object):
         if x1 is None:
             self.data = [0] * (self.width * self.height / 8)
         else:
+            x1 = max(0, x1)
+            x2 = min(self.width - 1, x2)
+            y1 = max(1, y1)
+            y2 = min(self.height - 1, y2)
+
             for x in range(x1, x2 + 1):
                 for y in range(y1, y2 + 1):
                     #self.clear_pixel(x, y)
