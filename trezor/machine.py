@@ -7,6 +7,7 @@ import trezor_pb2 as proto
 import machine_signing
 from storage import NoXprvException
 from bip32 import BIP32
+import coindef
 
 
 class PinState(object):
@@ -174,7 +175,7 @@ class StateMachine(object):
     def clear_custom_message(self):
         if self.custom_message:
             self.custom_message = False
-            self.layout.show_logo()
+            self.layout.show_logo(None, self.storage.get_label())
 
     def press_button(self, button):
         if button and self.custom_message:
@@ -206,13 +207,51 @@ class StateMachine(object):
 
         try:
             self.storage.get_xprv()
-            self.layout.show_logo()
+            self.layout.show_logo(None, self.storage.get_label())
         except NoXprvException:
             self.layout.show_message(
                 ["Device hasn't been",
                  "initialized yet.",
                  "Please initialize it",
                  "from desktop client."])
+
+    def apply_settings(self, settings):
+        message = []
+        
+        if settings.language and settings.language in self.storage.get_languages():
+            message.append('Language: %s' % settings.language)
+        else:
+            settings.language = ''
+
+        if settings.coin_shortcut and settings.coin_shortcut in coindef.types.keys():
+            message.append('Coin: %s' % coindef.types[settings.coin_shortcut].coin_name)
+        else:
+            settings.coin_shortcut = ''
+
+        if settings.label:
+            message.append('Label: %s' % settings.label)
+        else:
+            settings.label = ''
+            
+        question = 'Apply these settings?'
+        func = self._apply_settings
+        args = (settings,)
+
+        return self.protect_call(message, question, '{ Cancel', 'Confirm }', func, *args)
+
+    def _apply_settings(self, settings):
+        if settings.language:
+            self.storage.struct.settings.language = settings.language
+            
+        if settings.coin_shortcut:
+            self.storage.struct.settings.coin.CopyFrom(coindef.types[settings.coin_shortcut])
+
+        if settings.label:
+            self.storage.struct.settings.label = settings.label
+
+        self.storage.save()
+        self.set_main_state()
+        return proto.Success(message='Settings updated')
 
     def load_wallet(self, mnemonic, pin):
         self.storage.load_from_mnemonic(mnemonic)
@@ -309,6 +348,9 @@ class StateMachine(object):
             self.layout.show_receiving_address(address)
             self.custom_message = True  # Yes button will redraw screen
             return proto.Address(address=address)
+
+        if isinstance(msg, proto.ApplySettings):
+            return self.apply_settings(msg)
 
         if isinstance(msg, proto.LoadDevice):
             return self.protect_call(["Load custom seed?"], '', '{ Cancel', 'Confirm }', self.load_wallet, msg.seed, msg.pin)

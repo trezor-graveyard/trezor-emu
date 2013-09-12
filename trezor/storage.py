@@ -57,6 +57,14 @@ class Storage(object):
             self.struct = proto_storage.Storage()
             self.struct.settings.CopyFrom(self.default_settings)
 
+        # Coindef structure is read-only for the app, so rewriting should
+        # not affect anything. Its just workaround for changed coin definition in coindef file
+        if self.struct.settings.coin.coin_shortcut in coindef.types.keys():
+            self.struct.settings.coin.CopyFrom(coindef.types[self.struct.settings.coin.coin_shortcut])
+        else:
+            # When coin is no longer supported...
+            self.struct.settings.coin.CopyFrom(self.default_settings.coin)
+
     def get_serial_number(self):
         f = open(self.serial_number_filename, 'r')
         sernum = f.read()
@@ -71,6 +79,12 @@ class Storage(object):
 
     def get_address_type(self):
         return self.struct.settings.coin.address_type
+
+    def get_label(self):
+        return self.struct.settings.label
+
+    def get_languages(self):
+        return ['english']
 
     def get_xprv(self):
         if not self.struct.xprv.private_key:

@@ -57,8 +57,11 @@ message Features {
     optional bytes serial_number = 5;	// Device's unique identifier
 }
 
+// Overwrites only filled fields of the structure
 message ApplySettings {
-	optional SettingsType settings = 1;	// Overwrites only filled fields of the structure
+	optional bytes language = 1;
+	optional bytes coin_shortcut = 2;
+	optional bytes label = 3;
 }
 
 // Test if device is live, device will send back the message on success

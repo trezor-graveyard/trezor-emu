@@ -8,7 +8,7 @@ class VirtualDisplay(object):
         self.buffer = buffer
         self.black = pygame.Color(0, 0, 0)
         self.white = pygame.Color(255, 255, 255)
-        self.scale = 2
+        self.scale = 1
 
         self.drivers = ['x11', 'dga', 'directfb', 'fbcon', 'ggi', 'vgl', 'svgalib', 'aalib']
         self.screen = None

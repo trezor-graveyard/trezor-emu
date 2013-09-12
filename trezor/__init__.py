@@ -111,6 +111,7 @@ def main(args):
     # Load persisted data. Create new wallet if file doesn't exist
     print "Loading wallet..."
     storage = Storage(args.wallet)
+    # storage.struct.settings.label = 'Slushova penezenka'
     print storage.struct
 
     # Initialize hardware (screen, buttons)
