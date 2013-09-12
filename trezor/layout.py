@@ -72,12 +72,16 @@ class Layout(object):
         self._draw_scroll_text(0, y, text, font)
         self.scrolls.append(details)
 
-    def show_logo(self, logo=None):
+    def show_logo(self, logo=None, label=None):
         self.clear()
         if logo:
             self.buffer.draw_bitmap(logo)
         else:
             self.buffer.draw_bitmap(default_logo)
+
+        if label:
+            self._show_status(label, '', '')
+
         self.need_refresh = True
         self.last_screen = 'show_logo'
 
@@ -187,15 +191,22 @@ class Layout(object):
 
         return s.rjust(self.line_len_bold, ' ')
 
-    def _show_status(self, status, yes_text, no_text):
+    def _show_status(self, status, yes_text, no_text, invert=False):
         # Status line
+        if yes_text or no_text:
+            delta = 0
+        else:
+            delta = -10
+
+        self.buffer.clear(0, self.buffer.height - delta - 20, self.buffer.width - 1, self.buffer.height - 1)
+
         if status != '':
             pos = self.buffer.width / 2 - len(status) * (smallfonts.Font5x8.width + 1) / 2
-            self.buffer.clear(0, self.buffer.height - 20, self.buffer.width - 1, self.buffer.height - 1)
-            self.buffer.frame(0, self.buffer.height - 20, self.buffer.width - 1, self.buffer.height - 20)
-            self.buffer.draw_string(pos, self.buffer.height - 18, status, smallfonts.Font5x8)
+
+            self.buffer.frame(0, self.buffer.height - delta - 20, self.buffer.width - 1, self.buffer.height - delta - 20)
+            self.buffer.draw_string(pos, self.buffer.height - delta - 18, status, smallfonts.Font5x8)
         else:
-            self.buffer.clear(0, self.buffer.height - 11, self.buffer.width - 1, self.buffer.height - 1)
+
             self.buffer.frame(0, self.buffer.height - 12, self.buffer.width - 1, self.buffer.height - 12)
 
         # Left button title
@@ -209,6 +220,9 @@ class Layout(object):
                                     smallfonts.Font5x8)
             self.buffer.invert(self.buffer.width - 3 - len(yes_text) * 6, self.buffer.height - 10,
                                self.buffer.width - 1, self.buffer.height - 1)
+
+        if invert:
+            self.buffer.invert(0, self.buffer.height - delta - 20, self.buffer.width - 1, self.buffer.height - 1)
 
     def show_matrix(self, matrix):
         '''Renders combination matrix into field of 3x3'''
