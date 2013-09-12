@@ -43,19 +43,11 @@ class BIP32(object):
     def get_master_public_key(self):
         return hexlify(self._get_master_public_key().to_string())
 
-    def get_address(self, n):
-        private_key = self.get_private_key(n)
-
-        '''
-        master_public_key = cls.init_master_public_key(secexp)
-
-        z = cls._get_sequence(master_public_key, n)
-        master_public_key = ecdsa.VerifyingKey.from_string(master_public_key, curve=SECP256k1)
-        pubkey_point = master_public_key.pubkey.point + z * SECP256k1.generator
-        public_key2 = ecdsa.VerifyingKey.from_public_point(pubkey_point, curve=SECP256k1)
-        address = public_key_to_bc_address('04'.decode('hex') + public_key2.to_string())
+    def get_address(self, n, address_type):
+        secexp = string_to_number(self.get_private_key(n))
+        pubkey = SigningKey.from_secret_exponent(secexp, SECP256k1).get_verifying_key()
+        address = public_key_to_bc_address('\x04' + pubkey.to_string(), address_type)
         return address
-        '''
         
     def get_private_key(self, n):
         if not isinstance(n, list):
