@@ -18,13 +18,13 @@ NMC = proto.CoinType(
     maxfee_kb=10000000,  # == 0.1 NMC/kB
     coin_name='Namecoin',
     coin_shortcut='NMC',
-    address_type=180,
+    address_type=52,
 )
 
 LTC = proto.CoinType(
     maxfee_kb=10000000,  # == 0.1 LTC/kB
     coin_name='Litecoin',
-    coin_shortcut='NMC',
+    coin_shortcut='LTC',
     address_type=48,
 )
 
