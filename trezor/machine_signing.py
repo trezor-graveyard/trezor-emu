@@ -2,6 +2,7 @@ import hashlib
 import time
 
 import signing
+from bip32 import BIP32
 import trezor_pb2 as proto
 
 '''
@@ -33,9 +34,9 @@ S TxRequest(type=output, index=-1, serialized_tx=<str>)
 
 
 class SigningStateMachine(object):
-    def __init__(self, layout, wallet):
+    def __init__(self, layout, storage):
         self.layout = layout
-        self.wallet = wallet
+        self.storage = storage
 
         self.set_main_state()
 
@@ -56,6 +57,8 @@ class SigningStateMachine(object):
         # of transaction template, from last signature to the end
         self.ser_output = False
 
+        self.bip32 = None  # Reference to fresh BIP32 instance
+
     def sign_tx(self, msg):
         '''
         This function starts workflow of signing Bitcoin transaction.
@@ -72,6 +75,8 @@ class SigningStateMachine(object):
 
         self.inputs_count = msg.inputs_count
         self.outputs_count = msg.outputs_count
+
+        self.bip32 = BIP32(self.storage.get_xprv())
 
         return proto.TxRequest(request_type=proto.TXINPUT,
                                request_index=self.input_index)
@@ -136,7 +141,7 @@ class SigningStateMachine(object):
     def _check_address_n(self, msg):
         if len(msg.address_n):
             # Recalculate output address and compare with msg.address
-            if msg.address != self.wallet.get_address(msg.address_n):
+            if msg.address != self.bip32.get_address(list(msg.address_n), self.storage.get_address_type()):
                 self.set_main_state()
                 return proto.Failure(message="address_n doesn't belong to given bitcoin address")
 
@@ -210,8 +215,12 @@ class SigningStateMachine(object):
 
         # FIXME, TODO, CHECK
         start = time.time()
-        (_, signature) = self.wallet.sign_input(self.signing_input.address_n,
-                                                hashlib.sha256(self.tx_hash.digest()).digest())
+        # privkey = self.bip32.get_private_key(self.signing_input.address_n)
+        (_, signature) = signing.sign_input(self.bip32,
+                                    list(self.signing_input.address_n),
+                                    hashlib.sha256(self.tx_hash.digest()).digest())
+        # (_, signature) = self.bip32.sign_input(self.signing_input.address_n,
+        #                                        hashlib.sha256(self.tx_hash.digest()).digest())
         print 'xxxx', time.time() - start
 
         serialized_tx += 'aaaa' + signing.raw_tx_input(self.signing_input, signature) + 'aaaa'  # FIXME, TODO, CHECK
