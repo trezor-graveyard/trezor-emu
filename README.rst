@@ -8,6 +8,11 @@ See http://bitcointrezor.com/ for more information.
 How to install
 --------------
 
+Note: Current 'master' depends on forks of python-ecdsa and python-mnemonic,
+which aren't packaged yet. Please install https://github.com/trezor/python-ecdsa
+and https://github.com/trezor/python-mnemonic manually before the installation process
+described below.
+
 * git clone https://github.com/trezor/trezor-emu.git
 * sudo apt-get install python-dev python-setuptools
 * cd trezor-emu
