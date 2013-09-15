@@ -23,15 +23,15 @@ described below.
 TODO
 --------
 
-x Implement deterministic keys / BIP32
-x Implement deterministic ECDSA / RFC 6979
+* x Implement deterministic keys / BIP32
+* x Implement deterministic ECDSA / RFC 6979
 * Implement SimpleSignTx
 * Fix SignTx
 * Safe recovery of the seed
-* Alphanumeric PIN / paging of PinMatrix?
+* - Alphanumeric PIN / paging of PinMatrix?
 * Finalize workflow for ResetDevice
 * Finalize LoadDevice
-x Implement new mnemonic / BIP39
-x SetMaxFeeKb -> Settings
-* Allow to modify maxfeekb, coin type, ...
+* x Implement new mnemonic / BIP39
+* x SetMaxFeeKb -> Settings
+* x Allow to modify maxfeekb, coin type, ...
 * Allow importing xprv structure
