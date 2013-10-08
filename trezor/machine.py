@@ -340,8 +340,8 @@ class StateMachine(object):
                                      '{ Cancel', 'Confirm }', self._get_entropy, msg.size)
 
         if isinstance(msg, proto.GetMasterPublicKey):
-            key = BIP32(self.storage.get_xprv()).get_master_public_key()
-            return proto.MasterPublicKey(key=key)
+            mpk = BIP32(self.storage.get_xprv()).get_master_public_key()
+            return proto.MasterPublicKey(mpk=mpk)
 
         if isinstance(msg, proto.GetAddress):
             address = BIP32(self.storage.get_xprv()).get_address(list(msg.address_n), self.storage.get_address_type())
