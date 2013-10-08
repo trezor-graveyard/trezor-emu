@@ -22,8 +22,8 @@ class Storage(object):
             coin=coindef.BTC,
         )
 
-        self.serial_number_filename = os.path.expanduser('~/.trezor')
-        self._init_serial_number()
+        self.device_id_filename = os.path.expanduser('~/.trezor')
+        self._init_device_id()
 
         self.filename = filename
         self.load()  # Storage protobuf object
@@ -34,18 +34,18 @@ class Storage(object):
         m.major_version = self.major_version
         m.minor_version = self.minor_version
         m.settings.CopyFrom(self.struct.settings)
-        m.serial_number = self.get_serial_number()
+        m.device_id = self.get_device_id()
         return m
 
-    def _init_serial_number(self):
-        serial_number_len = 12
-        if os.path.exists(self.serial_number_filename) and \
-           os.path.getsize(self.serial_number_filename) == serial_number_len:
+    def _init_device_id(self):
+        device_id_len = 12
+        if os.path.exists(self.device_id_filename) and \
+           os.path.getsize(self.device_id_filename) == device_id_len:
             return
 
         print "Generating new device serial number..."
-        f = open(self.serial_number_filename, 'w')
-        f.write(os.urandom(serial_number_len))
+        f = open(self.device_id_filename, 'w')
+        f.write(os.urandom(device_id_len))
         f.close()
 
     def load(self):
@@ -65,8 +65,8 @@ class Storage(object):
             # When coin is no longer supported...
             self.struct.settings.coin.CopyFrom(self.default_settings.coin)
 
-    def get_serial_number(self):
-        f = open(self.serial_number_filename, 'r')
+    def get_device_id(self):
+        f = open(self.device_id_filename, 'r')
         sernum = f.read()
         f.close()
         return sernum
