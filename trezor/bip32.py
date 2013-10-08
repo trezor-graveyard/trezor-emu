@@ -22,7 +22,7 @@ class BIP32(object):
         I64 = hmac.HMAC(key=b"Bitcoin seed", msg=seed, digestmod=hashlib.sha512).digest()
 
         xprv = proto.XprvType()
-        xprv.version = unhexlify("0488ADE4")  # Main net
+        xprv.version = 0x0488ADE4  # Main net
         xprv.depth = 0
         xprv.fingerprint = 0x00000000
         xprv.child_num = 0
@@ -41,7 +41,15 @@ class BIP32(object):
         return self._get_master_private_key().get_verifying_key()
 
     def get_master_public_key(self):
-        return hexlify(self._get_master_public_key().to_string())
+        mpk = proto.XpubType()
+        mpk.version = self.xprv.version
+        mpk.depth = self.xprv.depth
+        mpk.fingerprint = self.xprv.fingerprint
+        mpk.child_num = self.xprv.child_num
+        mpk.chain_code = self.xprv.chain_code
+        mpk.public_key = self._get_master_public_key().to_string()
+        print len(mpk.public_key)
+        return mpk
 
     def get_address(self, n, address_type):
         secexp = string_to_number(self.get_private_key(n))
