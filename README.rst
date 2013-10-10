@@ -20,13 +20,23 @@ TODO
 
 * x Implement deterministic keys / BIP32
 * x Implement deterministic ECDSA / RFC 6979
-* Implement SimpleSignTx
-* Fix SignTx
-* Safe recovery of the seed
-* - Alphanumeric PIN / paging of PinMatrix?
-* Finalize workflow for ResetDevice
-* Finalize LoadDevice
 * x Implement new mnemonic / BIP39
 * x SetMaxFeeKb -> Settings
 * x Allow to modify maxfeekb, coin type, ...
+* - Alphanumeric PIN / paging of PinMatrix?
+* Implement SimpleSignTx
+* Fix SignTx
+* Safe recovery of the seed
+* Finalize workflow for ResetDevice
+* Finalize LoadDevice
 * Allow importing xprv structure
+* Factory reset
+* Wipe device
+* Pin change
+* device_id
+* mpk_hash
+* Exponential pin backoff
+* PassphraseRequest
+* Encrypted seed
+* MPK on storage
+* Plugin - signing script
