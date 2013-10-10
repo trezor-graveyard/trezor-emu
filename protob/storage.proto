@@ -7,7 +7,11 @@
 import "trezor.proto";
 
 message Storage {
-    optional XprvType xprv = 1;
-    optional bytes pin = 2;
-    optional SettingsType settings = 3;
+	required uint32 version = 1;
+	optional XprvType seed = 2;
+    optional XpubType mpk = 3;
+    optional bool seed_encrypted = 4;
+    optional uint32 pin_failed_attempts = 5;
+    optional bytes pin = 6;
+    optional SettingsType settings = 7;    
 }
