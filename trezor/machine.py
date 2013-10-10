@@ -313,8 +313,8 @@ class StateMachine(object):
                 return self.pin.check(msg.pin)
 
             if isinstance(msg, proto.PinMatrixCancel):
-                self.pin_cancel()
-                return proto.Success(message="PIN request cancelled")
+                self.pin.cancel()
+                return proto.Failure(code=6, message="PIN request cancelled")
 
             self.set_main_state()
             return proto.Failure(code=5, message='PIN expected')
