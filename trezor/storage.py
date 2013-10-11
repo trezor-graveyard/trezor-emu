@@ -126,13 +126,11 @@ class Storage(object):
     def save(self):
         open(self.filename, 'w').write(self.struct.SerializeToString())
 
-    def load_from_mnemonic(self, words):
-        seed = mnemonic.Mnemonic('english').decode(words)
+    def load_from_mnemonic(self, mnemonic):
+        seed = mnemonic.Mnemonic('english').decode(mnemonic)
 
         print 'seed', seed
-        print 'mnemonic', mnemonic.Mnemonic('english').encode(seed)
-        if words != mnemonic.Mnemonic('english').encode(seed):
-            raise Exception("Seed words mismatch")
+        print 'mnemonic', mnemonic
 
         xprv = BIP32.get_xprv_from_seed(seed)
         self.struct.seed.CopyFrom(xprv)
