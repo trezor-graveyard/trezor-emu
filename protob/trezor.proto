@@ -18,6 +18,7 @@ enum MessageType {
     MessageType_Failure = 3;
     MessageType_ChangePin = 4;
     MessageType_WipeDevice = 5;
+    MessageType_FirmwareUpdate = 6;
     MessageType_GetEntropy = 9;
     MessageType_Entropy = 10;
     MessageType_GetMasterPublicKey = 11;
@@ -339,7 +340,7 @@ message TxOutput {
 
 message FirmwareUpdate {
 	optional bool force = 1;	// Force update, suppress message about wiping storage area
-	optional bytes payload = 2; [(binary) = true];	// Firmware to flash into device
+	optional bytes payload = 2 [(binary) = true];	// Firmware to flash into device
 }
 
 // ****************************************************************************
