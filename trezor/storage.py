@@ -16,6 +16,9 @@ class Storage(object):
         self.vendor = 'bitcointrezor.com'
         self.major_version = 0
         self.minor_version = 1
+        self.bugfix_version = 0
+
+        self.storage_version = 1  # Version of wallet file
 
         self.default_settings = proto.SettingsType(
             language='english',
@@ -33,6 +36,7 @@ class Storage(object):
         m.vendor = self.vendor
         m.major_version = self.major_version
         m.minor_version = self.minor_version
+        m.bugfix_version = self.bugfix_version
         m.settings.CopyFrom(self.struct.settings)
         m.device_id = self.get_device_id()
         return m
@@ -48,14 +52,29 @@ class Storage(object):
         f.write(os.urandom(device_id_len))
         f.close()
 
+    def check_struct(self, struct):
+        # Check if protobuf struct loaded from local storage
+        # is compatible with current codebase.
+
+        # Stub for wallet format updates
+        if struct.version != 1:
+            raise IOError("Incompatible wallet file, creating new one")
+
     def load(self):
         try:
-            self.struct = proto_storage.Storage()
-            self.struct.ParseFromString(open(self.filename, 'r').read())
+            struct = proto_storage.Storage()
+            struct.ParseFromString(open(self.filename, 'r').read())
+
+            # Update to newer version or raises IOError if not possible
+            self.check_struct(struct)
+            self.struct = struct
+
         except IOError:
-            # Wallet load failed, let's initialize new one
+            print "Wallet load failed, creating new one"
             self.struct = proto_storage.Storage()
+            self.struct.version = self.storage_version
             self.struct.settings.CopyFrom(self.default_settings)
+            self.save()
 
         # Coindef structure is read-only for the app, so rewriting should
         # not affect anything. Its just workaround for changed coin definition in coindef file
@@ -87,9 +106,22 @@ class Storage(object):
         return ['english']
 
     def get_xprv(self):
-        if not self.struct.xprv.private_key:
+        if not self.struct.seed.private_key:
             raise NoXprvException("Device not initalized")
-        return self.struct.xprv
+        return self.struct.seed
+
+    def increase_pin_attempt(self):
+        self.struct.pin_failed_attempts += 1
+        self.save()
+
+    def clear_pin_attempt(self):
+        self.struct.pin_failed_attempts = 0
+        self.save()
+
+    def get_pin_delay(self):
+        if self.struct.pin_failed_attempts:
+            return 1.8 ** self.struct.pin_failed_attempts
+        return 0
 
     def save(self):
         open(self.filename, 'w').write(self.struct.SerializeToString())
@@ -103,7 +135,7 @@ class Storage(object):
             raise Exception("Seed words mismatch")
 
         xprv = BIP32.get_xprv_from_seed(seed)
-        self.struct.xprv.CopyFrom(xprv)
+        self.struct.seed.CopyFrom(xprv)
 
     '''
     def reset_seed(self, random):
