@@ -69,7 +69,7 @@ class Storage(object):
             self.check_struct(struct)
             self.struct = struct
 
-        except IOError:
+        except:
             print "Wallet load failed, creating new one"
             self.struct = proto_storage.Storage()
             self.struct.version = self.storage_version
