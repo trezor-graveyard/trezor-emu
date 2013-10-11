@@ -59,11 +59,17 @@ class PinState(object):
         else:
             # Check PIN against device's internal PIN
             if pin == self.storage.get_pin():
-                msg = self.func(*self.args)
+                func = self.func
+                args = self.args
                 self.cancel()
+                self.storage.clear_pin_attempt()
+                msg = func(*args)
+
                 return msg
             else:
-                time.sleep(3)
+                self.storage.increase_pin_attempt()
+                print "Invalid PIN, waiting %s seconds" % self.storage.get_pin_delay()
+                time.sleep(self.storage.get_pin_delay())
                 self.cancel()
                 self.set_main_state()
                 return proto.Failure(code=6, message="Invalid PIN")
