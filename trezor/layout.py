@@ -138,6 +138,10 @@ class Layout(object):
         self.last_screen = 'show_pin_request'
     '''
 
+    def show_pin_backoff_progress(self, current, maximum):
+        # TODO: Specific text or icon
+        self.show_progress(current, maximum, True, default_logo)
+
     def show_progress(self, current, maximum, clear=False, logo=None):
         if clear:
             self.clear()
