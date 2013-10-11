@@ -57,7 +57,7 @@ class Cp2110Transport(Transport):
     def _raw_read(self, length): 
         while len(self.buffer) < length:
             data = self.serial.read(63)
-            print "READ", [ ord(x) for x in data ]
+            # print "READ", [ ord(x) for x in data ]
             
             if len(data) != 63:
                 # Force to use 63-byte messages
