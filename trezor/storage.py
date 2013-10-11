@@ -127,10 +127,9 @@ class Storage(object):
         open(self.filename, 'w').write(self.struct.SerializeToString())
 
     def load_from_mnemonic(self, words):
-        seed = mnemonic.Mnemonic('english').decode(words)
-
-        print 'seed', seed
         print 'mnemonic', words
+        seed = mnemonic.Mnemonic('english').decode(words)
+        print 'seed', seed
 
         xprv = BIP32.get_xprv_from_seed(seed)
         self.struct.seed.CopyFrom(xprv)
