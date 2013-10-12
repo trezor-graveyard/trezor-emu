@@ -49,7 +49,7 @@ class PinState(object):
         try:
             pin = self._decode_from_matrix(pin_encoded)
         except ValueError:
-            return proto.Failure(code=6, message="Syntax error")
+            return proto.Failure(code=proto.Failure_SyntaxError, message="Syntax error")
         
         if self.pass_or_check:
             # Pass PIN to method
@@ -72,7 +72,7 @@ class PinState(object):
                 time.sleep(self.storage.get_pin_delay())
                 self.cancel()
                 self.set_main_state()
-                return proto.Failure(code=6, message="Invalid PIN")
+                return proto.Failure(code=proto.Failure_PinInvalid, message="Invalid PIN")
 
     def cancel(self):
         self.pass_or_check = False
@@ -136,7 +136,7 @@ class YesNoState(object):
             ret = self.func(*self.args)
         else:
             self.set_main_state()
-            ret = proto.Failure(code=4, message='Action cancelled by user')
+            ret = proto.Failure(code=proto.Failure_ActionCancelled, message='Action cancelled by user')
 
         self.func = None
         self.args = []
@@ -320,10 +320,10 @@ class StateMachine(object):
 
             if isinstance(msg, proto.PinMatrixCancel):
                 self.pin.cancel()
-                return proto.Failure(code=6, message="PIN request cancelled")
+                return proto.Failure(code=proto.Failure_PinCancelled, message="PIN request cancelled")
 
             self.set_main_state()
-            return proto.Failure(code=5, message='PIN expected')
+            return proto.Failure(code=proto.Failure_PinExpected, message='PIN expected')
 
         if self.yesno.is_waiting():
             '''Button confirmation is expected'''
@@ -336,10 +336,15 @@ class StateMachine(object):
                 return proto.Success(message="Button confirmation cancelled")
 
             self.set_main_state()
-            return proto.Failure(code=2, message='Button confirmation expected')
+            return proto.Failure(code=proto.Failure_ButtonExpected, message='Button confirmation expected')
 
         if isinstance(msg, proto.Ping):
             return proto.Success(message=msg.message)
+
+        if isinstance(msg, proto.FirmwareUpdate):
+            if msg.payload[:4] != 'TRZR':
+                return proto.Failure(code=proto.Failure_SyntaxError, message='Firmware header expected')
+            return proto.Success(message='%d bytes of firmware succesfully uploaded' % len(msg.payload))
 
         if isinstance(msg, proto.GetEntropy):
             return self.protect_call(["Send %d bytes" % msg.size, "of entropy", "to computer?"], '',
@@ -366,7 +371,7 @@ class StateMachine(object):
             return self.signing.process_message(msg)
 
         self.set_main_state()
-        return proto.Failure(code=1, message="Unexpected message")
+        return proto.Failure(code=proto.Failure_UnexpectedMessage, message="Unexpected message")
 
     def _process_debug_message(self, msg):
         if isinstance(msg, proto.DebugLinkGetState):
@@ -378,7 +383,7 @@ class StateMachine(object):
             sys.exit()
 
         self.set_main_state()
-        return proto.Failure(code=1, message="Unexpected message")
+        return proto.Failure(code=proto.Failure_UnexpectedMessage, message="Unexpected message")
 
     def process_message(self, msg):
         # Any exception thrown during message processing

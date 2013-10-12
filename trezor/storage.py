@@ -12,7 +12,7 @@ class NoXprvException(Exception):
     pass
 
 class Storage(object):
-    def __init__(self, filename):
+    def __init__(self, filename, bootloader_mode=False):
         self.vendor = 'bitcointrezor.com'
         self.major_version = 0
         self.minor_version = 1
@@ -28,6 +28,7 @@ class Storage(object):
         self.device_id_filename = os.path.expanduser('~/.trezor')
         self._init_device_id()
 
+        self.bootloader_mode = bootloader_mode
         self.filename = filename
         self.load()  # Storage protobuf object
 
@@ -37,6 +38,7 @@ class Storage(object):
         m.major_version = self.major_version
         m.minor_version = self.minor_version
         m.bugfix_version = self.bugfix_version
+        m.bootloader_mode = self.bootloader_mode
         m.settings.CopyFrom(self.struct.settings)
         m.device_id = self.get_device_id()
         return m

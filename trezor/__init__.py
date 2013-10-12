@@ -54,6 +54,8 @@ def parse_args():
     parser.add_argument('-w', '--wallet', dest='wallet', default='wallet.dat', help='Wallet file')
     parser.add_argument('-s', '--shield', dest='shield', action='store_true',
                         help="Use Raspberry Pi shield with OLED display and hardware buttons.")
+    parser.add_argument('-b', '--bootloader', dest='bootloader_mode', action='store_true',
+                        help="Simulate bootloader mode (it actually doesn't store the uploaded firmware).")
     parser.add_argument('-t', '--transport', dest='transport', default='cp2110',
                         help="Transport used for talking with the main computer")
     parser.add_argument('-p', '--path', dest='path', default='/dev/ttyAMA0',
@@ -110,7 +112,7 @@ def main(args):
 
     # Load persisted data. Create new wallet if file doesn't exist
     print "Loading wallet..."
-    storage = Storage(args.wallet)
+    storage = Storage(args.wallet, bootloader_mode=args.bootloader_mode)
     # storage.struct.settings.label = 'Slushova penezenka'
     print storage.struct
 
