@@ -5,16 +5,22 @@ Python implementation of TREZOR compatible hardware bitcoin wallet.
 
 See http://bitcointrezor.com/ for more information.
 
-How to install
---------------
+How to install (Debian/Ubuntu/Raspbian)
+---------------------------------------
 
+* cd /home/pi (on Raspberry Pi)
 * git clone https://github.com/trezor/trezor-emu.git
 * sudo apt-get update
-* sudo apt-get install python-dev python-setuptools
+* sudo apt-get install python-dev python-setuptools screen
 * cd trezor-emu
 * sudo python setup.py develop
+
 * Running on standard desktop: ./emu.sh
 * Running on Raspberry Pi: sudo ./rpi-serial.sh
+
+* Autostart on Raspberry Pi (starts trezr-emu in 'screen'):
+* sudo ln -s /home/pi/trezor-emu/rpi-init /etc/init.d/trezor
+* sudo update-rc.d trezor defaults
 
 TODO
 --------
@@ -39,4 +45,5 @@ TODO
 * PassphraseRequest
 * Encrypted seed
 * MPK on storage
-* Plugin - signing script
+* x Plugin - signing script
+
