@@ -1,7 +1,9 @@
 /*
-	Structure of wallet file in Trezor emu
-	
-	Author: slush <info@bitcoin.cz>
+	Structure of Storage area of TREZOR
+
+	Author: Marek Palatinus <slush@satoshilabs.com>
+
+	Version: 0.1
 */
 
 import "trezor.proto";
@@ -9,9 +11,9 @@ import "trezor.proto";
 message Storage {
 	required uint32 version = 1;
 	optional XprvType seed = 2;
-    optional XpubType mpk = 3;
-    optional bool seed_encrypted = 4;
-    optional uint32 pin_failed_attempts = 5;
-    optional bytes pin = 6;
-    optional SettingsType settings = 7;    
+	optional XpubType mpk = 3;
+	optional bool seed_encrypted = 4;
+	optional uint32 pin_failed_attempts = 5;
+	optional bytes pin = 6;
+	optional SettingsType settings = 7;
 }
