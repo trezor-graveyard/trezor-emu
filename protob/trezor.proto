@@ -58,6 +58,7 @@ enum MessageType {
 	MessageType_XpubType = 34;
 	MessageType_EntropyRequest = 35 [(wire_out) = true];
 	MessageType_EntropyAck = 36 [(wire_in) = true];
+	MessageType_TransactionType = 37;
 	MessageType_DebugLinkDecision = 100 [(wire_debug_in) = true];
 	MessageType_DebugLinkGetState = 101 [(wire_debug_in) = true];
 	MessageType_DebugLinkState = 102 [(wire_debug_out) = true];
@@ -323,7 +324,7 @@ message SimpleSignTx {
 // If signed_index is set, 'signature' contains signed input of signed_index's input.
 message TxRequest {
 	optional int32 request_index = 1;			// If >=0, device expects TxInput/TxOutput message from the computer
-	optional RequestType request_type = 2;			// Ask for TxInput or TxOutput?
+	optional RequestType request_type = 2;		// Ask for TxInput or TxOutput?
 	optional int32 signed_index = 3;			// If >=0, 'signature' contains signed input of this input
 	optional bytes signature = 4 [(binary) = true];		// If signed_index>=0, represent signature of the signed_index input
 	optional bytes serialized_tx = 5 [(binary) = true];	// Part of serialized and signed transaction
@@ -333,22 +334,37 @@ message TxRequest {
 //
 // Response: TxRequest, Failure
 message TxInput {
-	required uint32 index = 1;				// Position of input in proposed transaction
-	repeated uint32 address_n = 2;				// Parameter for address generation algorithm to derive the address from the master public key
-	required uint64 amount = 3;				// Amount to spend in satoshis. The rest will be used for transaction fees
-	required bytes prev_hash = 4 [(binary) = true];		// Hash of previous transaction output to spend by this input
-	required uint32 prev_index = 5;				// Index of previous output to spend
-	optional bytes script_sig = 6 [(binary) = true];	// Script signature
+//	required uint32 index = 1;				// Position of input in proposed transaction
+//	required uint64 amount = 3;				// Amount to spend in satoshis. The rest will be used for transaction fees
+	repeated uint32 address_n = 1;			// Parameter for address generation algorithm to derive the address from the master public key
+	required bytes prev_hash = 2 [(binary) = true];		// Hash of previous transaction output to spend by this input
+	required uint32 prev_index = 3;			// Index of previous output to spend
+	optional bytes script_sig = 4 [(binary) = true];	// Script signature
+	optional uint32 sequence = 5 [default=0xffffffff];
 }
 
 // Transaction output for SignTx workflow. It is response to TxRequest message sent by the device.
+// This contains all data necessary to build transaction output (script_pubkey).
 message TxOutput {
-	required uint32 index = 1;				// Position of output in proposed transaction
-	required bytes address = 2;				// Target bitcoin address in base58 encoding
-	repeated uint32 address_n = 3;				// Has higher priority than "address". If the output is to myself, specify parameter for address generation algorithm.
-	required uint64 amount = 4;				// Amount to send in satoshis
-	required ScriptType script_type = 5;			// Select output script type
-	repeated bytes script_args = 6 [(binary) = true];	// Provide additional parameters for the script (its script-depended)
+//	required uint32 index = 1;				// Position of output in proposed transaction
+	required bytes address = 1;				// Target bitcoin address in base58 encoding
+	repeated uint32 address_n = 2;			// Has higher priority than "address".
+	required uint64 amount = 3;				// Amount to send in satoshis
+	required ScriptType script_type = 4;	// Select output script type
+	repeated bytes script_args = 5 [(binary) = true];	// Provide additional parameters for the script (its script-depended)
+}
+
+message TransactionType {
+	// Raw (binary) structure describing transaction output.
+	// This is used only for obtaining hashes of existing transactions.
+	message TxOutputBin {
+		required uint64 amount = 1;
+		required bytes script_pubkey = 2;
+	}
+	optional uint32 version = 1 [default=1];
+	repeated TxInput inputs = 2;
+	repeated TxOutputBin outputs = 3;
+	optional uint32 lock_time = 4 [default=0];
 }
 
 // ****************************************************************************
