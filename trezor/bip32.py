@@ -10,85 +10,105 @@ from ecdsa.curves import SECP256k1
 from ecdsa.keys import SigningKey, VerifyingKey
 from ecdsa.util import string_to_number, number_to_string
 
-class BIP32(object):
-    def __init__(self, xprv):
-        self.xprv = xprv
+PRIME_DERIVATION_FLAG = 0x80000000
 
-    def _secexp(self):
-        return string_to_number(self.xprv.private_key)
+class BIP32(object):
+    def __init__(self, node):
+        if node.public_key == '':
+            # Calculate pubkey if missing (public_key is optional field)
+            node.public_key = self._get_pubkey(node.private_key)
+
+        self.node = node
 
     @classmethod
-    def get_xprv_from_seed(cls, seed):
+    def get_node_from_seed(cls, seed):
         I64 = hmac.HMAC(key=b"Bitcoin seed", msg=seed, digestmod=hashlib.sha512).digest()
 
-        xprv = proto.XprvType()
-        xprv.version = 0x0488ADE4  # Main net
-        xprv.depth = 0
-        xprv.fingerprint = 0x00000000
-        xprv.child_num = 0
-        xprv.chain_code = I64[32:]
-        xprv.private_key = I64[:32]
-        return xprv
+        node = proto.HDNodeType()
+        node.version = 0x0488ADE4  # Main net
+        node.depth = 0
+        node.fingerprint = 0x00000000
+        node.child_num = 0
+        node.chain_code = I64[32:]
+        node.private_key = I64[:32]
+        return node
 
     @classmethod
     def from_seed(cls, seed):
-        return cls(cls.get_xprv_from_seed(seed))
+        return cls(cls.get_node_from_seed(seed))
 
-    def _get_master_private_key(self):
-        return SigningKey.from_secret_exponent(self._secexp(), SECP256k1)
+    @classmethod
+    def prime(cls, n):
+        return n | PRIME_DERIVATION_FLAG
 
-    def _get_master_public_key(self):
-        return self._get_master_private_key().get_verifying_key()
+    @classmethod
+    def is_prime(cls, n):
+        return (bool)(n & PRIME_DERIVATION_FLAG)
 
-    def get_master_public_key(self):
-        mpk = proto.XpubType()
-        mpk.version = self.xprv.version
-        mpk.depth = self.xprv.depth
-        mpk.fingerprint = self.xprv.fingerprint
-        mpk.child_num = self.xprv.child_num
-        mpk.chain_code = self.xprv.chain_code
-        mpk.public_key = self._get_master_public_key().to_string()
-        print len(mpk.public_key)
-        return mpk
+    @classmethod
+    def _get_pubkey(cls, private_key):
+        sk = SigningKey.from_string(private_key, curve=SECP256k1, hashfunc=hashlib.sha256)
+        vk = sk.get_verifying_key().to_string()  # Uncompressed key
+        vk = chr((ord(vk[63]) & 1) + 2) + vk[0:32]  # To compressed key
+        return vk
 
     def get_address(self, n, address_type):
-        secexp = string_to_number(self.get_private_key(n))
-        pubkey = SigningKey.from_secret_exponent(secexp, SECP256k1).get_verifying_key()
-        address = public_key_to_bc_address('\x04' + pubkey.to_string(), address_type)
+        pubkey = self.get_public_node(n).public_key
+        address = public_key_to_bc_address(pubkey, address_type)
         return address
-        
-    def get_private_key(self, n):
+
+    def get_signer(self, n):
+        return SigningKey.from_string(self.get_private_node(n).private_key, curve=SECP256k1, hashfunc=hashlib.sha256)
+
+    def get_verifier(self, n):
+        signer = self.get_signer(n)
+        return signer.get_verifying_key()
+
+    def get_public_node(self, n):
+        node = self.get_private_node(n)
+        node.private_key = ''
+        return node
+
+    def get_private_node(self, n):
         if not isinstance(n, list):
             raise Exception('Parameter must be a list')
 
-        xprv = proto.XprvType()
-        xprv.CopyFrom(self.xprv)
+        node = proto.HDNodeType()
+        node.CopyFrom(self.node)
         
         for i in n:
-            xprv.CopyFrom(self._get_subkey(xprv, i))
+            node.CopyFrom(self._get_subnode(node, i))
         
-        return xprv.private_key
-        
+        return node
+
     @classmethod
-    def _get_subkey(cls, xprv, i):
-        # Key derivation algorithm of BIP32
-        if i < 0:
-            i_as_bytes = struct.pack(">l", i)
-        else:
-            i &= 0x7fffffff
-            i |= 0x80000000
-            i_as_bytes = struct.pack(">L", i)
+    def _get_subnode(cls, node, i):
+        # Child key derivation (CKD) algorithm of BIP32
 
-        data = b'\0' + xprv.private_key + i_as_bytes
-        I64 = hmac.HMAC(key=xprv.chain_code, msg=data, digestmod=hashlib.sha512).digest()
-        I_left_as_exponent = string_to_number(I64[:32])
-        secexp = (I_left_as_exponent + string_to_number(xprv.private_key)) % SECP256k1.generator.order()
+        i_as_bytes = struct.pack(">L", i)
         
-        xprv_out = proto.XprvType()
-        xprv_out.version = xprv.version
-        xprv_out.depth = xprv.depth + 1
-        xprv_out.child_num = i
-        xprv_out.chain_code = I64[32:]
-        xprv_out.private_key = number_to_string(secexp, SECP256k1.generator.order())
+        if cls.is_prime(i):
+            # Prime derivation
+            data = '\0' + node.private_key + i_as_bytes
 
-        return xprv_out
+            I64 = hmac.HMAC(key=node.chain_code, msg=data, digestmod=hashlib.sha512).digest()
+            I_left_as_exponent = string_to_number(I64[:32])
+            
+        else:
+            # Public derivation
+            data = node.public_key + i_as_bytes
+
+            I64 = hmac.HMAC(key=node.chain_code, msg=data, digestmod=hashlib.sha512).digest()
+            I_left_as_exponent = string_to_number(I64[:32])
+
+        secexp = (I_left_as_exponent + string_to_number(node.private_key)) % SECP256k1.generator.order()
+
+        node_out = proto.HDNodeType()
+        node_out.version = node.version
+        node_out.depth = node.depth + 1
+        node_out.child_num = i
+        node_out.chain_code = I64[32:]
+        node_out.private_key = number_to_string(secexp, SECP256k1.generator.order())
+        node_out.public_key = cls._get_pubkey(node_out.private_key)
+
+        return node_out
