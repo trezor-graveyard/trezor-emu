@@ -119,6 +119,7 @@ def generate_seed(strength, random):
 
     return seed[:(128 + 64 * strength) / 8]
 
+'''
 def var_int(i):
     if i < 0xfd:
         return struct.pack('<B', i)
@@ -128,3 +129,4 @@ def var_int(i):
         return '\xfe' + struct.pack('<Q', i)
     else:
         return '\xff' + struct.pack('<Q', i)
+'''
