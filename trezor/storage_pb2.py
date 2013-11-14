@@ -14,7 +14,7 @@ import trezor_pb2
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='storage.proto',
   package='',
-  serialized_pb='\n\rstorage.proto\x1a\x0ctrezor.proto\"\xae\x01\n\x07Storage\x12\x0f\n\x07version\x18\x01 \x02(\r\x12\x17\n\x04seed\x18\x02 \x01(\x0b\x32\t.XprvType\x12\x16\n\x03mpk\x18\x03 \x01(\x0b\x32\t.XpubType\x12\x16\n\x0eseed_encrypted\x18\x04 \x01(\x08\x12\x1b\n\x13pin_failed_attempts\x18\x05 \x01(\r\x12\x0b\n\x03pin\x18\x06 \x01(\x0c\x12\x1f\n\x08settings\x18\x07 \x01(\x0b\x32\r.SettingsType')
+  serialized_pb='\n\rstorage.proto\x1a\x0ctrezor.proto\"\x98\x01\n\x07Storage\x12\x0f\n\x07version\x18\x01 \x02(\r\x12\x19\n\x04seed\x18\x02 \x01(\x0b\x32\x0b.HDNodeType\x12\x16\n\x0eseed_encrypted\x18\x03 \x01(\x08\x12\x1b\n\x13pin_failed_attempts\x18\x04 \x01(\r\x12\x0b\n\x03pin\x18\x05 \x01(\x0c\x12\x1f\n\x08settings\x18\x06 \x01(\x0b\x32\r.SettingsType')
 
 
 
@@ -41,36 +41,29 @@ _STORAGE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='mpk', full_name='Storage.mpk', index=2,
-      number=3, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='seed_encrypted', full_name='Storage.seed_encrypted', index=3,
-      number=4, type=8, cpp_type=7, label=1,
+      name='seed_encrypted', full_name='Storage.seed_encrypted', index=2,
+      number=3, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='pin_failed_attempts', full_name='Storage.pin_failed_attempts', index=4,
-      number=5, type=13, cpp_type=3, label=1,
+      name='pin_failed_attempts', full_name='Storage.pin_failed_attempts', index=3,
+      number=4, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='pin', full_name='Storage.pin', index=5,
-      number=6, type=12, cpp_type=9, label=1,
+      name='pin', full_name='Storage.pin', index=4,
+      number=5, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value="",
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='settings', full_name='Storage.settings', index=6,
-      number=7, type=11, cpp_type=10, label=1,
+      name='settings', full_name='Storage.settings', index=5,
+      number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -85,11 +78,10 @@ _STORAGE = _descriptor.Descriptor(
   is_extendable=False,
   extension_ranges=[],
   serialized_start=32,
-  serialized_end=206,
+  serialized_end=184,
 )
 
-_STORAGE.fields_by_name['seed'].message_type = trezor_pb2._XPRVTYPE
-_STORAGE.fields_by_name['mpk'].message_type = trezor_pb2._XPUBTYPE
+_STORAGE.fields_by_name['seed'].message_type = trezor_pb2._HDNODETYPE
 _STORAGE.fields_by_name['settings'].message_type = trezor_pb2._SETTINGSTYPE
 DESCRIPTOR.message_types_by_name['Storage'] = _STORAGE
 
