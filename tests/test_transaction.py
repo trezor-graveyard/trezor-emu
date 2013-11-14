@@ -37,6 +37,17 @@ def get_tx(txhash):
 
     return t
 
+'''
+Transaction with most inputs:
+http://blockexplorer.com/t/55mvNHTqsH
+
+Transaction with most outputs:
+http://blockexplorer.com/t/25Q3XTsoe3
+
+Address with most transactions:
+http://blockexplorer.com/a/2isMCwqPQ2
+'''
+
 class TestTransaction(unittest.TestCase):
     def _load_vectors(self):
         f = open('test_transaction_vectors.json', 'r')
