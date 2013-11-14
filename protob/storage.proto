@@ -10,10 +10,9 @@ import "trezor.proto";
 
 message Storage {
 	required uint32 version = 1;
-	optional XprvType seed = 2;
-	optional XpubType mpk = 3;
-	optional bool seed_encrypted = 4;
-	optional uint32 pin_failed_attempts = 5;
-	optional bytes pin = 6;
-	optional SettingsType settings = 7;
+	optional HDNodeType seed = 2;
+	optional bool seed_encrypted = 3;
+	optional uint32 pin_failed_attempts = 4;
+	optional bytes pin = 5;
+	optional SettingsType settings = 6;
 }
