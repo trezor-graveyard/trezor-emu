@@ -12,13 +12,14 @@ How to install (Debian/Ubuntu/Raspbian)
 * git clone https://github.com/trezor/trezor-emu.git
 * sudo apt-get update
 * sudo apt-get install python-dev python-setuptools screen
+    (if you are not running on Raspberry Pi install python-pygame too)
 * cd trezor-emu
 * sudo python setup.py develop
 
 * Running on standard desktop: ./emu.sh
 * Running on Raspberry Pi: sudo ./rpi-serial.sh
 
-* Autostart on Raspberry Pi (starts trezr-emu in 'screen'):
+* Autostart on Raspberry Pi (starts trezor-emu in 'screen'):
 * sudo ln -s /home/pi/trezor-emu/rpi-init /etc/init.d/trezor
 * sudo update-rc.d trezor defaults
 
