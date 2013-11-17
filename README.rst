@@ -11,7 +11,7 @@ How to install (Debian/Ubuntu/Raspbian)
 * cd /home/pi (on Raspberry Pi)
 * git clone https://github.com/trezor/trezor-emu.git
 * sudo apt-get update
-* sudo apt-get install python-dev python-setuptools screen
+* sudo apt-get install python-dev python-setuptools python-pygame screen
 * cd trezor-emu
 * sudo python setup.py develop
 
