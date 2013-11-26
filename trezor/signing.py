@@ -7,7 +7,7 @@ from bip32 import BIP32
 import trezor_pb2 as proto
 import tools
 
-
+'''
 def raw_tx_header(inputs_count):
     s = ''
     s += '\x01\x00\x00\x00'  # version
@@ -60,7 +60,6 @@ def raw_tx_footer(for_sign):
         s += '\x01\x00\x00\x00'  # hash type
     return s
 
-'''
 # https://en.bitcoin.it/wiki/Protocol_specification#Variable_length_integer
 def raw_tx(inputs, outputs, for_sig):
     s = ''
@@ -84,7 +83,6 @@ def raw_tx(inputs, outputs, for_sig):
     s += raw_tx_footer()
     return s
 '''
-
 
 def sign_input(bip32, addr_n, tx_hash):
     pk = bip32.get_private_key(addr_n)

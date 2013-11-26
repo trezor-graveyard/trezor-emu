@@ -2,6 +2,9 @@ import struct
 import binascii
 from hashlib import sha256
 
+import tools
+import trezor_pb2 as proto
+
 def ser_length(l):
     if l < 253:
         return chr(l)
@@ -18,6 +21,28 @@ def ser_uint256(u):
         rs += struct.pack("<I", u & 0xFFFFFFFFL)
         u >>= 32
     return rs
+
+def compile_TxOutput(txout):
+    ret = proto.TxOutputBin()
+    ret.amount = txout.amount
+
+    if len(list(txout.address_n)):
+        raise Exception("address_n should be converted to address already")
+
+    if txout.script_type == proto.PAYTOADDRESS:
+        script = '\x76\xa9'  # op_dup, op_hash_160
+        script += '\x14'  # push 0x14 bytes
+        script += tools.bc_address_to_hash_160(txout.address)
+        script += '\x88\xac'  # op_equalverify, op_checksig
+        ret.script_pubkey = script
+
+    elif txout.script_type == proto.PAYTOSCRIPTHASH:
+        raise Exception("Not implemented")
+
+    else:
+        raise Exception("Unknown script type")
+
+    return ret
 
 class StreamTransaction(object):
     def __init__(self, inputs_len, outputs_len, version, lock_time):
@@ -56,6 +81,9 @@ class StreamTransaction(object):
         return ser_length(self.outputs_len)
 
     def serialize_output(self, output):
+        if self.have_inputs < self.inputs_len:
+            raise Exception("Need all inputs first")
+
         if self.have_outputs >= self.outputs_len:
             raise Exception("Already have all outputs")
 

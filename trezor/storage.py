@@ -8,7 +8,7 @@ import signing
 import coindef
 import mnemonic
 
-class NoXprvException(Exception):
+class NotInitializedException(Exception):
     pass
 
 class Storage(object):
@@ -109,7 +109,7 @@ class Storage(object):
 
     def get_xprv(self):
         if not self.struct.seed.private_key:
-            raise NoXprvException("Device not initalized")
+            raise NotInitializedException("Device not initalized")
         return self.struct.seed
 
     def increase_pin_attempt(self):
@@ -133,7 +133,7 @@ class Storage(object):
         seed = mnemonic.Mnemonic('english').decode(words)
         print 'seed', seed
 
-        xprv = BIP32.get_xprv_from_seed(seed)
+        xprv = BIP32.get_node_from_seed(seed)
         self.struct.seed.CopyFrom(xprv)
 
     '''

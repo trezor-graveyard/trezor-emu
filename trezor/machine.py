@@ -1,14 +1,15 @@
 import time
 import random
+import base64
+import hashlib
 import traceback
 
 import tools
 import trezor_pb2 as proto
 import machine_signing
-from storage import NoXprvException
+from storage import NotInitializedException
 from bip32 import BIP32
 import coindef
-
 
 class PinState(object):
     def __init__(self, layout, storage):
@@ -214,7 +215,7 @@ class StateMachine(object):
         try:
             self.storage.get_xprv()
             self.layout.show_logo(None, self.storage.get_label())
-        except NoXprvException:
+        except NotInitializedException:
             self.layout.show_message(
                 ["Device hasn't been",
                  "initialized yet.",
@@ -297,6 +298,70 @@ class StateMachine(object):
         return proto.Success()
 '''
 
+    def magic(self, message):
+        magic = "\x18Bitcoin Signed Message:\n" + chr(len(message)) + message
+        return magic
+
+    def _sign_message(self, bip32, addr_n, message):
+        signer = bip32.get_signer(addr_n)
+        address = bip32.get_address(addr_n, self.storage.get_address_type())
+
+        magic = self.magic(message)
+        signature = signer.sign_deterministic(hashlib.sha256(magic).digest(), hashfunc=hashlib.sha256)
+
+        for i in range(4):
+            sig = base64.b64encode(chr(27 + i + 4) + signature)
+            print sig
+            if self._verify_message(address, sig, message):
+                return proto.MessageSignature(address=address, signature=sig)
+
+        return proto.Failure(code=proto.Failure_InvalidSignature, message="Cannot sign message")
+
+    def _verify_message(self, address, signature, message):
+        """ See http://www.secg.org/download/aid-780/sec1-v2.pdf for the math """
+        from ecdsa import numbertheory, ellipticcurve, util
+        import ecdsa
+        import msqr
+        import binascii
+        curve = ecdsa.curves.SECP256k1.curve  # curve_secp256k1
+        G = ecdsa.curves.SECP256k1.generator
+        order = G.order()
+        # extract r,s from signature
+        sig = base64.b64decode(signature)
+        if len(sig) != 65: raise BaseException("Wrong encoding")
+        r, s = util.sigdecode_string(sig[1:], order)
+        nV = ord(sig[0])
+        if nV < 27 or nV >= 35:
+            raise BaseException("Bad encoding")
+        if nV >= 31:
+            compressed = True
+            nV -= 4
+        else:
+            compressed = False
+
+        recid = nV - 27
+        # 1.1
+        x = r + (recid / 2) * order
+        # 1.3
+        alpha = (x * x * x + curve.a() * x + curve.b()) % curve.p()
+        beta = msqr.modular_sqrt(alpha, curve.p())
+        y = beta if (beta - recid) % 2 == 0 else curve.p() - beta
+        # 1.4 the constructor checks that nR is at infinity
+        R = ellipticcurve.Point(curve, x, y, order)
+        # 1.5 compute e from message:
+        h = hashlib.sha256(hashlib.sha256(self.magic(message)).digest()).digest()
+        e = util.string_to_number(h)
+        minus_e = -e % order
+        # 1.6 compute Q = r^-1 (sR - eG)
+        inv_r = numbertheory.inverse_mod(r, order)
+        Q = inv_r * (s * R + minus_e * G)
+        public_key = ecdsa.VerifyingKey.from_public_point(Q, curve=ecdsa.curves.SECP256k1)
+        # check that Q is the public key
+        public_key.verify_digest(sig[1:], h, sigdecode=ecdsa.util.sigdecode_string)
+        addr = tools.public_key_to_bc_address('\x04' + public_key.to_string(), self.storage.get_address_type(), compress=compressed)
+
+        return address == addr
+
     def _get_entropy(self, size):
         random.seed()
         m = proto.Entropy()
@@ -341,7 +406,7 @@ class StateMachine(object):
         if isinstance(msg, proto.Ping):
             return proto.Success(message=msg.message)
 
-        if isinstance(msg, proto.FirmwareUpdate):
+        if isinstance(msg, proto.FirmwareUpload):
             if msg.payload[:4] != 'TRZR':
                 return proto.Failure(code=proto.Failure_SyntaxError, message='Firmware header expected')
             return proto.Success(message='%d bytes of firmware succesfully uploaded' % len(msg.payload))
@@ -350,9 +415,9 @@ class StateMachine(object):
             return self.protect_call(["Send %d bytes" % msg.size, "of entropy", "to computer?"], '',
                                      '{ Cancel', 'Confirm }', self._get_entropy, msg.size)
 
-        if isinstance(msg, proto.GetMasterPublicKey):
-            mpk = BIP32(self.storage.get_xprv()).get_master_public_key()
-            return proto.MasterPublicKey(mpk=mpk)
+        if isinstance(msg, proto.GetPublicKey):
+            node = BIP32(self.storage.get_xprv()).get_public_node(list(msg.address_n))
+            return proto.PublicKey(node=node)
 
         if isinstance(msg, proto.GetAddress):
             address = BIP32(self.storage.get_xprv()).get_address(list(msg.address_n), self.storage.get_address_type())
@@ -366,6 +431,15 @@ class StateMachine(object):
         if isinstance(msg, proto.LoadDevice):
             return self.protect_call(["Load custom seed?"], '', '{ Cancel', 'Confirm }', self.load_wallet, msg.seed, msg.pin)
 
+        if isinstance(msg, proto.SignMessage):
+            return self._sign_message(BIP32(self.storage.get_xprv()), list(msg.address_n), msg.message)
+            # return self.protect_call(["Sign message?", msg.message], '', '{ Cancel', 'Confirm }', self._sign_message, BIP32(self.storage.get_xprv()), msg.address_n, msg.message)
+
+        if isinstance(msg, proto.VerifyMessage):
+            if self._verify_message(msg.address, msg.signature, msg.message):
+                return proto.Success()
+            else:
+                return proto.Failure(code=proto.Failure_InvalidSignature, message="Invalid signature")
 
         if isinstance(msg, (proto.SignTx, proto.TxInput, proto.TxOutput)):
             return self.signing.process_message(msg)
