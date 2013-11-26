@@ -5,7 +5,7 @@ from binascii import hexlify, unhexlify
 import hashlib
 import hmac
 import trezor_pb2 as proto
-from tools import public_key_to_bc_address
+from tools import public_key_to_bc_address, bip32_fingerprint
 from ecdsa.curves import SECP256k1
 from ecdsa.keys import SigningKey, VerifyingKey
 from ecdsa.util import string_to_number, number_to_string
@@ -86,14 +86,14 @@ class BIP32(object):
         # Child key derivation (CKD) algorithm of BIP32
 
         i_as_bytes = struct.pack(">L", i)
-        
+
         if cls.is_prime(i):
             # Prime derivation
             data = '\0' + node.private_key + i_as_bytes
 
             I64 = hmac.HMAC(key=node.chain_code, msg=data, digestmod=hashlib.sha512).digest()
             I_left_as_exponent = string_to_number(I64[:32])
-            
+
         else:
             # Public derivation
             data = node.public_key + i_as_bytes
@@ -110,5 +110,6 @@ class BIP32(object):
         node_out.chain_code = I64[32:]
         node_out.private_key = number_to_string(secexp, SECP256k1.generator.order())
         node_out.public_key = cls._get_pubkey(node_out.private_key)
+        node_out.fingerprint = bip32_fingerprint(node.public_key)
 
         return node_out
