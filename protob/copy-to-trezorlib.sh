@@ -2,5 +2,5 @@
 
 cd `dirname $0`
 
-cp trezor.proto ../../python-trezor/protob/
-../../python-trezor/protob/build.sh
+cp ../trezor/types_pb2.py ../../python-trezor/trezorlib/
+cp ../trezor/messages_pb2.py ../../python-trezor/trezorlib/

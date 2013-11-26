@@ -1,6 +1,7 @@
 #!/bin/bash
 
-cd `dirname $0`
+cd `dirname $0`/../../trezor-common/protob
 
-protoc --python_out=../trezor/ -I/usr/include -I. trezor.proto
-protoc --python_out=../trezor/ -I/usr/include -I. storage.proto
+protoc --python_out=../../trezor-emu/trezor/ -I/usr/include -I. types.proto
+protoc --python_out=../../trezor-emu/trezor/ -I/usr/include -I. storage.proto
+protoc --python_out=../../trezor-emu/trezor/ -I/usr/include -I. messages.proto
