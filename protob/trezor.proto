@@ -55,7 +55,7 @@ enum MessageType {
 	MessageType_SettingsType = 31;
 	MessageType_HDNodeType = 32; // BIP32 structure, what a funny coincidence :-)
 	MessageType_CoinType = 33;
-
+        MessageType_TxOutputBin = 34;
 	MessageType_EntropyRequest = 35 [(wire_out) = true];
 	MessageType_EntropyAck = 36 [(wire_in) = true];
 	MessageType_TransactionType = 37;
