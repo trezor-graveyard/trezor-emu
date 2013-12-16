@@ -4,7 +4,7 @@ from hashlib import sha256
 from ecdsa import curves
 
 from bip32 import BIP32
-import trezor_pb2 as proto
+import messages_pb2 as proto
 import tools
 
 '''

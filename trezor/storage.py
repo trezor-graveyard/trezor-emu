@@ -1,6 +1,7 @@
 import os
 
-import trezor_pb2 as proto
+import types_pb2 as types
+import messages_pb2 as proto
 import storage_pb2 as proto_storage
 from bip32 import BIP32
 import tools
@@ -20,9 +21,9 @@ class Storage(object):
 
         self.storage_version = 1  # Version of wallet file
 
-        self.default_settings = proto.SettingsType(
+        self.default_settings = proto_storage.Storage(
+            version=self.storage_version,
             language='english',
-            coin=coindef.BTC,
         )
 
         self.device_id_filename = os.path.expanduser('~/.trezor')
@@ -32,6 +33,9 @@ class Storage(object):
         self.filename = filename
         self.load()  # Storage protobuf object
 
+        self.session = proto_storage.Session()
+        self.session.coin.CopyFrom(coindef.BTC)
+
     def get_features(self):
         m = proto.Features()
         m.vendor = self.vendor
@@ -39,8 +43,28 @@ class Storage(object):
         m.minor_version = self.minor_version
         m.bugfix_version = self.bugfix_version
         m.bootloader_mode = self.bootloader_mode
-        m.settings.CopyFrom(self.struct.settings)
+        
         m.device_id = self.get_device_id()
+        
+        m.pin_protection = bool(self.struct.pin != '')
+        m.passphrase_protection = bool(self.struct.encrypted)
+        m.language = self.struct.language
+        m.label = self.struct.label
+        
+        # Add currently active coin
+        coin = m.coins.add()
+        coin.CopyFrom(self.session.coin)
+
+        # Append all other coins
+        types = coindef.types.keys()
+        types.sort()
+        for t in types:
+            if coindef.types[t].coin_shortcut == self.session.coin.coin_shortcut:
+                continue
+            coin = m.coins.add()
+            coin.CopyFrom(coindef.types[t])
+            
+        print m
         return m
 
     def _init_device_id(self):
@@ -74,17 +98,16 @@ class Storage(object):
         except:
             print "Wallet load failed, creating new one"
             self.struct = proto_storage.Storage()
-            self.struct.version = self.storage_version
-            self.struct.settings.CopyFrom(self.default_settings)
+            self.struct.CopyFrom(self.default_settings)
             self.save()
 
         # Coindef structure is read-only for the app, so rewriting should
         # not affect anything. Its just workaround for changed coin definition in coindef file
-        if self.struct.settings.coin.coin_shortcut in coindef.types.keys():
-            self.struct.settings.coin.CopyFrom(coindef.types[self.struct.settings.coin.coin_shortcut])
-        else:
-            # When coin is no longer supported...
-            self.struct.settings.coin.CopyFrom(self.default_settings.coin)
+        # if self.session.struct.coin.coin_shortcut in coindef.types.keys():
+        #    self.session.struct.coin.CopyFrom(coindef.types[self.struct.settings.coin.coin_shortcut])
+        # else:
+        #    # When coin is no longer supported...
+        #    self.struct.settings.coin.CopyFrom(self.default_settings.coin)
 
     def get_device_id(self):
         f = open(self.device_id_filename, 'r')
@@ -96,21 +119,21 @@ class Storage(object):
         return self.struct.pin
 
     def get_maxfee_kb(self):
-        return self.struct.maxfee_kb
+        return self.session.coin.maxfee_kb
 
     def get_address_type(self):
-        return self.struct.settings.coin.address_type
+        return self.session.coin.address_type
 
     def get_label(self):
-        return self.struct.settings.label
+        return self.struct.label
 
     def get_languages(self):
         return ['english']
 
     def get_xprv(self):
-        if not self.struct.seed.private_key:
-            raise NotInitializedException("Device not initalized")
-        return self.struct.seed
+        # if not self.struct.seed.private_key:
+        raise NotInitializedException("Device not initalized")
+        # return self.struct.seed
 
     def increase_pin_attempt(self):
         self.struct.pin_failed_attempts += 1
@@ -133,8 +156,7 @@ class Storage(object):
         seed = mnemonic.Mnemonic('english').decode(words)
         print 'seed', seed
 
-        xprv = BIP32.get_node_from_seed(seed)
-        self.struct.seed.CopyFrom(xprv)
+        self.session.node = BIP32.get_node_from_seed(seed)
 
     '''
     def reset_seed(self, random):

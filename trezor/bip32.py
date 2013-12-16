@@ -4,7 +4,7 @@ import struct
 from binascii import hexlify, unhexlify
 import hashlib
 import hmac
-import trezor_pb2 as proto
+import types_pb2 as types
 from tools import public_key_to_bc_address, bip32_fingerprint
 from ecdsa.curves import SECP256k1
 from ecdsa.keys import SigningKey, VerifyingKey
@@ -24,7 +24,7 @@ class BIP32(object):
     def get_node_from_seed(cls, seed):
         I64 = hmac.HMAC(key=b"Bitcoin seed", msg=seed, digestmod=hashlib.sha512).digest()
 
-        node = proto.HDNodeType()
+        node = types.HDNodeType()
         node.version = 0x0488ADE4  # Main net
         node.depth = 0
         node.fingerprint = 0x00000000
@@ -73,7 +73,7 @@ class BIP32(object):
         if not isinstance(n, list):
             raise Exception('Parameter must be a list')
 
-        node = proto.HDNodeType()
+        node = types.HDNodeType()
         node.CopyFrom(self.node)
         
         for i in n:
@@ -103,7 +103,7 @@ class BIP32(object):
 
         secexp = (I_left_as_exponent + string_to_number(node.private_key)) % SECP256k1.generator.order()
 
-        node_out = proto.HDNodeType()
+        node_out = types.HDNodeType()
         node_out.version = node.version
         node_out.depth = node.depth + 1
         node_out.child_num = i

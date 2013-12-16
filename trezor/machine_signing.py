@@ -3,7 +3,7 @@ import time
 
 import signing
 from bip32 import BIP32
-import trezor_pb2 as proto
+import messages_pb2 as proto
 
 '''
 Workflow for two inputs and two outputs:

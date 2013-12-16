@@ -86,6 +86,9 @@ def hash_160_to_bc_address(h160, address_type):
     addr = vh160 + h[0:4]
     return b58encode(addr)
 
+def bc_address_type(addr):
+    return ord(b58decode(addr, 25)[0])
+
 def bc_address_to_hash_160(addr):
     return b58decode(addr, 25)[1:21]
 

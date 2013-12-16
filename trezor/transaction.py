@@ -1,9 +1,11 @@
 import struct
 import binascii
+import hashlib
+import ecdsa
 from hashlib import sha256
 
 import tools
-import trezor_pb2 as proto
+import types_pb2 as types
 
 def ser_length(l):
     if l < 253:
@@ -15,6 +17,16 @@ def ser_length(l):
     else:
         return chr(255) + struct.pack("<Q", l)
 
+def op_push(i):
+    if i<0x4c:
+        return chr(i)
+    elif i<0xff:
+        return '\x4c' + chr(i)
+    elif i<0xffff:
+        return '\x4d' + struct.pack("<H", i)
+    else:
+        return '\x4e' + struct.pack("<I", i)
+
 def ser_uint256(u):
     rs = ""
     for _ in xrange(8):
@@ -23,20 +35,20 @@ def ser_uint256(u):
     return rs
 
 def compile_TxOutput(txout):
-    ret = proto.TxOutputBin()
+    ret = types.TxOutputBinType()
     ret.amount = txout.amount
 
     if len(list(txout.address_n)):
         raise Exception("address_n should be converted to address already")
 
-    if txout.script_type == proto.PAYTOADDRESS:
+    if txout.script_type == types.PAYTOADDRESS:
         script = '\x76\xa9'  # op_dup, op_hash_160
         script += '\x14'  # push 0x14 bytes
         script += tools.bc_address_to_hash_160(txout.address)
         script += '\x88\xac'  # op_equalverify, op_checksig
         ret.script_pubkey = script
 
-    elif txout.script_type == proto.PAYTOSCRIPTHASH:
+    elif txout.script_type == types.PAYTOSCRIPTHASH:
         raise Exception("Not implemented")
 
     else:
@@ -44,13 +56,41 @@ def compile_TxOutput(txout):
 
     return ret
 
+def compile_script_sig(address):
+    # Compile address to paytoaddress script
+    address_type = tools.bc_address_type(address)
+
+    if address_type == 0:  # BTC, paytoaddress
+        script = '\x76\xa9'  # op_dup, op_hash_160
+        script += '\x14'  # push 0x14 bytes
+        script += tools.bc_address_to_hash_160(address)
+        script += '\x88\xac'
+        return script
+
+    elif address_type == 5:  # BTC, P2SH
+        raise Exception("P2SH not implemented yet")
+
+    raise Exception("Unsupported address type")
+
+def serialize_script_sig(signature, pubkey):
+    # Put signature and pubkey together for serializing signed tx
+    signature += '\x01'  # hashtype
+    script = ''
+    script += op_push(len(signature))
+    script += signature
+    script += op_push(len(pubkey))
+    script += pubkey
+    return script
+
 class StreamTransaction(object):
-    def __init__(self, inputs_len, outputs_len, version, lock_time):
+    # Lowlevel streaming serialized of transaction structure
+    def __init__(self, inputs_len, outputs_len, version, lock_time, add_hash_type=False):
         self.inputs_len = inputs_len
         self.outputs_len = outputs_len
 
         self.version = version
         self.lock_time = lock_time
+        self.add_hash_type = add_hash_type
 
         self.have_inputs = 0
         self.have_outputs = 0
@@ -103,7 +143,10 @@ class StreamTransaction(object):
         return r
 
     def _serialize_footer(self):
-        return struct.pack("<I", self.lock_time)
+        d = struct.pack("<I", self.lock_time)
+        if self.add_hash_type:
+            d += struct.pack("<I", 1)
+        return d
 
     @classmethod
     def serialize(cls, tx):
@@ -120,8 +163,9 @@ class StreamTransaction(object):
         return r
 
 class StreamTransactionHash(StreamTransaction):
-    def __init__(self, inputs_len, outputs_len, version, lock_time):
-        super(StreamTransactionHash, self).__init__(inputs_len, outputs_len, version, lock_time)
+    # Serialized of streamed transaction, calculates txhash on the fly
+    def __init__(self, inputs_len, outputs_len, version, lock_time, add_hash_type=False):
+        super(StreamTransactionHash, self).__init__(inputs_len, outputs_len, version, lock_time, add_hash_type)
 
         self.hash = sha256('')
 
@@ -136,7 +180,7 @@ class StreamTransactionHash(StreamTransaction):
         return r
 
     def calc_txid(self):
-        return sha256(self.hash.digest()).digest()[::-1]
+        return sha256(self.hash.digest()).digest()  # [::-1]
 
     @classmethod
     def calculate(cls, tx):
@@ -150,3 +194,53 @@ class StreamTransactionHash(StreamTransaction):
             th.serialize_output(o)
 
         return th.calc_txid()
+
+
+class StreamTransactionSerialize(StreamTransaction):
+    # Serialized of streamed transaction, calculates txhash on the fly
+    def __init__(self, inputs_len, outputs_len, version, lock_time):
+        super(StreamTransactionSerialize, self).__init__(inputs_len, outputs_len, version, lock_time, False)
+
+    def serialize_input(self, inp, signature, pubkey):
+        inp.script_sig = serialize_script_sig(signature, pubkey)
+        r = super(StreamTransactionSerialize, self).serialize_input(inp)
+        return r
+
+class StreamTransactionSign(StreamTransactionHash):
+    # Signer of serialized transaction, returns signature and pubkey
+    # for every pass
+    def __init__(self, input_index, inputs_len, outputs_len, version, lock_time):
+        self.input_index = input_index  # Which index we're signing now
+        self.secexp = None
+        super(StreamTransactionSign, self).__init__(inputs_len, outputs_len, version, lock_time, True)
+
+    def serialize_input(self, inp, address=None, secexp=None):
+        if self.have_inputs == self.input_index:
+            # Let's prepare current index to sign
+
+            if address == None:
+                raise Exception("Address of current input needed")
+            if secexp == None:
+                raise Exception("secexp for current privkey needed")
+            if self.secexp != None:
+                raise Exception("secexp for this round has been already set")
+
+            self.secexp = secexp  # Store secexp for signing of this input
+            inp.script_sig = compile_script_sig(address)
+
+        else:
+            inp.script_sig = ''
+
+        r = super(StreamTransactionSign, self).serialize_input(inp)
+        return r
+
+    # def serialize_output(self, output):
+    #    r = super(StreamTransactionSign, self).serialize_output(output)
+    #    return r
+
+    def sign(self):
+        sk = ecdsa.SigningKey.from_secret_exponent(self.secexp, curve=ecdsa.curves.SECP256k1)
+        signature = sk.sign_digest_deterministic(self.calc_txid(),
+                                                 hashfunc=hashlib.sha256, sigencode=ecdsa.util.sigencode_der)
+        pubkey = '\x04' + sk.get_verifying_key().to_string()  # \x04 -> uncompressed key
+        return (signature, pubkey)

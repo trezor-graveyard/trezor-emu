@@ -5,7 +5,8 @@ import hashlib
 import traceback
 
 import tools
-import trezor_pb2 as proto
+import messages_pb2 as proto
+import types_pb2 as proto_types
 import machine_signing
 from storage import NotInitializedException
 from bip32 import BIP32
@@ -50,7 +51,7 @@ class PinState(object):
         try:
             pin = self._decode_from_matrix(pin_encoded)
         except ValueError:
-            return proto.Failure(code=proto.Failure_SyntaxError, message="Syntax error")
+            return proto.Failure(code=proto_types.Failure_SyntaxError, message="Syntax error")
         
         if self.pass_or_check:
             # Pass PIN to method
@@ -73,7 +74,7 @@ class PinState(object):
                 time.sleep(self.storage.get_pin_delay())
                 self.cancel()
                 self.set_main_state()
-                return proto.Failure(code=proto.Failure_PinInvalid, message="Invalid PIN")
+                return proto.Failure(code=proto_types.Failure_PinInvalid, message="Invalid PIN")
 
     def cancel(self):
         self.pass_or_check = False
