@@ -138,7 +138,7 @@ class YesNoState(object):
             ret = self.func(*self.args)
         else:
             self.set_main_state()
-            ret = proto.Failure(code=proto.Failure_ActionCancelled, message='Action cancelled by user')
+            ret = proto.Failure(code=proto_types.Failure_ActionCancelled, message='Action cancelled by user')
 
         self.func = None
         self.args = []
@@ -156,11 +156,14 @@ class StateMachine(object):
 
         self.set_main_state()
 
-    def protect_reset(self, yesno_message, question, yes_text, no_text, otp_message, random):
+    def protect_reset(self, yesno_message, question, no_text, yes_text, otp_message, random):
         # FIXME
 
         # If confirmed, call final function directly
         return self.yesno.request(yesno_message, question, yes_text, no_text, self._reset_wallet, *[random, ])
+
+    def protect_load(self, seed, node, pin, passphrase_protection):
+        return self.yesno.request(["Load custom seed?"], '', '{ Cancel', 'Confirm }', self.load_wallet, *[seed, node, pin, passphrase_protection])
 
     def protect_call(self, yesno_message, question, no_text, yes_text, func, *args):
         '''
@@ -213,16 +216,15 @@ class StateMachine(object):
         # but doesn't require any interaction with computer
         self.custom_message = False
 
-        try:
-            self.storage.get_xprv()
-            self.layout.show_logo(None, self.storage.get_label())
-        except NotInitializedException:
+        if self.storage.is_initialized():
+            self.layout.show_logo(None, self.storage.get_label())   
+        else:
             self.layout.show_message(
                 ["Device hasn't been",
                  "initialized yet.",
                  "Please initialize it",
                  "from desktop client."])
-
+        
     def apply_settings(self, settings):
         message = []
         
@@ -261,10 +263,17 @@ class StateMachine(object):
         self.set_main_state()
         return proto.Success(message='Settings updated')
 
-    def load_wallet(self, mnemonic, pin):
-        self.storage.load_from_mnemonic(mnemonic)
-        self.storage.struct.pin = pin
-        self.storage.save()
+    def load_wallet(self, mnemonic, node, pin, passphrase_protection):
+        # Use mnemonic OR HDNodeType to initialize the device
+        # If both are provided, mnemonic has higher priority
+
+        if mnemonic:
+            self.storage.load_from_mnemonic(mnemonic)
+        else:
+            self.storage.load_from_node(node)
+            
+        self.storage.set_pin(pin)
+        self.storage.set_protection(passphrase_protection)
         self.set_main_state()
         return proto.Success(message='Wallet loaded')
 
@@ -316,7 +325,7 @@ class StateMachine(object):
             if self._verify_message(address, sig, message):
                 return proto.MessageSignature(address=address, signature=sig)
 
-        return proto.Failure(code=proto.Failure_InvalidSignature, message="Cannot sign message")
+        return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Cannot sign message")
 
     def _verify_message(self, address, signature, message):
         """ See http://www.secg.org/download/aid-780/sec1-v2.pdf for the math """
@@ -384,12 +393,12 @@ class StateMachine(object):
             if isinstance(msg, proto.PinMatrixAck):
                 return self.pin.check(msg.pin)
 
-            if isinstance(msg, proto.PinMatrixCancel):
+            if isinstance(msg, proto.Cancel):
                 self.pin.cancel()
-                return proto.Failure(code=proto.Failure_PinCancelled, message="PIN request cancelled")
+                return proto.Failure(code=proto_types.Failure_PinCancelled, message="PIN request cancelled")
 
             self.set_main_state()
-            return proto.Failure(code=proto.Failure_PinExpected, message='PIN expected')
+            return proto.Failure(code=proto_types.Failure_PinExpected, message='PIN expected')
 
         if self.yesno.is_waiting():
             '''Button confirmation is expected'''
@@ -397,19 +406,19 @@ class StateMachine(object):
                 self.yesno.allow()
                 return self.yesno.resolve()  # Process if button has been already pressed
 
-            if isinstance(msg, proto.ButtonCancel):
+            if isinstance(msg, proto.Cancel):
                 self.set_main_state()
                 return proto.Success(message="Button confirmation cancelled")
 
             self.set_main_state()
-            return proto.Failure(code=proto.Failure_ButtonExpected, message='Button confirmation expected')
+            return proto.Failure(code=proto_types.Failure_ButtonExpected, message='Button confirmation expected')
 
         if isinstance(msg, proto.Ping):
             return proto.Success(message=msg.message)
 
         if isinstance(msg, proto.FirmwareUpload):
             if msg.payload[:4] != 'TRZR':
-                return proto.Failure(code=proto.Failure_SyntaxError, message='Firmware header expected')
+                return proto.Failure(code=proto_types.Failure_SyntaxError, message='Firmware header expected')
             return proto.Success(message='%d bytes of firmware succesfully uploaded' % len(msg.payload))
 
         if isinstance(msg, proto.GetEntropy):
@@ -417,11 +426,11 @@ class StateMachine(object):
                                      '{ Cancel', 'Confirm }', self._get_entropy, msg.size)
 
         if isinstance(msg, proto.GetPublicKey):
-            node = BIP32(self.storage.get_xprv()).get_public_node(list(msg.address_n))
+            node = BIP32(self.storage.get_node()).get_public_node(list(msg.address_n))
             return proto.PublicKey(node=node)
 
         if isinstance(msg, proto.GetAddress):
-            address = BIP32(self.storage.get_xprv()).get_address(list(msg.address_n), self.storage.get_address_type())
+            address = BIP32(self.storage.get_node()).get_address(list(msg.address_n), self.storage.get_address_type())
             self.layout.show_receiving_address(address)
             self.custom_message = True  # Yes button will redraw screen
             return proto.Address(address=address)
@@ -430,23 +439,23 @@ class StateMachine(object):
             return self.apply_settings(msg)
 
         if isinstance(msg, proto.LoadDevice):
-            return self.protect_call(["Load custom seed?"], '', '{ Cancel', 'Confirm }', self.load_wallet, msg.seed, msg.pin)
+            return self.protect_load(msg.mnemonic, msg.node, msg.pin, msg.passphrase_protection)
 
         if isinstance(msg, proto.SignMessage):
-            return self._sign_message(BIP32(self.storage.get_xprv()), list(msg.address_n), msg.message)
-            # return self.protect_call(["Sign message?", msg.message], '', '{ Cancel', 'Confirm }', self._sign_message, BIP32(self.storage.get_xprv()), msg.address_n, msg.message)
+            return self._sign_message(BIP32(self.storage.get_node()), list(msg.address_n), msg.message)
+            # return self.protect_call(["Sign message?", msg.message], '', '{ Cancel', 'Confirm }', self._sign_message, BIP32(self.storage.get_node()), msg.address_n, msg.message)
 
         if isinstance(msg, proto.VerifyMessage):
             if self._verify_message(msg.address, msg.signature, msg.message):
                 return proto.Success()
             else:
-                return proto.Failure(code=proto.Failure_InvalidSignature, message="Invalid signature")
+                return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Invalid signature")
 
         if isinstance(msg, (proto.SignTx, proto.TxInput, proto.TxOutput)):
             return self.signing.process_message(msg)
 
         self.set_main_state()
-        return proto.Failure(code=proto.Failure_UnexpectedMessage, message="Unexpected message")
+        return proto.Failure(code=proto_types.Failure_UnexpectedMessage, message="Unexpected message")
 
     def _process_debug_message(self, msg):
         if isinstance(msg, proto.DebugLinkGetState):
@@ -458,7 +467,7 @@ class StateMachine(object):
             sys.exit()
 
         self.set_main_state()
-        return proto.Failure(code=proto.Failure_UnexpectedMessage, message="Unexpected message")
+        return proto.Failure(code=proto_types.Failure_UnexpectedMessage, message="Unexpected message")
 
     def process_message(self, msg):
         # Any exception thrown during message processing

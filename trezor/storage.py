@@ -7,7 +7,7 @@ from bip32 import BIP32
 import tools
 import signing
 import coindef
-import mnemonic
+from mnemonic import Mnemonic
 
 class NotInitializedException(Exception):
     pass
@@ -33,6 +33,9 @@ class Storage(object):
         self.filename = filename
         self.load()  # Storage protobuf object
 
+        self.init_session()
+
+    def init_session(self):
         self.session = proto_storage.Session()
         self.session.coin.CopyFrom(coindef.BTC)
 
@@ -47,7 +50,7 @@ class Storage(object):
         m.device_id = self.get_device_id()
         
         m.pin_protection = bool(self.struct.pin != '')
-        m.passphrase_protection = bool(self.struct.encrypted)
+        m.passphrase_protection = bool(self.struct.passphrase_protection)
         m.language = self.struct.language
         m.label = self.struct.label
         
@@ -118,6 +121,14 @@ class Storage(object):
     def get_pin(self):
         return self.struct.pin
 
+    def set_pin(self, new_pin):
+        self.struct.pin = new_pin
+        self.save()
+
+    def set_protection(self, passphrase_protection):
+        self.struct.passphrase_protection = bool(passphrase_protection)
+        self.save()
+
     def get_maxfee_kb(self):
         return self.session.coin.maxfee_kb
 
@@ -130,10 +141,31 @@ class Storage(object):
     def get_languages(self):
         return ['english']
 
-    def get_xprv(self):
-        # if not self.struct.seed.private_key:
-        raise NotInitializedException("Device not initalized")
-        # return self.struct.seed
+    def is_initialized(self):
+        if self.struct.HasField('mnemonic'):
+            return True
+        if self.struct.HasField('node'):
+            return True
+        return False
+    
+    def get_node(self):
+        '''Return decrypted HDNodeType (from stored mnemonic or encrypted HDNodeType)'''
+        if not self.is_initialized():
+            raise NotInitializedException("Device not initalized")
+
+        if self.struct.HasField('mnemonic') and self.struct.HasField('node'):
+            raise Exception("Cannot have both mnemonic and node at the same time")
+        
+        if self.struct.passphrase_protection:
+            raise Exception("passphrase decryption not implemented yet")
+        else:
+            if self.struct.HasField('mnemonic'):
+                seed = Mnemonic(self.struct.language).to_seed(self.struct.mnemonic)
+                self.session.node.CopyFrom(BIP32.get_node_from_seed(seed))
+            else:
+                self.session.node.CopyFrom(self.struct.node)
+
+        return self.session.node
 
     def increase_pin_attempt(self):
         self.struct.pin_failed_attempts += 1
@@ -151,13 +183,23 @@ class Storage(object):
     def save(self):
         open(self.filename, 'w').write(self.struct.SerializeToString())
 
-    def load_from_mnemonic(self, words):
-        print 'mnemonic', words
-        seed = mnemonic.Mnemonic('english').decode(words)
-        print 'seed', seed
+    def load_from_mnemonic(self, mnemonic):
+        print 'mnemonic', mnemonic
+        if not Mnemonic(self.struct.language).check(mnemonic):
+            raise Exception("Invalid mnemonic")
 
-        self.session.node = BIP32.get_node_from_seed(seed)
+        self.struct.mnemonic = mnemonic
+        self.struct.ClearField('node')
+        self.save()
 
+        self.init_session()
+
+    def load_from_node(self, node):
+        self.struct.node.CopyFrom(node)
+        self.struct.ClearField('mnemonic')
+        self.save()
+
+        self.init_session()
     '''
     def reset_seed(self, random):
         seed = tools.generate_seed(random)
