@@ -146,8 +146,13 @@ class ResetWalletState(object):
             self.strength = strength
             self.passphrase_protection = passphrase_protection
             self.pin_protection = pin_protection
-            self.language = language
             self.label = label
+            
+            if language in self.storage.get_languages():
+                self.language = language
+            else:
+                self.language = self.storage.struct.language
+
             return proto.EntropyRequest()
         
         return self.yesno.request(msg, '', 'Confirm }', '{ Cancel', entropy_request)
