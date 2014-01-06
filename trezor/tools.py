@@ -1,3 +1,4 @@
+import os
 import ecdsa
 import struct
 import hashlib
@@ -103,27 +104,36 @@ def public_key_to_bc_address(public_key, address_type, compress=True):
 def bip32_fingerprint(pubkey):
     return ecdsa.util.string_to_number(hash_160(pubkey)[:4])
 
-STRENGTH_LOW = 0
-STRENGTH_NORMAL = 1
-STRENGTH_HIGH = 2
+def get_local_entropy():
+    return os.urandom(32)
 
-def generate_seed(strength, random):
+def generate_entropy(strength, internal_entropy, external_entropy):
     '''
-    strength - length of produced seed. One of STRENGTH_LOW, STRENGTH_NORMAL, STRENGTH_HIGH
+    strength - length of produced seed. One of 128, 192, 256
     random - binary stream of random data from external HRNG
     '''
+    if strength not in (128, 192, 256):
+        raise Exception("Invalid strength")
 
-    strength = int(strength)
-    if strength < STRENGTH_LOW or strength > STRENGTH_HIGH:
-        raise Exception("Invalid seed strength")
+    if not internal_entropy:
+        raise Exception("Internal entropy is not provided")
 
-    # Generate random stream using internal HRNG
-    seed = binascii.unhexlify("%064x" % ecdsa.util.randrange(pow(2, 256)))
+    if len(internal_entropy) < 32:
+        raise Exception("Internal entropy too short")
 
-    # Apply hash function on top of concatenated entropy
-    seed = hashlib.sha256(seed + random).digest()
+    if not external_entropy:
+        raise Exception("External entropy is not provided")
 
-    return seed[:(128 + 64 * strength) / 8]
+    if len(external_entropy) < 32:
+        raise Exception("External entropy too short")
+
+    entropy = hashlib.sha256(internal_entropy + external_entropy).digest()
+    entropy_stripped = entropy[:strength / 8]
+
+    if len(entropy_stripped) * 8 != strength:
+        raise Exception("Entropy length mismatch")
+
+    return entropy_stripped
 
 '''
 def var_int(i):

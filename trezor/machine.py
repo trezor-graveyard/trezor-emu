@@ -3,11 +3,13 @@ import random
 import base64
 import hashlib
 import traceback
+import binascii
 
 import tools
 import messages_pb2 as proto
 import types_pb2 as proto_types
 import machine_signing
+from mnemonic import Mnemonic
 from storage import NotInitializedException
 from bip32 import BIP32
 import coindef
@@ -38,15 +40,32 @@ class PinState(object):
         pin = ''.join([ str(self.matrix[int(x) - 1]) for x in pin_encoded ])        
         return pin    
         
-    def request(self, pass_or_check, func, *args):
+    def request(self, msg, pass_or_check, func, *args):
         self.pass_or_check = pass_or_check
         self.func = func
         self.args = args
         self.matrix = self._generate_matrix()
         
+        if not msg:
+            msg = 'Please enter your PIN'
+        
         self.layout.show_matrix(self.matrix)
-        return proto.PinMatrixRequest()
+        return proto.PinMatrixRequest(message=msg)
 
+    def request_new(self, func, *args):
+        '''Ask user for new PIN'''
+        return self.request('Please enter new PIN', True, self._request_second, func, args)
+        
+    def _request_second(self, pin, func, args):
+        '''Ask second time for new PIN to confirm user's entry'''
+        return self.request('Enter new PIN again', True, self._request_compare, *[pin, func, args])
+        
+    def _request_compare(self, pin2, pin1, func, args):
+        '''Compare both pins and return if they're the same'''
+        if pin2 != pin1:
+            raise Exception("Pin is different")
+        return func(pin1, *args)
+        
     def check(self, pin_encoded):
         try:
             pin = self._decode_from_matrix(pin_encoded)
@@ -55,8 +74,10 @@ class PinState(object):
         
         if self.pass_or_check:
             # Pass PIN to method
-            msg = self.func(pin, *self.args)
+            func = self.func
+            args = self.args[:]
             self.cancel()
+            msg = func(pin, *args)
             return msg
         else:
             # Check PIN against device's internal PIN
@@ -82,6 +103,94 @@ class PinState(object):
         self.args = []
         self.matrix = None
 
+class ResetWalletState(object):
+    def __init__(self, layout, storage, yesno, pin, main_state_func):
+        self.layout = layout
+        self.storage = storage
+        self.yesno = yesno
+        self.pin = pin
+        self._set_main_state = main_state_func
+        self.set_main_state()
+        
+    def set_main_state(self):
+        self.internal_entropy = None
+        self.external_entropy = None
+        self.strength = None
+        self.passphrase_protection = False
+        self.pin_protection = False
+        self.language = 'english'
+        self.label = ''
+    
+    def is_waiting(self):
+        if self.internal_entropy:
+            return True
+        return False
+
+    def step1(self, display_random, strength, passphrase_protection, pin_protection, language, label):
+        '''This starts resetting workflow by generating internal random
+        and asking user to confirm device reset.'''
+        
+        print "Starting device reset..."
+        internal_entropy = tools.get_local_entropy()
+        
+        msg = ["Reset device?"]
+        if display_random:
+            msg += ["Random is %s" % binascii.hexlify(internal_entropy)]
+        
+        def entropy_request():
+            '''This is called after user confirmation of the action.
+            Internal random is already generated, lets respond to computer with EntropyRequest
+            and wait for EntropyAck'''
+            self.internal_entropy = internal_entropy
+            self.external_entropy = None
+            self.strength = strength
+            self.passphrase_protection = passphrase_protection
+            self.pin_protection = pin_protection
+            self.language = language
+            self.label = label
+            return proto.EntropyRequest()
+        
+        return self.yesno.request(msg, '', 'Confirm }', '{ Cancel', entropy_request)
+    
+    def step2(self, external_entropy):
+        '''Now the action is confirmed by user and both
+        internal and external entropy is generated. Lets ask for PIN
+        if the device need to be pin-protected
+        '''
+        self.external_entropy = external_entropy
+        
+        if self.pin_protection:
+            return self.pin.request_new(self.step3)
+
+        else:
+            return self.step3('')
+            
+    def step3(self, pin):
+        '''Display mnemonic and ask user to write it down to piece of paper'''
+        if self.pin_protection and not pin:
+            raise Exception("Pin need to be provided")
+        
+        if self.pin_protection == False:
+            pin = ''
+            
+        print "Internal entropy:", binascii.hexlify(self.internal_entropy)
+        print "Computer-generated entropy:", binascii.hexlify(self.external_entropy)
+        
+        entropy = tools.generate_entropy(self.strength, self.internal_entropy, self.external_entropy)
+        mnemonic = Mnemonic(self.language).to_mnemonic(entropy)
+        
+        return self.yesno.request(mnemonic.split(" "), '', 'Done }', '{ Cancel', self.step4, *[pin, mnemonic])
+
+    def step4(self, pin, mnemonic):
+        self.storage.reset_seed(mnemonic)
+        self.storage.set_language(self.language)
+        self.storage.set_label(self.label)
+        self.storage.set_pin(pin)
+        self.storage.set_protection(self.passphrase_protection)
+        
+        self._set_main_state() 
+        return proto.Success(message='Wallet loaded')
+        
 class YesNoState(object):
     def __init__(self, layout):
         self.layout = layout
@@ -134,14 +243,19 @@ class YesNoState(object):
             # We still don't know user's decision (call yesno_store() firstly)
             return
 
-        if self.decision is True:
-            ret = self.func(*self.args)
+        func = self.func
+        args = self.args
+        decision = self.decision
+        self.func = None
+        self.args = []
+        self.decision = None
+
+        if decision is True:
+            ret = func(*args)
         else:
             self.set_main_state()
             ret = proto.Failure(code=proto_types.Failure_ActionCancelled, message='Action cancelled by user')
 
-        self.func = None
-        self.args = []
         return ret
 
 
@@ -153,17 +267,12 @@ class StateMachine(object):
         self.yesno = YesNoState(layout)
         self.pin = PinState(layout, storage)
         self.signing = machine_signing.SigningStateMachine(layout, storage)
+        self.reset_wallet = ResetWalletState(layout, storage, self.yesno, self.pin, self.set_main_state)
 
         self.set_main_state()
-
-    def protect_reset(self, yesno_message, question, no_text, yes_text, otp_message, random):
-        # FIXME
-
-        # If confirmed, call final function directly
-        return self.yesno.request(yesno_message, question, yes_text, no_text, self._reset_wallet, *[random, ])
-
+    
     def protect_load(self, seed, node, pin, passphrase_protection):
-        return self.yesno.request(["Load custom seed?"], '', '{ Cancel', 'Confirm }', self.load_wallet, *[seed, node, pin, passphrase_protection])
+        return self.yesno.request(["Load custom seed?"], '', 'Confirm }', '{ Cancel', self.load_wallet, *[seed, node, pin, passphrase_protection])
 
     def protect_call(self, yesno_message, question, no_text, yes_text, func, *args):
         '''
@@ -178,7 +287,7 @@ class StateMachine(object):
         if self.storage.get_pin():
             # Require hw buttons and PIN
             return self.yesno.request(yesno_message, question, yes_text, no_text, self.pin.request,
-                                      *[False, func] + list(args))
+                                      *['', False, func] + list(args))
 
         # If confirmed, call final function directly
         return self.yesno.request(yesno_message, question, yes_text, no_text, func, *args)
@@ -211,11 +320,12 @@ class StateMachine(object):
         self.yesno.set_main_state()
         self.signing.set_main_state()
         self.pin.set_main_state()
+        self.reset_wallet.set_main_state()
 
         # Display is showing custom message which just wait for "Continue" button,
         # but doesn't require any interaction with computer
         self.custom_message = False
-
+    
         if self.storage.is_initialized():
             self.layout.show_logo(None, self.storage.get_label())   
         else:
@@ -224,10 +334,12 @@ class StateMachine(object):
                  "initialized yet.",
                  "Please initialize it",
                  "from desktop client."])
-        
+    
     def apply_settings(self, settings):
         message = []
-        
+        # FIXME
+        raise Exception("Not implemented")
+        '''
         if settings.language and settings.language in self.storage.get_languages():
             message.append('Language: %s' % settings.language)
         else:
@@ -248,7 +360,7 @@ class StateMachine(object):
         args = (settings,)
 
         return self.protect_call(message, question, '{ Cancel', 'Confirm }', func, *args)
-
+        
     def _apply_settings(self, settings):
         if settings.language:
             self.storage.struct.settings.language = settings.language
@@ -262,8 +374,9 @@ class StateMachine(object):
         self.storage.save()
         self.set_main_state()
         return proto.Success(message='Settings updated')
-
-    def load_wallet(self, mnemonic, node, pin, passphrase_protection):
+    '''
+    
+    def load_wallet(self, mnemonic, node, pin, passphrase_protection, language, label):
         # Use mnemonic OR HDNodeType to initialize the device
         # If both are provided, mnemonic has higher priority
 
@@ -271,42 +384,13 @@ class StateMachine(object):
             self.storage.load_from_mnemonic(mnemonic)
         else:
             self.storage.load_from_node(node)
-            
+        
+        self.storage.set_language(language)
+        self.storage.set_label(label)
         self.storage.set_pin(pin)
         self.storage.set_protection(passphrase_protection)
         self.set_main_state()
         return proto.Success(message='Wallet loaded')
-
-    def _reset_wallet(self, random):
-        # TODO
-        print "Starting setup wizard..."
-        # self.wallet.save()
-        return proto.Success()
-
-    '''
-        is_pin = self.yesno("Use PIN?")
-
-        if is_pin:
-            return self.pin_request("Please enter new PIN", True, self._reset_wallet2, random, is_otp, is_spv)
-
-        return self._reset_wallet2('', random, is_otp, is_spv)
-
-    def _reset_wallet2(self, random, pin, is_otp, is_spv):
-        self.device.set_pin(pin)
-        self.device.set_otp(is_otp)
-        self.device.set_spv(is_spv)
-
-        seed = tools.generate_seed(random)
-        seed_words = tools.get_mnemonic(seed)
-        self.device.load_seed(seed_words)
-
-        print "PIN:", pin
-        print "Seed:", seed
-        print "Mnemonic:", seed_words
-        print "Write down your seed and keep it secret!"
-
-        return proto.Success()
-'''
 
     def magic(self, message):
         magic = "\x18Bitcoin Signed Message:\n" + chr(len(message)) + message
@@ -413,6 +497,13 @@ class StateMachine(object):
             self.set_main_state()
             return proto.Failure(code=proto_types.Failure_ButtonExpected, message='Button confirmation expected')
 
+        if self.reset_wallet.is_waiting():
+            if isinstance(msg, proto.EntropyAck):
+                return self.reset_wallet.step2(msg.entropy)
+
+            self.set_main_state()
+            return proto.Failure(code=proto_types.Failure_UnexpectedMessage, message='EntropyAck expected')
+
         if isinstance(msg, proto.Ping):
             return proto.Success(message=msg.message)
 
@@ -441,6 +532,9 @@ class StateMachine(object):
         if isinstance(msg, proto.LoadDevice):
             return self.protect_load(msg.mnemonic, msg.node, msg.pin, msg.passphrase_protection)
 
+        if isinstance(msg, proto.ResetDevice):
+            return self.reset_wallet.step1(msg.display_random, msg.strength, msg.passphrase_protection, msg.pin_protection, msg.language, msg.label)
+        
         if isinstance(msg, proto.SignMessage):
             return self._sign_message(BIP32(self.storage.get_node()), list(msg.address_n), msg.message)
             # return self.protect_call(["Sign message?", msg.message], '', '{ Cancel', 'Confirm }', self._sign_message, BIP32(self.storage.get_node()), msg.address_n, msg.message)

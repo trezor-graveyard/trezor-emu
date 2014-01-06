@@ -141,6 +141,17 @@ class Storage(object):
     def get_languages(self):
         return ['english']
 
+    def set_label(self, label):
+        self.struct.label = label
+        self.save()
+
+    def set_language(self, language):
+        if language in self.get_languages():
+            self.struct.language = language
+        else:
+            raise Exception("Unsupported language")
+        self.save()
+
     def is_initialized(self):
         if self.struct.HasField('mnemonic'):
             return True
@@ -200,10 +211,8 @@ class Storage(object):
         self.save()
 
         self.init_session()
-    '''
-    def reset_seed(self, random):
-        seed = tools.generate_seed(random)
-        seed_words = tools.get_mnemonic(seed)
-        self.load_seed(seed_words)
-        return seed_words
-    '''
+
+    def reset_seed(self, mnemonic):
+        self.struct.mnemonic = mnemonic
+        self.struct.ClearField('node')
+        self.save()
