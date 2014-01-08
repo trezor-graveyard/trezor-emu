@@ -276,8 +276,8 @@ class StateMachine(object):
 
         self.set_main_state()
     
-    def protect_load(self, seed, node, pin, passphrase_protection):
-        return self.yesno.request(["Load custom seed?"], '', 'Confirm }', '{ Cancel', self.load_wallet, *[seed, node, pin, passphrase_protection])
+    def protect_load(self, seed, node, pin, passphrase_protection, language, label):
+        return self.yesno.request(["Load custom seed?"], '', 'Confirm }', '{ Cancel', self.load_wallet, *[seed, node, pin, passphrase_protection, language, label])
 
     def protect_call(self, yesno_message, question, no_text, yes_text, func, *args):
         '''
@@ -535,7 +535,7 @@ class StateMachine(object):
             return self.apply_settings(msg)
 
         if isinstance(msg, proto.LoadDevice):
-            return self.protect_load(msg.mnemonic, msg.node, msg.pin, msg.passphrase_protection)
+            return self.protect_load(msg.mnemonic, msg.node, msg.pin, msg.passphrase_protection, msg.language, msg.label)
 
         if isinstance(msg, proto.ResetDevice):
             return self.reset_wallet.step1(msg.display_random, msg.strength, msg.passphrase_protection, msg.pin_protection, msg.language, msg.label)
