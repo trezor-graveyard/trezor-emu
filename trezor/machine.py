@@ -438,6 +438,8 @@ class StateMachine(object):
         else:
             compressed = False
 
+        address_type = int(binascii.hexlify(tools.b58decode(address, None)[0]))
+        
         recid = nV - 27
         # 1.1
         x = r + (recid / 2) * order
@@ -457,7 +459,7 @@ class StateMachine(object):
         public_key = ecdsa.VerifyingKey.from_public_point(Q, curve=ecdsa.curves.SECP256k1)
         # check that Q is the public key
         public_key.verify_digest(sig[1:], h, sigdecode=ecdsa.util.sigdecode_string)
-        addr = tools.public_key_to_bc_address('\x04' + public_key.to_string(), self.storage.get_address_type(), compress=compressed)
+        addr = tools.public_key_to_bc_address('\x04' + public_key.to_string(), address_type, compress=compressed)
 
         return address == addr
 
