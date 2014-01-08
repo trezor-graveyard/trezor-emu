@@ -66,6 +66,7 @@ class BIP32(object):
 
     def get_public_node(self, n):
         node = self.get_private_node(n)
+        node.version = 0x0488B21E
         node.private_key = ''
         return node
 
