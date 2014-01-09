@@ -37,7 +37,6 @@ class Storage(object):
 
     def init_session(self):
         self.session = proto_storage.Session()
-        self.session.coin.CopyFrom(coindef.BTC)
 
     def get_features(self):
         m = proto.Features()
@@ -54,16 +53,10 @@ class Storage(object):
         m.language = self.struct.language
         m.label = self.struct.label
         
-        # Add currently active coin
-        coin = m.coins.add()
-        coin.CopyFrom(self.session.coin)
-
-        # Append all other coins
+        # Add all known coin
         types = coindef.types.keys()
         types.sort()
         for t in types:
-            if coindef.types[t].coin_shortcut == self.session.coin.coin_shortcut:
-                continue
             coin = m.coins.add()
             coin.CopyFrom(coindef.types[t])
             
@@ -104,14 +97,6 @@ class Storage(object):
             self.struct.CopyFrom(self.default_settings)
             self.save()
 
-        # Coindef structure is read-only for the app, so rewriting should
-        # not affect anything. Its just workaround for changed coin definition in coindef file
-        # if self.session.struct.coin.coin_shortcut in coindef.types.keys():
-        #    self.session.struct.coin.CopyFrom(coindef.types[self.struct.settings.coin.coin_shortcut])
-        # else:
-        #    # When coin is no longer supported...
-        #    self.struct.settings.coin.CopyFrom(self.default_settings.coin)
-
     def get_device_id(self):
         f = open(self.device_id_filename, 'r')
         sernum = f.read()
@@ -128,12 +113,6 @@ class Storage(object):
     def set_protection(self, passphrase_protection):
         self.struct.passphrase_protection = bool(passphrase_protection)
         self.save()
-
-    def get_maxfee_kb(self):
-        return self.session.coin.maxfee_kb
-
-    def get_address_type(self):
-        return self.session.coin.address_type
 
     def get_label(self):
         return self.struct.label
@@ -159,22 +138,44 @@ class Storage(object):
             return True
         return False
     
+    def is_locked(self):
+        '''Return False if mnemonic/node is locked by passphrase, so
+        get_node() will fail.'''
+
+        if not self.struct.passphrase_protection:
+            return False
+
+        if self.session.HasField('passphrase'):
+            return False
+
+        return True
+
+    def unlock(self, passphrase):
+        self.session.passphrase = passphrase
+        self.session.ClearField('node')
+
     def get_node(self):
         '''Return decrypted HDNodeType (from stored mnemonic or encrypted HDNodeType)'''
         if not self.is_initialized():
             raise NotInitializedException("Device not initalized")
 
+        if self.is_locked():
+            raise Exception("Passphrase required")
+
         if self.struct.HasField('mnemonic') and self.struct.HasField('node'):
             raise Exception("Cannot have both mnemonic and node at the same time")
         
-        if self.struct.passphrase_protection:
-            raise Exception("passphrase decryption not implemented yet")
+        if self.session.HasField('node'):
+            # If we've already unlocked node, let's use it
+            return self.session.node
+
+        if self.struct.HasField('mnemonic'):
+            print "Loading mnemonic"
+            seed = Mnemonic(self.struct.language).to_seed(self.struct.mnemonic, passphrase=self.session.passphrase)
+            self.session.node.CopyFrom(BIP32.get_node_from_seed(seed))
         else:
-            if self.struct.HasField('mnemonic'):
-                seed = Mnemonic(self.struct.language).to_seed(self.struct.mnemonic)
-                self.session.node.CopyFrom(BIP32.get_node_from_seed(seed))
-            else:
-                self.session.node.CopyFrom(self.struct.node)
+            print "Loading node"
+            self.session.node.CopyFrom(self.struct.node)
 
         return self.session.node
 
@@ -206,6 +207,7 @@ class Storage(object):
         self.init_session()
 
     def load_from_node(self, node):
+        self.set_protection(False)  # Node cannot be passphrase protected
         self.struct.node.CopyFrom(node)
         self.struct.ClearField('mnemonic')
         self.save()

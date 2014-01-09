@@ -52,9 +52,9 @@ class BIP32(object):
         vk = chr((ord(vk[63]) & 1) + 2) + vk[0:32]  # To compressed key
         return vk
 
-    def get_address(self, n, address_type):
+    def get_address(self, n, coin):
         pubkey = self.get_public_node(n).public_key
-        address = public_key_to_bc_address(pubkey, address_type)
+        address = public_key_to_bc_address(pubkey, coin.address_type)
         return address
 
     def get_signer(self, n):

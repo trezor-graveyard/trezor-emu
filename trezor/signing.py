@@ -1,11 +1,76 @@
-import struct
 import ecdsa
+import base64
+import binascii
 from hashlib import sha256
-from ecdsa import curves
+from ecdsa import curves, numbertheory, ellipticcurve, util
+import msqr
 
-from bip32 import BIP32
+# from bip32 import BIP32
 import messages_pb2 as proto
+import types_pb2 as proto_types
 import tools
+
+def message_magic(message):
+    magic = "\x18Bitcoin Signed Message:\n" + chr(len(message)) + message
+    return magic
+
+def sign_message(bip32, coin, addr_n, message):
+    signer = bip32.get_signer(addr_n)
+    address = bip32.get_address(addr_n, coin)
+
+    magic = message_magic(message)
+    signature = signer.sign_deterministic(sha256(magic).digest(), hashfunc=sha256)
+
+    for i in range(4):
+        sig = base64.b64encode(chr(27 + i + 4) + signature)
+        print sig
+        if verify_message(address, sig, message):
+            return proto.MessageSignature(address=address, signature=sig)
+
+    return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Cannot sign message")
+
+def verify_message(address, signature, message):
+    """ See http://www.secg.org/download/aid-780/sec1-v2.pdf for the math """
+    curve = ecdsa.curves.SECP256k1.curve  # curve_secp256k1
+    G = ecdsa.curves.SECP256k1.generator
+    order = G.order()
+    # extract r,s from signature
+    sig = base64.b64decode(signature)
+    if len(sig) != 65: raise BaseException("Wrong encoding")
+    r, s = util.sigdecode_string(sig[1:], order)
+    nV = ord(sig[0])
+    if nV < 27 or nV >= 35:
+        raise BaseException("Bad encoding")
+    if nV >= 31:
+        compressed = True
+        nV -= 4
+    else:
+        compressed = False
+
+    address_type = int(binascii.hexlify(tools.b58decode(address, None)[0]))
+
+    recid = nV - 27
+    # 1.1
+    x = r + (recid / 2) * order
+    # 1.3
+    alpha = (x * x * x + curve.a() * x + curve.b()) % curve.p()
+    beta = msqr.modular_sqrt(alpha, curve.p())
+    y = beta if (beta - recid) % 2 == 0 else curve.p() - beta
+    # 1.4 the constructor checks that nR is at infinity
+    R = ellipticcurve.Point(curve, x, y, order)
+    # 1.5 compute e from message:
+    h = sha256(sha256(message_magic(message)).digest()).digest()
+    e = util.string_to_number(h)
+    minus_e = -e % order
+    # 1.6 compute Q = r^-1 (sR - eG)
+    inv_r = numbertheory.inverse_mod(r, order)
+    Q = inv_r * (s * R + minus_e * G)
+    public_key = ecdsa.VerifyingKey.from_public_point(Q, curve=ecdsa.curves.SECP256k1)
+    # check that Q is the public key
+    public_key.verify_digest(sig[1:], h, sigdecode=ecdsa.util.sigdecode_string)
+    addr = tools.public_key_to_bc_address('\x04' + public_key.to_string(), address_type, compress=compressed)
+
+    return address == addr
 
 '''
 def raw_tx_header(inputs_count):

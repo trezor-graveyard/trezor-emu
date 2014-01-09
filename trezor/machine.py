@@ -5,6 +5,7 @@ import hashlib
 import traceback
 import binascii
 
+import signing
 import tools
 import messages_pb2 as proto
 import types_pb2 as proto_types
@@ -102,6 +103,56 @@ class PinState(object):
         self.func = None
         self.args = []
         self.matrix = None
+
+class PassphraseState(object):
+    def __init__(self, layout, storage):
+        self.layout = layout
+        self.storage = storage
+
+        self.set_main_state()
+
+    def set_main_state(self):
+        self.cancel()
+
+    def is_waiting(self):
+        return self.func is not None
+    
+    def use(self, func, *args):
+        '''Check if storage is locked. In that case asks user to provide
+        passphrase.'''
+        if self.storage.is_locked():
+            return self.request('Please enter passphrase', False, func, *args)
+        
+        return func(*args)
+        
+    def request(self, msg, pass_or_check, func, *args):
+        self.pass_or_check = pass_or_check
+        self.func = func
+        self.args = args
+        
+        return proto.PassphraseRequest()
+        
+    def check(self, passphrase):       
+        if self.pass_or_check:
+            # Pass passphrase to method
+            func = self.func
+            args = self.args[:]
+            self.cancel()
+            msg = func(passphrase, *args)
+            return msg
+        else:
+            # Use passphrase to unlock local storage
+            self.storage.unlock(passphrase)
+            func = self.func
+            args = self.args
+            self.cancel()
+            msg = func(*args)
+            return msg
+
+    def cancel(self):
+        self.pass_or_check = False
+        self.func = None
+        self.args = []
 
 class ResetWalletState(object):
     def __init__(self, layout, storage, yesno, pin, main_state_func):
@@ -271,6 +322,7 @@ class StateMachine(object):
 
         self.yesno = YesNoState(layout)
         self.pin = PinState(layout, storage)
+        self.passphrase = PassphraseState(layout, storage)
         self.signing = machine_signing.SigningStateMachine(layout, storage)
         self.reset_wallet = ResetWalletState(layout, storage, self.yesno, self.pin, self.set_main_state)
 
@@ -325,6 +377,7 @@ class StateMachine(object):
         self.yesno.set_main_state()
         self.signing.set_main_state()
         self.pin.set_main_state()
+        self.passphrase.set_main_state()
         self.reset_wallet.set_main_state()
 
         # Display is showing custom message which just wait for "Continue" button,
@@ -385,83 +438,19 @@ class StateMachine(object):
         # Use mnemonic OR HDNodeType to initialize the device
         # If both are provided, mnemonic has higher priority
 
-        if mnemonic:
-            self.storage.load_from_mnemonic(mnemonic)
-        else:
+        if node.IsInitialized():
             self.storage.load_from_node(node)
+        elif mnemonic != '':
+            self.storage.load_from_mnemonic(mnemonic)
+            self.storage.set_protection(passphrase_protection)
+        else:
+            raise Exception("Missing mnemonic or private node")
         
         self.storage.set_language(language)
         self.storage.set_label(label)
         self.storage.set_pin(pin)
-        self.storage.set_protection(passphrase_protection)
         self.set_main_state()
         return proto.Success(message='Wallet loaded')
-
-    def magic(self, message):
-        magic = "\x18Bitcoin Signed Message:\n" + chr(len(message)) + message
-        return magic
-
-    def _sign_message(self, bip32, addr_n, message):
-        signer = bip32.get_signer(addr_n)
-        address = bip32.get_address(addr_n, self.storage.get_address_type())
-
-        magic = self.magic(message)
-        signature = signer.sign_deterministic(hashlib.sha256(magic).digest(), hashfunc=hashlib.sha256)
-
-        for i in range(4):
-            sig = base64.b64encode(chr(27 + i + 4) + signature)
-            print sig
-            if self._verify_message(address, sig, message):
-                return proto.MessageSignature(address=address, signature=sig)
-
-        return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Cannot sign message")
-
-    def _verify_message(self, address, signature, message):
-        """ See http://www.secg.org/download/aid-780/sec1-v2.pdf for the math """
-        from ecdsa import numbertheory, ellipticcurve, util
-        import ecdsa
-        import msqr
-        import binascii
-        curve = ecdsa.curves.SECP256k1.curve  # curve_secp256k1
-        G = ecdsa.curves.SECP256k1.generator
-        order = G.order()
-        # extract r,s from signature
-        sig = base64.b64decode(signature)
-        if len(sig) != 65: raise BaseException("Wrong encoding")
-        r, s = util.sigdecode_string(sig[1:], order)
-        nV = ord(sig[0])
-        if nV < 27 or nV >= 35:
-            raise BaseException("Bad encoding")
-        if nV >= 31:
-            compressed = True
-            nV -= 4
-        else:
-            compressed = False
-
-        address_type = int(binascii.hexlify(tools.b58decode(address, None)[0]))
-        
-        recid = nV - 27
-        # 1.1
-        x = r + (recid / 2) * order
-        # 1.3
-        alpha = (x * x * x + curve.a() * x + curve.b()) % curve.p()
-        beta = msqr.modular_sqrt(alpha, curve.p())
-        y = beta if (beta - recid) % 2 == 0 else curve.p() - beta
-        # 1.4 the constructor checks that nR is at infinity
-        R = ellipticcurve.Point(curve, x, y, order)
-        # 1.5 compute e from message:
-        h = hashlib.sha256(hashlib.sha256(self.magic(message)).digest()).digest()
-        e = util.string_to_number(h)
-        minus_e = -e % order
-        # 1.6 compute Q = r^-1 (sR - eG)
-        inv_r = numbertheory.inverse_mod(r, order)
-        Q = inv_r * (s * R + minus_e * G)
-        public_key = ecdsa.VerifyingKey.from_public_point(Q, curve=ecdsa.curves.SECP256k1)
-        # check that Q is the public key
-        public_key.verify_digest(sig[1:], h, sigdecode=ecdsa.util.sigdecode_string)
-        addr = tools.public_key_to_bc_address('\x04' + public_key.to_string(), address_type, compress=compressed)
-
-        return address == addr
 
     def _get_entropy(self, size):
         random.seed()
@@ -474,6 +463,19 @@ class StateMachine(object):
         self.set_main_state()
         return m
 
+    def _get_address(self, coin, address_n):
+        address = BIP32(self.storage.get_node()).get_address(address_n, coin)
+        self.layout.show_receiving_address(address)
+        self.custom_message = True  # Yes button will redraw screen
+        return proto.Address(address=address)
+
+    def _get_public_key(self, address_n):
+        node = BIP32(self.storage.get_node()).get_public_node(address_n)
+        return proto.PublicKey(node=node)
+
+    def _sign_message(self, coin, address_n, message):
+        return signing.sign_message(BIP32(self.storage.get_node()), coin, address_n, message)
+        
     def _process_message(self, msg):
         if isinstance(msg, proto.Initialize):
             self.set_main_state()
@@ -491,6 +493,11 @@ class StateMachine(object):
             self.set_main_state()
             return proto.Failure(code=proto_types.Failure_PinExpected, message='PIN expected')
 
+        if self.passphrase.is_waiting():
+            '''Passphrase is expected'''
+            if isinstance(msg, proto.PassphraseAck):
+                return self.passphrase.check(msg.passphrase)
+            
         if self.yesno.is_waiting():
             '''Button confirmation is expected'''
             if isinstance(msg, proto.ButtonAck):
@@ -524,15 +531,11 @@ class StateMachine(object):
                                      '{ Cancel', 'Confirm }', self._get_entropy, msg.size)
 
         if isinstance(msg, proto.GetPublicKey):
-            node = BIP32(self.storage.get_node()).get_public_node(list(msg.address_n))
-            return proto.PublicKey(node=node)
+            return self.passphrase.use(self._get_public_key, list(msg.address_n))
 
         if isinstance(msg, proto.GetAddress):
-            address = BIP32(self.storage.get_node()).get_address(list(msg.address_n), self.storage.get_address_type())
-            self.layout.show_receiving_address(address)
-            self.custom_message = True  # Yes button will redraw screen
-            return proto.Address(address=address)
-
+            return self.passphrase.use(self._get_address, coindef.types[msg.coin_name], list(msg.address_n))
+        
         if isinstance(msg, proto.ApplySettings):
             return self.apply_settings(msg)
 
@@ -543,11 +546,10 @@ class StateMachine(object):
             return self.reset_wallet.step1(msg.display_random, msg.strength, msg.passphrase_protection, msg.pin_protection, msg.language, msg.label)
         
         if isinstance(msg, proto.SignMessage):
-            return self._sign_message(BIP32(self.storage.get_node()), list(msg.address_n), msg.message)
-            # return self.protect_call(["Sign message?", msg.message], '', '{ Cancel', 'Confirm }', self._sign_message, BIP32(self.storage.get_node()), msg.address_n, msg.message)
+            return self.passphrase.use(self._sign_message, coindef.types[msg.coin_name], list(msg.address_n), msg.message)
 
         if isinstance(msg, proto.VerifyMessage):
-            if self._verify_message(msg.address, msg.signature, msg.message):
+            if signing.verify_message(msg.address, msg.signature, msg.message):
                 return proto.Success()
             else:
                 return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Invalid signature")
