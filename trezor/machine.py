@@ -192,17 +192,16 @@ class ResetWalletState(object):
             '''This is called after user confirmation of the action.
             Internal random is already generated, lets respond to computer with EntropyRequest
             and wait for EntropyAck'''
+            if language not in self.storage.get_languages():
+                raise Exception("Unsupported language")
+
             self.internal_entropy = internal_entropy
             self.external_entropy = None
             self.strength = strength
             self.passphrase_protection = passphrase_protection
             self.pin_protection = pin_protection
-            self.label = label
-            
-            if language in self.storage.get_languages():
-                self.language = language
-            else:
-                self.language = self.storage.struct.language
+            self.label = label            
+            self.language = language
 
             return proto.EntropyRequest()
         
@@ -235,15 +234,13 @@ class ResetWalletState(object):
         entropy = tools.generate_entropy(self.strength, self.internal_entropy, self.external_entropy)
         mnemonic = Mnemonic(self.language).to_mnemonic(entropy)
         
+        if not Mnemonic(self.language).check(mnemonic):
+            raise Exception("Unexpected error, mnemonic doesn't pass internal check")
+        
         return self.yesno.request(mnemonic.split(" "), '', 'Done }', '{ Cancel', self.step4, *[pin, mnemonic])
 
     def step4(self, pin, mnemonic):
-        self.storage.reset_seed(mnemonic)
-        self.storage.set_language(self.language)
-        self.storage.set_label(self.label)
-        self.storage.set_pin(pin)
-        self.storage.set_protection(self.passphrase_protection)
-        
+        self.storage.load_wallet(mnemonic, None, self.language, self.label, pin, self.passphrase_protection)        
         self._set_main_state() 
         return proto.Success(message='Wallet loaded')
         
@@ -302,9 +299,8 @@ class YesNoState(object):
         func = self.func
         args = self.args
         decision = self.decision
-        self.func = None
-        self.args = []
-        self.decision = None
+        
+        self.cancel()
 
         if decision is True:
             ret = func(*args)
@@ -395,23 +391,15 @@ class StateMachine(object):
     
     def apply_settings(self, settings):
         message = []
-        # FIXME
-        raise Exception("Not implemented")
-        '''
-        if settings.language and settings.language in self.storage.get_languages():
+        if settings.HasField('language') and settings.language in self.storage.get_languages():
             message.append('Language: %s' % settings.language)
         else:
-            settings.language = ''
+            settings.ClearField('language')
 
-        if settings.coin_shortcut and settings.coin_shortcut in coindef.types.keys():
-            message.append('Coin: %s' % coindef.types[settings.coin_shortcut].coin_name)
-        else:
-            settings.coin_shortcut = ''
-
-        if settings.label:
+        if settings.HasField('label'):
             message.append('Label: %s' % settings.label)
         else:
-            settings.label = ''
+            settings.ClearField('label')
             
         question = 'Apply these settings?'
         func = self._apply_settings
@@ -420,35 +408,20 @@ class StateMachine(object):
         return self.protect_call(message, question, '{ Cancel', 'Confirm }', func, *args)
         
     def _apply_settings(self, settings):
-        if settings.language:
-            self.storage.struct.settings.language = settings.language
+        if settings.HasField('language'):
+            self.storage.set_language(settings.language)
             
-        if settings.coin_shortcut:
-            self.storage.struct.settings.coin.CopyFrom(coindef.types[settings.coin_shortcut])
+        if settings.HasField('label'):
+            self.storage.set_label(settings.label)
 
-        if settings.label:
-            self.storage.struct.settings.label = settings.label
-
-        self.storage.save()
         self.set_main_state()
         return proto.Success(message='Settings updated')
-    '''
     
     def load_wallet(self, mnemonic, node, pin, passphrase_protection, language, label):
         # Use mnemonic OR HDNodeType to initialize the device
         # If both are provided, mnemonic has higher priority
 
-        if node.IsInitialized():
-            self.storage.load_from_node(node)
-        elif mnemonic != '':
-            self.storage.load_from_mnemonic(mnemonic)
-            self.storage.set_protection(passphrase_protection)
-        else:
-            raise Exception("Missing mnemonic or private node")
-        
-        self.storage.set_language(language)
-        self.storage.set_label(label)
-        self.storage.set_pin(pin)
+        self.storage.load_wallet(mnemonic, node, language, label, pin, passphrase_protection)
         self.set_main_state()
         return proto.Success(message='Wallet loaded')
 

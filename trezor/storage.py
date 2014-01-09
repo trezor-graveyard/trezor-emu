@@ -60,7 +60,6 @@ class Storage(object):
             coin = m.coins.add()
             coin.CopyFrom(coindef.types[t])
             
-        print m
         return m
 
     def _init_device_id(self):
@@ -74,6 +73,16 @@ class Storage(object):
         f.write(os.urandom(device_id_len))
         f.close()
 
+    def _refresh_device_id(self):
+        os.unlink(self.device_id_filename)
+        self._init_device_id()
+
+    def get_device_id(self):
+        f = open(self.device_id_filename, 'r')
+        sernum = f.read()
+        f.close()
+        return sernum
+        
     def check_struct(self, struct):
         # Check if protobuf struct loaded from local storage
         # is compatible with current codebase.
@@ -97,32 +106,40 @@ class Storage(object):
             self.struct.CopyFrom(self.default_settings)
             self.save()
 
-    def get_device_id(self):
-        f = open(self.device_id_filename, 'r')
-        sernum = f.read()
-        f.close()
-        return sernum
-
     def get_pin(self):
         return self.struct.pin
 
-    def set_pin(self, new_pin):
-        self.struct.pin = new_pin
-        self.save()
+    def set_secret(self, language, passphrase_protection, mnemonic=None, node=None):
+        '''This should be the only method which *set* mnemonir or node'''
+        if node != None and node.IsInitialized():
+            self.struct.passphrase_protection = False # Node cannot be passphrase protected
+            self.struct.node.CopyFrom(node)
+            self.struct.ClearField('mnemonic')
+                    
+        elif mnemonic != '':
+            if not Mnemonic(language).check(mnemonic):
+                raise Exception("Invalid mnemonic")
 
-    def set_protection(self, passphrase_protection):
-        self.struct.passphrase_protection = bool(passphrase_protection)
-        self.save()
+            self.struct.passphrase_protection = bool(passphrase_protection)
+            self.struct.mnemonic = mnemonic
+            self.struct.ClearField('node')
+
+        # Device ID is changing with every secrets change
+        # to improve privacy and un-traceability of the device
+        self._refresh_device_id()
+
+        self.init_session()
+        self.save()        
 
     def get_label(self):
         return self.struct.label
 
-    def get_languages(self):
-        return ['english']
-
     def set_label(self, label):
         self.struct.label = label
         self.save()
+
+    def get_languages(self):
+        return ['english']
 
     def set_language(self, language):
         if language in self.get_languages():
@@ -195,26 +212,12 @@ class Storage(object):
     def save(self):
         open(self.filename, 'w').write(self.struct.SerializeToString())
 
-    def load_from_mnemonic(self, mnemonic):
-        print 'mnemonic', mnemonic
-        if not Mnemonic(self.struct.language).check(mnemonic):
-            raise Exception("Invalid mnemonic")
+    def load_wallet(self, mnemonic, node, language, label, pin, passphrase_protection):
+        self.set_secret(language=language, mnemonic=mnemonic, node=node, passphrase_protection=passphrase_protection)
+        self.set_language(language)
+        self.set_label(label)
+        
+        self.struct.pin = pin
 
-        self.struct.mnemonic = mnemonic
-        self.struct.ClearField('node')
         self.save()
-
         self.init_session()
-
-    def load_from_node(self, node):
-        self.set_protection(False)  # Node cannot be passphrase protected
-        self.struct.node.CopyFrom(node)
-        self.struct.ClearField('mnemonic')
-        self.save()
-
-        self.init_session()
-
-    def reset_seed(self, mnemonic):
-        self.struct.mnemonic = mnemonic
-        self.struct.ClearField('node')
-        self.save()
