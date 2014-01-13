@@ -167,10 +167,12 @@ class TestTransaction(unittest.TestCase):
         (signature1, pubkey1) = tx.sign()
         out += outtx.serialize_input(inp1, signature1, pubkey1)
         print 'signature1', binascii.hexlify(signature1)
-                
+        print "TOSIGN", binascii.hexlify(d)
+        print "HASH1", binascii.hexlify(hash1)
+
         # Signature 2
         tx = StreamTransactionSign(1, inp_count, out_count, version, lock_time)
-        d += tx.serialize_input(inp1)
+        d = tx.serialize_input(inp1)
         d += tx.serialize_input(inp2, address='1B4scQC2N8NZ5cYVbVwDrao1aSnwNAAvbb',
                                 secexp=int('1c1057564b1a27bc02110909545c7f5070be7df0186323c6d8a4efa11ae244d7', 16))
         d += tx.serialize_output(compile_TxOutput(out1))
@@ -178,9 +180,11 @@ class TestTransaction(unittest.TestCase):
         (signature2, pubkey2) = tx.sign()
         out += outtx.serialize_input(inp2, signature2, pubkey2)
         print 'signature2', binascii.hexlify(signature2)
+        print "TOSIGN2", binascii.hexlify(d)
         #print 'scriptsig', binascii.hexlify(serialize_script_sig(signature1, pubkey1))
 
         out += outtx.serialize_output(compile_TxOutput(out1))
+        print "TXHASH", binascii.hexlify(hashlib.sha256(hashlib.sha256(out).digest()).digest())
         print binascii.hexlify(out)
         
         self.assertEqual(binascii.hexlify(hash1), '69dd44af847f7e5f7aac451acf3bfddcfa270ee457ee1b9f837411f037f458e5')

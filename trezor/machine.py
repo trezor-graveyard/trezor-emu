@@ -319,7 +319,7 @@ class StateMachine(object):
         self.yesno = YesNoState(layout)
         self.pin = PinState(layout, storage)
         self.passphrase = PassphraseState(layout, storage)
-        self.signing = machine_signing.SigningStateMachine(layout, storage)
+        self.signing = machine_signing.SigningStateMachine(layout, storage, self.passphrase)
         self.reset_wallet = ResetWalletState(layout, storage, self.yesno, self.pin, self.set_main_state)
 
         self.set_main_state()
@@ -362,9 +362,8 @@ class StateMachine(object):
 
     def debug_get_state(self, msg):
         resp = proto.DebugLinkState()
-        if msg.pin:
-            resp.pin = self.storage.get_pin()
-        if msg.matrix and self.pin.is_waiting():
+        resp.pin = self.storage.get_pin()
+        if self.pin.is_waiting():
             resp.matrix = ''.join([ str(x) for x in self.pin.matrix ])
         return resp
 
@@ -430,7 +429,7 @@ class StateMachine(object):
         m = proto.Entropy()
         d = ''
         while len(d) < size:
-            d += tools.generate_seed(tools.STRENGTH_HIGH, '')
+            d += tools.get_local_entropy()
 
         m.entropy = d[:size]
         self.set_main_state()
@@ -470,7 +469,7 @@ class StateMachine(object):
             '''Passphrase is expected'''
             if isinstance(msg, proto.PassphraseAck):
                 return self.passphrase.check(msg.passphrase)
-            
+        
         if self.yesno.is_waiting():
             '''Button confirmation is expected'''
             if isinstance(msg, proto.ButtonAck):
@@ -527,7 +526,7 @@ class StateMachine(object):
             else:
                 return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Invalid signature")
 
-        if isinstance(msg, (proto.SignTx, proto.TxInput, proto.TxOutput)):
+        if isinstance(msg, (proto.SimpleSignTx, proto.SignTx, proto.TxInput, proto.TxOutput)):
             return self.signing.process_message(msg)
 
         self.set_main_state()

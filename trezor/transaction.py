@@ -80,6 +80,7 @@ def serialize_script_sig(signature, pubkey):
     script += signature
     script += op_push(len(pubkey))
     script += pubkey
+    
     return script
 
 class StreamTransaction(object):
@@ -180,7 +181,7 @@ class StreamTransactionHash(StreamTransaction):
         return r
 
     def calc_txid(self):
-        return sha256(self.hash.digest()).digest()  # [::-1]
+        return sha256(self.hash.digest()).digest()
 
     @classmethod
     def calculate(cls, tx):
@@ -194,7 +195,6 @@ class StreamTransactionHash(StreamTransaction):
             th.serialize_output(o)
 
         return th.calc_txid()
-
 
 class StreamTransactionSerialize(StreamTransaction):
     # Serialized of streamed transaction, calculates txhash on the fly
@@ -225,7 +225,7 @@ class StreamTransactionSign(StreamTransactionHash):
             if self.secexp != None:
                 raise Exception("secexp for this round has been already set")
 
-            self.secexp = secexp  # Store secexp for signing of this input
+            self.secexp = secexp
             inp.script_sig = compile_script_sig(address)
 
         else:
@@ -243,4 +243,5 @@ class StreamTransactionSign(StreamTransactionHash):
         signature = sk.sign_digest_deterministic(self.calc_txid(),
                                                  hashfunc=hashlib.sha256, sigencode=ecdsa.util.sigencode_der)
         pubkey = '\x04' + sk.get_verifying_key().to_string()  # \x04 -> uncompressed key
+        pubkey = tools.compress_pubkey(pubkey)
         return (signature, pubkey)

@@ -219,5 +219,8 @@ class Storage(object):
         
         self.struct.pin = pin
 
+        # Wallet has new secrets, which are known to potential attacker already
+        self.clear_pin_attempt()
+
         self.save()
         self.init_session()

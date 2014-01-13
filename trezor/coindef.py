@@ -1,7 +1,7 @@
 import types_pb2 as types
 
 BTC = types.CoinType(
-    maxfee_kb=1000000,  # == 0.01 BTC/kB
+    maxfee_kb=10000,  # == 0.0001 BTC/kB
     coin_name='Bitcoin',
     coin_shortcut='BTC',
     address_type=0,
