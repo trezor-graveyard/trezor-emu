@@ -436,13 +436,13 @@ class StateMachine(object):
         return m
 
     def _get_address(self, coin, address_n):
-        address = BIP32(self.storage.get_node()).get_address(address_n, coin)
+        address = BIP32(self.storage.get_node()).get_address(coin, address_n)
         self.layout.show_receiving_address(address)
         self.custom_message = True  # Yes button will redraw screen
         return proto.Address(address=address)
 
-    def _get_public_key(self, address_n):
-        node = BIP32(self.storage.get_node()).get_public_node(address_n)
+    def _get_public_key(self, coin, address_n):
+        node = BIP32(self.storage.get_node()).get_public_node(coin, address_n)
         return proto.PublicKey(node=node)
 
     def _sign_message(self, coin, address_n, message):
@@ -503,7 +503,7 @@ class StateMachine(object):
                                      '{ Cancel', 'Confirm }', self._get_entropy, msg.size)
 
         if isinstance(msg, proto.GetPublicKey):
-            return self.passphrase.use(self._get_public_key, list(msg.address_n))
+            return self.passphrase.use(self._get_public_key, coindef.types[msg.coin_name], list(msg.address_n))
 
         if isinstance(msg, proto.GetAddress):
             return self.passphrase.use(self._get_address, coindef.types[msg.coin_name], list(msg.address_n))
@@ -526,7 +526,7 @@ class StateMachine(object):
             else:
                 return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Invalid signature")
 
-        if isinstance(msg, (proto.SimpleSignTx, proto.SignTx, proto.TxInput, proto.TxOutput)):
+        if isinstance(msg, (proto.EstimateTxSize, proto.SimpleSignTx, proto.SignTx, proto.TxInput, proto.TxOutput)):
             return self.signing.process_message(msg)
 
         self.set_main_state()

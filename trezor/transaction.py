@@ -2,6 +2,7 @@ import struct
 import binascii
 import hashlib
 import ecdsa
+import math
 from hashlib import sha256
 
 import tools
@@ -83,6 +84,26 @@ def serialize_script_sig(signature, pubkey):
     
     return script
 
+def estimate_size(inputs_len, outputs_len):
+    # in kB, so far works for simple pay-to-address script
+    '''
+        Experimental values for pay-to-address:
+            1in 1out: 192
+            2in 1out: 341
+            1in 2out: 227
+            2in 2out: 375
+
+        input size: 149
+        output size: 35
+
+    '''
+    size = 10 + inputs_len * 149 + outputs_len * 35
+    return size
+
+def estimate_size_kb(inputs_len, outputs_len):
+    size = estimate_size(inputs_len, outputs_len)
+    return int(math.ceil(size / 1000.))
+
 class StreamTransaction(object):
     # Lowlevel streaming serialized of transaction structure
     def __init__(self, inputs_len, outputs_len, version, lock_time, add_hash_type=False):
@@ -95,6 +116,7 @@ class StreamTransaction(object):
 
         self.have_inputs = 0
         self.have_outputs = 0
+        self.size = 0
 
     def _serialize_header(self):
         r = struct.pack("<i", self.version)
@@ -116,6 +138,7 @@ class StreamTransaction(object):
         r += struct.pack("<I", inp.sequence)
 
         self.have_inputs += 1
+        self.size += len(r)
         return r
 
     def _serialize_middle(self):
@@ -141,6 +164,7 @@ class StreamTransaction(object):
 
         if self.have_outputs == self.outputs_len:
             r += self._serialize_footer()
+        self.size += len(r)
         return r
 
     def _serialize_footer(self):

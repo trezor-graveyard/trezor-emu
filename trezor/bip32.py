@@ -25,7 +25,7 @@ class BIP32(object):
         I64 = hmac.HMAC(key=b"Bitcoin seed", msg=seed, digestmod=hashlib.sha512).digest()
 
         node = types.HDNodeType()
-        node.version = 0x0488ADE4  # Main net
+        # node.version = 0x0488ADE4  # Main net
         node.depth = 0
         node.fingerprint = 0x00000000
         node.child_num = 0
@@ -52,8 +52,8 @@ class BIP32(object):
         vk = chr((ord(vk[63]) & 1) + 2) + vk[0:32]  # To compressed key
         return vk
 
-    def get_address(self, n, coin):
-        pubkey = self.get_public_node(n).public_key
+    def get_address(self, coin, n):
+        pubkey = self.get_public_node(coin, n).public_key
         address = public_key_to_bc_address(pubkey, coin.address_type)
         return address
 
@@ -64,9 +64,9 @@ class BIP32(object):
         signer = self.get_signer(n)
         return signer.get_verifying_key()
 
-    def get_public_node(self, n):
+    def get_public_node(self, coin, n):
         node = self.get_private_node(n)
-        node.version = 0x0488B21E
+        node.version = coin.ser_public
         node.private_key = ''
         return node
 
@@ -91,25 +91,27 @@ class BIP32(object):
         if cls.is_prime(i):
             # Prime derivation
             data = '\0' + node.private_key + i_as_bytes
-
             I64 = hmac.HMAC(key=node.chain_code, msg=data, digestmod=hashlib.sha512).digest()
-            I_left_as_exponent = string_to_number(I64[:32])
 
         else:
             # Public derivation
             data = node.public_key + i_as_bytes
-
             I64 = hmac.HMAC(key=node.chain_code, msg=data, digestmod=hashlib.sha512).digest()
-            I_left_as_exponent = string_to_number(I64[:32])
 
-        secexp = (I_left_as_exponent + string_to_number(node.private_key)) % SECP256k1.generator.order()
+        I_left_as_exponent = string_to_number(I64[:32])
+        secexp = (I_left_as_exponent + string_to_number(node.private_key)) % SECP256k1.order
+
+        if I_left_as_exponent >= SECP256k1.order:
+            raise Exception("Il cannot be bigger than order")
+        if secexp == 0:
+            raise Exception("secexp cannot be zero")
 
         node_out = types.HDNodeType()
         node_out.version = node.version
         node_out.depth = node.depth + 1
         node_out.child_num = i
         node_out.chain_code = I64[32:]
-        node_out.private_key = number_to_string(secexp, SECP256k1.generator.order())
+        node_out.private_key = number_to_string(secexp, SECP256k1.order)
         node_out.public_key = cls._get_pubkey(node_out.private_key)
         node_out.fingerprint = bip32_fingerprint(node.public_key)
 

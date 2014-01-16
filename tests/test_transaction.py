@@ -12,7 +12,7 @@ from trezor import messages_pb2 as proto
 from trezor import types_pb2 as types
 from trezor.transaction import StreamTransaction, StreamTransactionHash, \
     StreamTransactionSign, StreamTransactionSerialize, \
-    compile_TxOutput, compile_script_sig, serialize_script_sig
+    compile_TxOutput, compile_script_sig, serialize_script_sig, estimate_size
 
 def pprint(data):
     # pretty printing of json structure
@@ -76,11 +76,11 @@ class TestTransaction(unittest.TestCase):
             self.assertEqual(binascii.hexlify(data), serialized)
 
             # Check if transaction id has been calculated correctly
-            self.assertEqual(binascii.hexlify(StreamTransactionHash.calculate(tx_proto)), txid)
+            self.assertEqual(binascii.hexlify(StreamTransactionHash.calculate(tx_proto)[::-1]), txid)
     '''
-
+    '''
     def test_signing(self):
-        '''
+        ''
             ./electrum -w ~/.electrum-trezor mktx -f 0.0001 19WGvAHM5yJhftsf1c753QiyhVQWCFcoiY 0.039
 
             input 1:
@@ -111,7 +111,10 @@ class TestTransaction(unittest.TestCase):
             6e6643a39198e8e7bdaffb94f4b49ea21baa107ec2e237368872836073668214ffffffff0170f30500
             000000001976a9145d4a5b0a9f73fc4c320da7919f85c0f5a84681f388ac00000000
 
-        '''
+        ''
+
+        raise Exception("Electrum uses uncompressed keys, so this test does not pass since Trezor uses compressed")
+
         tx1_hash = 'c16a03f1cf8f99f6b5297ab614586cacec784c2d259af245909dedb0e39eddcf'
         tx2_hash = '1ae39a2f8d59670c8fc61179148a8e61e039d0d9e8ab08610cb69b4a19453eaf'
 
@@ -150,13 +153,13 @@ class TestTransaction(unittest.TestCase):
         outtx = StreamTransactionSerialize(inp_count, out_count, version, lock_time)
         out = ''
 
-        '''
+        ''
         Three streaming objects:
             a) StreamTransactionSerialize for serializing already signed fragments for P2P wire
             b) StreamTransactionHash for confirming that every pass handles the same parameters
                 as user confirmed
             c) StreamTransactionSign for signing actual input
-        '''
+        ''
         # Signature 1
         tx = StreamTransactionSign(0, inp_count, out_count, version, lock_time)
         d += tx.serialize_input(inp1, address='19qyPUSAXJ8cHw6TxZ6FYQFZdLMdJA7A2t',
@@ -206,7 +209,7 @@ class TestTransaction(unittest.TestCase):
            "6e6643a39198e8e7bdaffb94f4b49ea21baa107ec2e237368872836073668214ffffffff0170f30500"
            "000000001976a9145d4a5b0a9f73fc4c320da7919f85c0f5a84681f388ac00000000")
 
-        '''
+        ''
             0100000002cfdd9ee3b0ed9d9045f29a252d4c78ecac6c5814b67a29b5f6998fcff1036ac101000000
             0100000002cfdd9ee3b0ed9d9045f29a252d4c78ecac6c5814b67a29b5f6998fcff1036ac101000000
 
@@ -240,7 +243,8 @@ class TestTransaction(unittest.TestCase):
 
             000000001976a9145d4a5b0a9f73fc4c320da7919f85c0f5a84681f388ac00000000
             000000001976a9145d4a5b0a9f73fc4c320da7919f85c0f5a84681f388ac00000000
-        '''
+        ''
+    '''
 
 if __name__ == '__main__':
     unittest.main()

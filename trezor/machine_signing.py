@@ -12,7 +12,7 @@ import messages_pb2 as proto
 import types_pb2 as proto_types
 
 from transaction import StreamTransactionHash, StreamTransactionSerialize, \
-        StreamTransactionSign, compile_TxOutput
+        StreamTransactionSign, compile_TxOutput, estimate_size, estimate_size_kb
 
 '''
 Workflow for two inputs and two outputs:
@@ -78,7 +78,25 @@ class SigningStateMachine(object):
             hsh = binascii.hexlify(StreamTransactionHash.calculate(tx)[::-1])
             txes[hsh] = tx
 
-        # Check tx fee
+        # Detect change address, calculate address_n
+        out_change = None
+        i = 0
+        for out in msg.outputs:
+            if len(list(out.address_n)) and out.HasField('address'):
+                return proto.Failure(code=proto_types.Failure_Other,
+                                     message="Cannot have both address and address_n for the output")
+                
+            if len(list(out.address_n)):
+                # Calculate proper address for given address_n
+                out.address = self.bip32.get_address(coin, list(out.address_n))
+                out.ClearField('address_n')
+                out_change = i  # Remember which output is supposed to be a change
+               
+            i += 1
+
+        print "CHANGE OUT:", out_change
+
+        # Check tx fees
         to_spend = 0
         for inp in msg.inputs:
             tx = txes[binascii.hexlify(inp.prev_hash)]
@@ -88,43 +106,49 @@ class SigningStateMachine(object):
         for out in msg.outputs:
             spending += out.amount
 
-        maxfee_kb = coin.maxfee_kb
+        est_size = estimate_size_kb(len(msg.inputs), len(msg.outputs))
+        maxfee = coin.maxfee_kb * est_size
         fee = to_spend - spending
+
+        print "Est tx size:", est_size
+        print "Maxfee:", maxfee
         print "Tx fee:", fee
-        print "Maxfee_kb:", maxfee_kb
-        # FIXME Estimate tx size in kb
-        if fee > maxfee_kb:
-            return proto.Failure(code=proto_types.Failure_FeeTooHigh, message="Fee is over threshold")
+
+        if spending > to_spend:
+            return proto.Failure(code=proto_types.Failure_Other, message="Not enough funds")
+
+        if fee > maxfee:
+            return proto.Failure(code=proto_types.Failure_Other, message="Fee is over threshold")
 
         # Basic checks passed, let's sign that shit!
         version = 1
         lock_time = 0
+        serialized = ''
 
         outtx = StreamTransactionSerialize(len(msg.inputs), len(msg.outputs), version, lock_time)
-        serialized = ''
 
         # Sign inputs
         index = 0
         for inp in msg.inputs:
-            xxx = ''
             tx = StreamTransactionSign(index, len(msg.inputs), len(msg.outputs), version, lock_time)
 
             for i in msg.inputs:
-            #    # FIXME: Cache / Optimize this!
-
-                address = self.bip32.get_address(list(i.address_n), coin)
-                private_key = self.bip32.get_private_node(list(i.address_n)).private_key
-                print "ADDRESS", address
-                print "PRIVKEY", binascii.hexlify(private_key)
-                secexp = string_to_number(private_key)
-                xxx += tx.serialize_input(i, address, secexp)
+                if i == inp:
+                    address = self.bip32.get_address(coin, list(i.address_n))
+                    private_key = self.bip32.get_private_node(list(i.address_n)).private_key
+                    print "ADDRESS", address
+                    print "PRIVKEY", binascii.hexlify(private_key)
+                    secexp = string_to_number(private_key)
+                    tx.serialize_input(i, address, secexp)
+                else:
+                    tx.serialize_input(i)
 
             for o in msg.outputs:
-                xxx += tx.serialize_output(compile_TxOutput(o))
+                tx.serialize_output(compile_TxOutput(o))
 
             (signature, pubkey) = tx.sign()
+            print "PUBKEY", binascii.hexlify(pubkey)
             serialized += outtx.serialize_input(inp, signature, pubkey)
-
             index += 1
 
         for out in msg.outputs:
@@ -134,7 +158,12 @@ class SigningStateMachine(object):
                                request_index=-1,
                                serialized_tx=serialized)
 
-    '''
+    def estimate_tx_size(self, msg):
+        '''This is stub implementation, which will be replaced by exact
+        calculation in the future.'''
+        est_size = estimate_size(msg.inputs_count, msg.outputs_count)
+        return proto.TxSize(tx_size=est_size)
+
     def sign_tx(self, msg):
         # This function starts workflow of signing Bitcoin transaction.
         # Function set up the environment and send back a input request message,
@@ -157,6 +186,7 @@ class SigningStateMachine(object):
         return proto.TxRequest(request_type=proto_types.TXINPUT,
                                request_index=self.input_index)
 
+    '''
     def tx_input(self, msg):
         # This message is called on tx input message.
 
@@ -347,14 +377,17 @@ class SigningStateMachine(object):
     '''
 
     def process_message(self, msg):
+        if isinstance(msg, proto.EstimateTxSize):
+            return self.passphrase.use(self.estimate_tx_size, msg)
+
         if isinstance(msg, proto.SimpleSignTx):
             return self.passphrase.use(self.simple_sign_tx, msg)
 
-        '''
         if isinstance(msg, proto.SignTx):
             # Start signing process
             return self.passphrase.use(self.sign_tx, msg)
 
+        '''
         if isinstance(msg, proto.TxInput):
             return self.tx_input(msg)
 
