@@ -31,20 +31,19 @@ TODO
 * x Implement new mnemonic / BIP39
 * x SetMaxFeeKb -> Settings
 * x Allow to modify maxfeekb, coin type, ...
-* Implement SimpleSignTx
+* x Implement SimpleSignTx
 * Fix SignTx
 * Safe recovery of the seed
-* Finalize workflow for ResetDevice
-* Finalize LoadDevice
-* Allow importing xprv structure
-* Factory reset
+* x Finalize workflow for ResetDevice
+* x Finalize LoadDevice
+* x Allow importing xprv structure
+* x Factory reset
 * Wipe device
 * Pin change
-* device_id
-* mpk_hash
+* x device_id
+* x mpk_hash
 * x Exponential pin backoff
-* PassphraseRequest
-* Encrypted seed
-* MPK on storage
+* x PassphraseRequest
+* x Encrypted seed
 * x Plugin - signing script
 
