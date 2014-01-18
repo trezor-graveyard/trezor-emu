@@ -1,10 +1,7 @@
-import hashlib
-import time
 import binascii
-import ecdsa
 from ecdsa.util import string_to_number
 
-import signing
+from logo import logo
 import coindef
 import tools
 from bip32 import BIP32
@@ -41,60 +38,55 @@ C TxOutput
 S TxRequest(type=output, index=-1, serialized_tx=<str>)
 '''
 
-class SigningStateMachine(object):
-    def __init__(self, layout, storage, passphrase):
+class SimpleSignStateMachine(object):
+    def __init__(self, layout, storage, yesno, passphrase):
         self.layout = layout
         self.storage = storage
+        self.yesno = yesno
         self.passphrase = passphrase
 
         self.set_main_state()
 
     def set_main_state(self):
-        self.inputs_count = 0  # Count of inputs in transaction
-        self.outputs_count = 0  # Count ot outputs in transaction
-        self.input_index = 0  # Index <0, inputs_count) of currently processed input
-        self.output_index = 0  # Index <0, outputs_count) of currently processed output
-        self.signing_index = 0  # Index <0, inputs_count) of currently processed signature
-        self.signing_input = None  # Cache of currently signing input, for sending back serialized input
-
-        self.input_hash = None  # sha256 object of currently processed input
-        self.output_hash = None  # sha256 object of currently processed output
-        self.tx_hash = None  # sha256 object of whole transaction
-
-        # When flag is set, tx_output streams back it's part of tx template.
-        # This is used in final phase of signing, where computer needs to know the rest
-        # of transaction template, from last signature to the end
-        self.ser_output = False
-
         self.bip32 = None  # Reference to fresh BIP32 instance
+
+    def confirm_output(self, msg, index, out_change=None):
+        '''Iterate over all outputs and ask user to confirm
+        every address and balance'''
+
+        if index >= len(msg.outputs):
+            # All outputs are confirmed by user
+            return self.do_sign(msg, out_change)
+
+        coin = coindef.types[msg.coin_name]
+        out = msg.outputs[index]
+
+        if len(list(out.address_n)) and out.HasField('address'):
+            return proto.Failure(code=proto_types.Failure_Other,
+                                 message="Cannot have both address and address_n for the output")
+
+        # Calculate proper address for given address_n
+        if len(list(out.address_n)):
+            out.address = self.bip32.get_address(coin, list(out.address_n))
+            out.ClearField('address_n')
+            out_change = index  # Remember which output is supposed to be a change
+
+        self.layout.show_output(coin, out.address, out.amount)
+        return self.yesno.request(self.confirm_output, *[msg, index + 1, out_change])
 
     def simple_sign_tx(self, msg):
         self.bip32 = BIP32(self.storage.get_node())
+        return self.confirm_output(msg, 0)
+    
+    def do_sign(self, msg, out_change):
         coin = coindef.types[msg.coin_name]
+        print "CHANGE OUT:", out_change
 
         # Calculate tx hashes for all provided input transactions
         txes = {}
         for tx in msg.transactions:
             hsh = binascii.hexlify(StreamTransactionHash.calculate(tx)[::-1])
             txes[hsh] = tx
-
-        # Detect change address, calculate address_n
-        out_change = None
-        i = 0
-        for out in msg.outputs:
-            if len(list(out.address_n)) and out.HasField('address'):
-                return proto.Failure(code=proto_types.Failure_Other,
-                                     message="Cannot have both address and address_n for the output")
-                
-            if len(list(out.address_n)):
-                # Calculate proper address for given address_n
-                out.address = self.bip32.get_address(coin, list(out.address_n))
-                out.ClearField('address_n')
-                out_change = i  # Remember which output is supposed to be a change
-               
-            i += 1
-
-        print "CHANGE OUT:", out_change
 
         # Check tx fees
         to_spend = 0
@@ -129,7 +121,10 @@ class SigningStateMachine(object):
 
         # Sign inputs
         index = 0
+        self.layout.show_progress(index + 1, len(msg.inputs), clear=True, logo=logo)
         for inp in msg.inputs:
+            self.layout.show_progress(index + 1, len(msg.inputs), clear=False)
+
             tx = StreamTransactionSign(index, len(msg.inputs), len(msg.outputs), version, lock_time)
 
             for i in msg.inputs:
@@ -154,9 +149,44 @@ class SigningStateMachine(object):
         for out in msg.outputs:
             serialized += outtx.serialize_output(compile_TxOutput(out))
 
+        self.layout.show_logo()
+        self.set_main_state()
         return proto.TxRequest(request_type=proto_types.TXOUTPUT,
                                request_index=-1,
                                serialized_tx=serialized)
+
+    def process_message(self, msg):
+        if isinstance(msg, proto.SimpleSignTx):
+            return self.passphrase.use(self.simple_sign_tx, msg)
+
+class SignStateMachine(object):
+    def __init__(self, layout, storage, yesno, passphrase):
+        self.layout = layout
+        self.storage = storage
+        self.yesno = yesno
+        self.passphrase = passphrase
+
+        self.set_main_state()
+
+    def set_main_state(self):
+        self.inputs_count = 0  # Count of inputs in transaction
+        self.outputs_count = 0  # Count ot outputs in transaction
+        self.input_index = 0  # Index <0, inputs_count) of currently processed input
+        self.output_index = 0  # Index <0, outputs_count) of currently processed output
+        self.signing_index = 0  # Index <0, inputs_count) of currently processed signature
+        self.signing_input = None  # Cache of currently signing input, for sending back serialized input
+
+        self.input_hash = None  # sha256 object of currently processed input
+        self.output_hash = None  # sha256 object of currently processed output
+        self.tx_hash = None  # sha256 object of whole transaction
+
+        # When flag is set, tx_output streams back it's part of tx template.
+        # This is used in final phase of signing, where computer needs to know the rest
+        # of transaction template, from last signature to the end
+        self.ser_output = False
+
+        self.bip32 = None  # Reference to fresh BIP32 instance
+
 
     def estimate_tx_size(self, msg):
         '''This is stub implementation, which will be replaced by exact
@@ -379,9 +409,6 @@ class SigningStateMachine(object):
     def process_message(self, msg):
         if isinstance(msg, proto.EstimateTxSize):
             return self.passphrase.use(self.estimate_tx_size, msg)
-
-        if isinstance(msg, proto.SimpleSignTx):
-            return self.passphrase.use(self.simple_sign_tx, msg)
 
         if isinstance(msg, proto.SignTx):
             # Start signing process
