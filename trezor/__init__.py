@@ -123,7 +123,7 @@ def main(args):
     display.init()
 
     # Initialize layout driver
-    layout = Layout(buff)
+    layout = Layout(buff, display)
 
     # Process exponential backoff if there was unsuccesfull PIN attempts
     if storage.get_pin_delay():
@@ -133,7 +133,6 @@ def main(args):
         start = time.time()
         while time.time() - start < delay:
             layout.show_pin_backoff_progress(int((time.time() - start) * 10), int(delay * 10))
-            display.refresh()
             time.sleep(0.1)
 
     # Startup state machine and switch it to default state
@@ -190,9 +189,9 @@ def main(args):
         # Display scrolling
         is_active |= layout.update()
 
-        if layout.need_refresh:
-            # Update display
-            display.refresh()
+        # if layout.need_refresh:
+        #    # Update display
+        #    display.refresh()
 
         if not is_active:
             # Nothing to do, sleep for a moment

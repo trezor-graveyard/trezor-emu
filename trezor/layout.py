@@ -5,10 +5,11 @@ from logo import logo as default_logo
 
 
 class Layout(object):
-    def __init__(self, buffer):
+    def __init__(self, buffer, display):
         self.line_len_normal = 21
         self.line_len_bold = 16
         self.buffer = buffer
+        self.display = display
         self.update_delta = 0.05
         self.last_screen = None
         self.clear()
@@ -19,7 +20,7 @@ class Layout(object):
 
         # Clear the area
         self.buffer.clear()  # (0, 0, self.buffer.width-1, self.buffer.height-1)
-        self.need_refresh = True
+        self.display.refresh()
 
     def update(self):
         """return proper (is_refresh, is_active) if layout has something to render"""
@@ -27,6 +28,7 @@ class Layout(object):
         t = time.time()
         if t - self.last_update < self.update_delta:
             if len(self.scrolls):
+                self.display.refresh()
                 return True  # No need for rendering, but active
             else:
                 return False  # Nothing to do
@@ -56,10 +58,11 @@ class Layout(object):
                 pos_x += direction
                 item[2] = pos_x
 
-                self.need_refresh = True
+                self.display.refresh()
 
             self._draw_scroll_text(pos_x, y, text, font)
 
+        self.display.refresh()
         return True
 
     def _draw_scroll_text(self, x, y, text, font):
@@ -82,7 +85,7 @@ class Layout(object):
         if label:
             self._show_status(label, '', '')
 
-        self.need_refresh = True
+        self.display.refresh()
         self.last_screen = 'show_logo'
 
     def show_message(self, messages):
@@ -114,7 +117,7 @@ class Layout(object):
             self.buffer.draw_string(0, i * font.height + 1, msg, font)
 
         self._show_status(question, yes_text, no_text)
-        self.need_refresh = True
+        self.display.refresh()
         self.last_screen = 'show_question'
 
     def show_question_dummy(self):
@@ -156,9 +159,20 @@ class Layout(object):
 
         width = int((self.buffer.width - 5) * (current / float(maximum)))
         self.buffer.box(2, self.buffer.height - 8, width + 2, self.buffer.height - 3)
-        self.need_refresh = True
+        self.display.refresh()
         self.last_screen = 'show_progress'
 
+    def show_output(self, coin, address, amount):
+        amount_str = self._prepare_amount(amount, coin)
+
+        # Quick & dirty splitting address to two lines
+        addr_1 = address[:len(address) / 2]
+        addr_2 = address[len(address) / 2:]
+
+        self.show_question(["Send", amount_str, "to", addr_1, addr_2], '', 'Confirm }', '{ Cancel')
+        self.last_screen = 'show_output'
+                        
+    '''
     def show_transactions(self, txes, more=False):
         self.clear()
 
@@ -176,24 +190,25 @@ class Layout(object):
             self.buffer.invert(0, i * 22 + 9, self.buffer.width - 1, i * 22 + 17)
 
         self._show_status('Confirm outputs?', 'More \x7e' if more else 'Confirm }', '{ Cancel')
-        self.need_refresh = True
+        self.display.refresh()
         self.last_screen = 'show_transactions'
+    '''
 
-    def _prepare_amount(self, amount):
+    def _prepare_amount(self, amount, coin):
 
         if amount > 21 * 10 ** 14 or amount < 0:
             return "Invalid amount"
 
         amount = float(amount) / 10 ** 8  # From satoshis to bitcoins
         s = ("%.08f" % amount).rstrip('0').rstrip('.')
-        if len(s) <= self.line_len_bold - 4:
-            s = "%s BTC" % s
-        elif len(s) <= self.line_len_bold - 2:
-            s = "%s \x80" % s
-        else:
-            s = "%s \x80" % s[:self.line_len_bold - 2]
+        # if len(s) <= self.line_len_bold - 1 - len(coin.coin_shortcut):
+        s = "%s %s" % (s, coin.coin_shortcut)
+        # elif len(s) <= self.line_len_bold - 2:
+        #    s = "%s \x80" % s
+        # else:
+        #    s = "%s \x80" % s[:self.line_len_bold - 2]
 
-        return s.rjust(self.line_len_bold, ' ')
+        return s  # .rjust(self.line_len_bold, ' ')
 
     def _show_status(self, status, yes_text, no_text, invert=False):
         # Status line
