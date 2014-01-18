@@ -205,7 +205,8 @@ class ResetWalletState(object):
 
             return proto.EntropyRequest()
         
-        return self.yesno.request(msg, '', 'Confirm }', '{ Cancel', entropy_request)
+        self.layout.show_question(msg, '', 'Confirm }', '{ Cancel')
+        return self.yesno.request(entropy_request)
     
     def step2(self, external_entropy):
         '''Now the action is confirmed by user and both
@@ -237,7 +238,8 @@ class ResetWalletState(object):
         if not Mnemonic(self.language).check(mnemonic):
             raise Exception("Unexpected error, mnemonic doesn't pass internal check")
         
-        return self.yesno.request(mnemonic.split(" "), '', 'Done }', '{ Cancel', self.step4, *[pin, mnemonic])
+        self.layout.show_question(mnemonic.split(" "), '', 'Done }', '{ Cancel')
+        return self.yesno.request(self.step4, *[pin, mnemonic])
 
     def step4(self, pin, mnemonic):
         self.storage.load_wallet(mnemonic, None, self.language, self.label, pin, self.passphrase_protection)        
@@ -267,16 +269,14 @@ class YesNoState(object):
         self.func = None
         self.args = []
 
-    def request(self, message, question, yes_text, no_text, func, *args):
-        self.layout.show_question(message, question, yes_text, no_text)
-
+    def request(self, func, *args):
         self.func = func
         self.args = args
         self.pending = True  # Waiting for confirmation from computer
 
         # Tell computer that device is waiting for HW buttons
         return proto.ButtonRequest()
-
+        
     def store(self, button):
         if not self.func:
             return
@@ -319,13 +319,15 @@ class StateMachine(object):
         self.yesno = YesNoState(layout)
         self.pin = PinState(layout, storage)
         self.passphrase = PassphraseState(layout, storage)
-        self.signing = machine_signing.SigningStateMachine(layout, storage, self.passphrase)
+        self.sign = machine_signing.SignStateMachine(layout, storage, self.yesno, self.passphrase)
+        self.simplesign = machine_signing.SimpleSignStateMachine(layout, storage, self.yesno, self.passphrase)
         self.reset_wallet = ResetWalletState(layout, storage, self.yesno, self.pin, self.set_main_state)
 
         self.set_main_state()
     
     def protect_load(self, seed, node, pin, passphrase_protection, language, label):
-        return self.yesno.request(["Load custom seed?"], '', 'Confirm }', '{ Cancel', self.load_wallet, *[seed, node, pin, passphrase_protection, language, label])
+        self.layout.show_question(["Load custom seed?"], '', 'Confirm }', '{ Cancel')
+        return self.yesno.request(self.load_wallet, *[seed, node, pin, passphrase_protection, language, label])
 
     def protect_call(self, yesno_message, question, no_text, yes_text, func, *args):
         '''
@@ -336,14 +338,15 @@ class StateMachine(object):
             func - which function to call when user passes the protection
             *args - arguments for func
         '''  
-            
+
+        self.layout.show_question(yesno_message, question, yes_text, no_text)
+
         if self.storage.get_pin():
             # Require hw buttons and PIN
-            return self.yesno.request(yesno_message, question, yes_text, no_text, self.pin.request,
-                                      *['', False, func] + list(args))
+            return self.yesno.request(self.pin.request, *['', False, func] + list(args))
 
         # If confirmed, call final function directly
-        return self.yesno.request(yesno_message, question, yes_text, no_text, func, *args)
+        return self.yesno.request(func, *args)
 
     def clear_custom_message(self):
         if self.custom_message:
@@ -370,7 +373,8 @@ class StateMachine(object):
     def set_main_state(self):
         # Switch device to default state
         self.yesno.set_main_state()
-        self.signing.set_main_state()
+        self.sign.set_main_state()
+        self.simplesign.set_main_state()
         self.pin.set_main_state()
         self.passphrase.set_main_state()
         self.reset_wallet.set_main_state()
@@ -526,8 +530,11 @@ class StateMachine(object):
             else:
                 return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Invalid signature")
 
-        if isinstance(msg, (proto.EstimateTxSize, proto.SimpleSignTx, proto.SignTx, proto.TxInput, proto.TxOutput)):
-            return self.signing.process_message(msg)
+        if isinstance(msg, proto.SimpleSignTx):
+            return self.simplesign.process_message(msg)
+
+        if isinstance(msg, (proto.EstimateTxSize, proto.SignTx, proto.TxInput, proto.TxOutput)):
+            return self.sign.process_message(msg)
 
         self.set_main_state()
         return proto.Failure(code=proto_types.Failure_UnexpectedMessage, message="Unexpected message")
