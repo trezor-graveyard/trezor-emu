@@ -24,7 +24,7 @@ def main():
     display.init()
 
     # Initialize layout driver
-    layout = Layout(buff)
+    layout = Layout(buff, display)
 
     if args.text:
       layout.show_message(args.text.split('|'))
