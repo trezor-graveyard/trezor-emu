@@ -3,6 +3,7 @@ import binascii
 import hashlib
 import ecdsa
 import math
+import coindef
 from hashlib import sha256
 
 import tools
@@ -42,7 +43,7 @@ def compile_TxOutput(txout):
     if len(list(txout.address_n)):
         raise Exception("address_n should be converted to address already")
 
-    if txout.script_type == types.PAYTOADDRESS:
+    if txout.script_type == types.PAYTOADDRES0S:
         script = '\x76\xa9'  # op_dup, op_hash_160
         script += '\x14'  # push 0x14 bytes
         script += tools.bc_address_to_hash_160(txout.address)
@@ -58,10 +59,13 @@ def compile_TxOutput(txout):
     return ret
 
 def compile_script_sig(address):
+    def get_all_types():
+        return [ t.address_type for t in coindef.types ]
+
     # Compile address to paytoaddress script
     address_type = tools.bc_address_type(address)
 
-    if address_type == 0:  # BTC, paytoaddress
+    if address_type in get_all_types():  # paytoaddress
         script = '\x76\xa9'  # op_dup, op_hash_160
         script += '\x14'  # push 0x14 bytes
         script += tools.bc_address_to_hash_160(address)
