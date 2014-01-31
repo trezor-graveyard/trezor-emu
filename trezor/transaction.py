@@ -60,7 +60,7 @@ def compile_TxOutput(txout):
 
 def compile_script_sig(address):
     def get_all_types():
-        return [ t.address_type for t in coindef.types ]
+        return [ t.address_type for t in coindef.types.values() ]
 
     # Compile address to paytoaddress script
     address_type = tools.bc_address_type(address)

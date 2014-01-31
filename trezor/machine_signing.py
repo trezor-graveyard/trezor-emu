@@ -200,6 +200,8 @@ class SignStateMachine(object):
         # Function set up the environment and send back a input request message,
         # asking computer for first input.
 
+        raise Exception("Not implemented")
+
         self.set_main_state()
 
         if msg.inputs_count < 1:
