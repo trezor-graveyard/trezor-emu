@@ -128,12 +128,8 @@ def main(args):
     # Process exponential backoff if there was unsuccesfull PIN attempts
     if storage.get_pin_delay():
         delay = storage.get_pin_delay()
-
         print "Waiting %s seconds until boot up" % delay
-        start = time.time()
-        while time.time() - start < delay:
-            layout.show_pin_backoff_progress(int((time.time() - start) * 10), int(delay * 10))
-            time.sleep(0.1)
+        layout.show_pin_backoff_progress(delay)
 
     # Startup state machine and switch it to default state
     machine = StateMachine(storage, layout)
@@ -142,16 +138,18 @@ def main(args):
 
     # Main cycle
     while True:
-        # Set True if device does something
-        # False = device will sleep for a moment
-        is_active = False
-
         try:
             # Read button states
             button = but.read()
         except KeyboardInterrupt:
             # User requested to close the app
             break
+
+        # Set is_active=True if device does something
+        # False = device will sleep for a moment to prevent CPU load
+        # Set button=None to use event only for rendering
+        # and hide it against state machine
+        (is_active, button) = layout.update(button)
 
         # Handle debug link connection
         msg = debug_transport.read()
@@ -185,13 +183,6 @@ def main(args):
                 print "Sending", resp.__class__.__name__, resp
                 transport.write(resp)
                 is_active = True
-
-        # Display scrolling
-        is_active |= layout.update()
-
-        # if layout.need_refresh:
-        #    # Update display
-        #    display.refresh()
 
         if not is_active:
             # Nothing to do, sleep for a moment

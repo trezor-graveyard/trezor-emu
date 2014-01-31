@@ -1,79 +1,24 @@
-import smallfonts
 import time
-
+import smallfonts
 from logo import logo as default_logo
 
-
 class Layout(object):
-    def __init__(self, buffer, display):
+    def __init__(self, buff, display):
         self.line_len_normal = 21
         self.line_len_bold = 16
-        self.buffer = buffer
+        self.buffer = buff
         self.display = display
-        self.update_delta = 0.05
-        self.last_screen = None
+
         self.clear()
 
     def clear(self):
-        self.last_update = time.time()
-        self.scrolls = []
-
         # Clear the area
         self.buffer.clear()  # (0, 0, self.buffer.width-1, self.buffer.height-1)
         self.display.refresh()
 
-    def update(self):
+    def update(self, button):
         """return proper (is_refresh, is_active) if layout has something to render"""
-
-        t = time.time()
-        if t - self.last_update < self.update_delta:
-            if len(self.scrolls):
-                self.display.refresh()
-                return True  # No need for rendering, but active
-            else:
-                return False  # Nothing to do
-        self.last_update = t
-
-        if not len(self.scrolls):
-            return False  # Nothing to do
-
-        for item in self.scrolls:
-            (direction, wait, pos_x, y, text, font) = item
-
-            width = len(text) * (font.width + 1)
-
-            if wait:
-                item[1] -= 1
-
-            elif width >= self.buffer.width:
-
-                if pos_x < -width + self.buffer.width + 1 and direction == -1:
-                    item[0] = 1  # Change direction
-                    item[1] = 20  # Set wait cycles
-
-                if pos_x >= 0 and direction == 1:
-                    item[0] = -1  # Change direction
-                    item[1] = 20  # Set wait cycles
-
-                pos_x += direction
-                item[2] = pos_x
-
-                self.display.refresh()
-
-            self._draw_scroll_text(pos_x, y, text, font)
-
-        self.display.refresh()
-        return True
-
-    def _draw_scroll_text(self, x, y, text, font):
-        self.buffer.clear(0, y, self.buffer.width - 1, y + font.height)
-        self.buffer.draw_string(x, y, text, font)
-
-    def _scroll_text(self, y, text, font):
-        # direction, x pos delta, pos_y, text, font
-        details = [-1, 30, 0, y, text, font]
-        self._draw_scroll_text(0, y, text, font)
-        self.scrolls.append(details)
+        return (False, button)
 
     def show_logo(self, logo=None, label=None):
         self.clear()
@@ -86,39 +31,36 @@ class Layout(object):
             self._show_status(label, '', '')
 
         self.display.refresh()
-        self.last_screen = 'show_logo'
 
     def show_message(self, messages):
         # Print message to console
         self.show_question(messages, '', 'Continue }', '')
-        self.last_screen = 'show_message'
 
     def show_receiving_address(self, address):
         self.show_message(
             # .....................
             ['This address can be',
              'safely used for',
-             'receiving new funds:'])
-        self._scroll_text(28, address, smallfonts.Font5x8)
-        self.last_screen = 'show_receiving_address'
+             'receiving new funds:',
+             address[:len(address)],
+             address[len(address):], ])
 
-    def show_question(self, messages, question, yes_text, no_text):
+    def show_question(self, lines, question, yes_text, no_text):
         # Print message to console
-        print '-' * len(' '.join(messages))
-        print ' '.join(messages)
+        print '-' * len(' '.join(lines))
+        print ' '.join(lines)
         if question:
             print question, ' (y/n)'
 
-        self.clear()
         font = smallfonts.Font5x8
+        self.clear()
 
-        for i in range(len(messages)):
-            msg = messages[i]
+        for i in range(len(lines)):
+            msg = lines[i]
             self.buffer.draw_string(0, i * font.height + 1, msg, font)
 
         self._show_status(question, yes_text, no_text)
         self.display.refresh()
-        self.last_screen = 'show_question'
 
     def show_question_dummy(self):
         self.show_question(
@@ -129,7 +71,6 @@ class Layout(object):
              'internim displeji',
              'internim displeji'],
             'Question?', 'Confirm', 'Cancel')
-        self.last_screen = 'show_question_dummy'
 
     '''
     def show_pin_request(self):
@@ -138,12 +79,17 @@ class Layout(object):
              "PIN code to",
              "the computer"],
             '', '', '{ Cancel')
-        self.last_screen = 'show_pin_request'
     '''
 
-    def show_pin_backoff_progress(self, current, maximum):
-        # TODO: Specific text or icon
-        self.show_progress(current, maximum, True, default_logo)
+    def show_pin_backoff_progress(self, delay):
+        start = time.time()
+        maximum = int(delay * 10)
+        while time.time() - start < delay:
+            current = int((time.time() - start) * 10)
+            clear = True if current == 0 else False
+            
+            self.show_progress(current, maximum, clear, default_logo)    
+            time.sleep(0.1)
 
     def show_progress(self, current, maximum, clear=False, logo=None):
         if clear:
@@ -160,7 +106,6 @@ class Layout(object):
         width = int((self.buffer.width - 5) * (current / float(maximum)))
         self.buffer.box(2, self.buffer.height - 8, width + 2, self.buffer.height - 3)
         self.display.refresh()
-        self.last_screen = 'show_progress'
 
     def show_output(self, coin, address, amount):
         amount_str = self._prepare_amount(amount, coin)
@@ -170,7 +115,6 @@ class Layout(object):
         addr_2 = address[len(address) / 2:]
 
         self.show_question(["Send", amount_str, "to", addr_1, addr_2], '', 'Confirm }', '{ Cancel')
-        self.last_screen = 'show_output'
                         
     '''
     def show_transactions(self, txes, more=False):
@@ -191,7 +135,6 @@ class Layout(object):
 
         self._show_status('Confirm outputs?', 'More \x7e' if more else 'Confirm }', '{ Cancel')
         self.display.refresh()
-        self.last_screen = 'show_transactions'
     '''
 
     def _prepare_amount(self, amount, coin):
@@ -217,15 +160,16 @@ class Layout(object):
         else:
             delta = -10
 
-        self.buffer.clear(0, self.buffer.height - delta - 20, self.buffer.width - 1, self.buffer.height - 1)
-
         if status != '':
             pos = self.buffer.width / 2 - len(status) * (smallfonts.Font5x8.width + 1) / 2
+
+            self.buffer.clear(0, self.buffer.height - delta - 20, self.buffer.width - 1, self.buffer.height - 1)
 
             self.buffer.frame(0, self.buffer.height - delta - 20, self.buffer.width - 1, self.buffer.height - delta - 20)
             self.buffer.draw_string(pos, self.buffer.height - delta - 18, status, smallfonts.Font5x8)
         else:
 
+            self.buffer.clear(0, self.buffer.height - delta - 12, self.buffer.width - 1, self.buffer.height - 1)
             self.buffer.frame(0, self.buffer.height - 12, self.buffer.width - 1, self.buffer.height - 12)
 
         # Left button title
@@ -268,5 +212,3 @@ class Layout(object):
                 draw_box(matrix[x+y*3], x, y)
 
             print
-
-        self.last_screen = 'show_matrix'

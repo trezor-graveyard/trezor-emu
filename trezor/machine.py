@@ -93,7 +93,8 @@ class PinState(object):
             else:
                 self.storage.increase_pin_attempt()
                 print "Invalid PIN, waiting %s seconds" % self.storage.get_pin_delay()
-                time.sleep(self.storage.get_pin_delay())
+                delay = self.storage.get_pin_delay()
+                self.layout.show_pin_backoff_progress(delay)
                 self.cancel()
                 self.set_main_state()
                 return proto.Failure(code=proto_types.Failure_PinInvalid, message="Invalid PIN")

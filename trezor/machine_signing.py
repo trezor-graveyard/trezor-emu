@@ -50,6 +50,10 @@ class SimpleSignStateMachine(object):
     def set_main_state(self):
         self.bip32 = None  # Reference to fresh BIP32 instance
 
+    def simple_sign_tx(self, msg):
+        self.bip32 = BIP32(self.storage.get_node())
+        return self.confirm_output(msg, 0)
+
     def confirm_output(self, msg, index, out_change=None):
         '''Iterate over all outputs and ask user to confirm
         every address and balance'''
@@ -73,10 +77,6 @@ class SimpleSignStateMachine(object):
 
         self.layout.show_output(coin, out.address, out.amount)
         return self.yesno.request(self.confirm_output, *[msg, index + 1, out_change])
-
-    def simple_sign_tx(self, msg):
-        self.bip32 = BIP32(self.storage.get_node())
-        return self.confirm_output(msg, 0)
     
     def do_sign(self, msg, out_change):
         coin = coindef.types[msg.coin_name]
@@ -110,6 +110,7 @@ class SimpleSignStateMachine(object):
             return proto.Failure(code=proto_types.Failure_Other, message="Not enough funds")
 
         if fee > maxfee:
+            # FIXME soft limit
             return proto.Failure(code=proto_types.Failure_Other, message="Fee is over threshold")
 
         # Basic checks passed, let's sign that shit!
