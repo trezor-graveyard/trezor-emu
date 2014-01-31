@@ -196,6 +196,10 @@ class Storage(object):
 
         return self.session.node
 
+    def set_pin(self, pin):
+        self.struct.pin = pin
+        self.save()
+
     def increase_pin_attempt(self):
         self.struct.pin_failed_attempts += 1
         self.save()
@@ -216,8 +220,7 @@ class Storage(object):
         self.set_secret(language=language, mnemonic=mnemonic, node=node, passphrase_protection=passphrase_protection)
         self.set_language(language)
         self.set_label(label)
-        
-        self.struct.pin = pin
+        self.set_pin(pin)
 
         # Wallet has new secrets, which are known to potential attacker already
         self.clear_pin_attempt()

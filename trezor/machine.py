@@ -38,7 +38,8 @@ class PinState(object):
     def _decode_from_matrix(self, pin_encoded):
         # Receive pin encoded using a matrix
         # Return original PIN sequence
-        pin = ''.join([ str(self.matrix[int(x) - 1]) for x in pin_encoded ])        
+        pin = ''.join([ str(self.matrix[int(x) - 1]) for x in pin_encoded ])
+        print "Real PIN", pin
         return pin    
         
     def request(self, msg, pass_or_check, func, *args):
@@ -52,6 +53,18 @@ class PinState(object):
         
         self.layout.show_matrix(self.matrix)
         return proto.PinMatrixRequest(message=msg)
+
+    def change(self, is_remove):
+
+        if is_remove:
+            self.storage.set_pin('')
+            return proto.Success(message="Pin has been succesfully removed")
+
+        return self.request_new(self._change_done)
+
+    def _change_done(self, new_pin):
+        self.storage.set_pin(new_pin)
+        return proto.Success(message="Pin has been succesfully set")
 
     def request_new(self, func, *args):
         '''Ask user for new PIN'''
@@ -420,7 +433,7 @@ class StateMachine(object):
 
         self.set_main_state()
         return proto.Success(message='Settings updated')
-    
+
     def load_wallet(self, mnemonic, node, pin, passphrase_protection, language, label):
         # Use mnemonic OR HDNodeType to initialize the device
         # If both are provided, mnemonic has higher priority
@@ -439,6 +452,18 @@ class StateMachine(object):
         m.entropy = d[:size]
         self.set_main_state()
         return m
+
+    def _change_pin(self, is_remove):
+        msg = "Change existing PIN?"
+
+        if is_remove:
+            msg = "Remove existing PIN?"
+
+        elif not self.storage.get_pin():
+            msg = "Set new PIN?"
+
+        return self.protect_call([msg], '',
+                    '{ Cancel', 'Confirm }', self.pin.change, is_remove)
 
     def _get_address(self, coin, address_n):
         address = BIP32(self.storage.get_node()).get_address(coin, address_n)
@@ -513,6 +538,9 @@ class StateMachine(object):
         if isinstance(msg, proto.GetAddress):
             return self.passphrase.use(self._get_address, coindef.types[msg.coin_name], list(msg.address_n))
         
+        if isinstance(msg, proto.ChangePin):
+            return self._change_pin(msg.remove)
+
         if isinstance(msg, proto.ApplySettings):
             return self.apply_settings(msg)
 

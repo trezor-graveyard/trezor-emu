@@ -208,7 +208,9 @@ class Layout(object):
         
         for y in range(3):
             for x in range(3):
-                print matrix[x+y*3],
-                draw_box(matrix[x+y*3], x, y)
+                print matrix[x + (2 - y) * 3],
+                draw_box(matrix[x + (2 - y) * 3], x, y)
 
             print
+
+        self.display.refresh()
