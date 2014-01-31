@@ -43,7 +43,7 @@ def compile_TxOutput(txout):
     if len(list(txout.address_n)):
         raise Exception("address_n should be converted to address already")
 
-    if txout.script_type == types.PAYTOADDRES0S:
+    if txout.script_type == types.PAYTOADDRESS:
         script = '\x76\xa9'  # op_dup, op_hash_160
         script += '\x14'  # push 0x14 bytes
         script += tools.bc_address_to_hash_160(txout.address)
