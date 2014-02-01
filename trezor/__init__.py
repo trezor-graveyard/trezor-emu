@@ -204,10 +204,7 @@ def main(args):
 
         if not is_active:
             # Nothing to do, sleep for a moment
-            time.sleep(0.1)
-
-    # Save wallet file
-    storage.save()
+            time.sleep(0.05)
 
     # Close transports
     transport.close()

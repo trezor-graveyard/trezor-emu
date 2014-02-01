@@ -105,6 +105,7 @@ class SimpleSignStateMachine(object):
         print "Est tx size:", est_size
         print "Maxfee:", maxfee
         print "Tx fee:", fee
+        print "Now please be patient..."
 
         if spending > to_spend:
             return proto.Failure(code=proto_types.Failure_Other, message="Not enough funds")
@@ -129,6 +130,7 @@ class SimpleSignStateMachine(object):
             tx = StreamTransactionSign(index, len(msg.inputs), len(msg.outputs), version, lock_time)
 
             for i in msg.inputs:
+                print '.',
                 if i == inp:
                     address = self.bip32.get_address(coin, list(i.address_n))
                     private_key = self.bip32.get_private_node(list(i.address_n)).private_key
@@ -140,6 +142,7 @@ class SimpleSignStateMachine(object):
                     tx.serialize_input(i)
 
             for o in msg.outputs:
+                print '.',
                 tx.serialize_output(compile_TxOutput(o))
 
             (signature, pubkey) = tx.sign()
@@ -148,6 +151,7 @@ class SimpleSignStateMachine(object):
             index += 1
 
         for out in msg.outputs:
+            print '.',
             serialized += outtx.serialize_output(compile_TxOutput(out))
 
         self.layout.show_logo()
