@@ -12,11 +12,11 @@ class StdinButtons(object):
         if not rlist:
             return None
 
-        key = sys.stdin.readline()[0]
-        if key == 'y':
-            return True
-
-        if key == 'n':
+        keys = sys.stdin.readline()
+        if 'n' in keys:
             return False
+
+        if 'y' in keys:
+            return True
 
         return None
