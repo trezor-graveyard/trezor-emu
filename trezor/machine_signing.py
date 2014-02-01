@@ -123,9 +123,9 @@ class SimpleSignStateMachine(object):
 
         # Sign inputs
         index = 0
-        self.layout.show_progress(index + 1, len(msg.inputs), clear=True, logo=logo)
+        self.layout.show_progress(index, len(msg.inputs), clear=True, logo=logo)
         for inp in msg.inputs:
-            self.layout.show_progress(index + 1, len(msg.inputs), clear=False)
+            self.layout.show_progress(index, len(msg.inputs), clear=False)
 
             tx = StreamTransactionSign(index, len(msg.inputs), len(msg.outputs), version, lock_time)
 
