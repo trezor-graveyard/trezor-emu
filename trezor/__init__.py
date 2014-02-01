@@ -25,6 +25,7 @@ from display_buffer import DisplayBuffer
 from storage import Storage
 from machine import StateMachine
 
+from tools import monkeypatch_google_protobuf_text_format
 '''
     TODO:
         * PIN-protected seed
@@ -36,7 +37,22 @@ from machine import StateMachine
 
     Failure codes:
         1 - Unknown method
-        2 - Waiting to OTP
+        2 - Waiting to OTPdef monkeypatch_google_protobuf_text_format():
+    # monkeypatching: text formatting of protobuf messages
+    import google.protobuf.text_format
+    import google.protobuf.descriptor
+
+    _oldPrintFieldValue = google.protobuf.text_format.PrintFieldValue
+
+    def _customPrintFieldValue(field, value, out, indent=0, as_utf8=False, as_one_line=False):
+        if field.cpp_type == google.protobuf.descriptor.FieldDescriptor.CPPTYPE_STRING and \
+            str(field.GetOptions()).strip() == '[binary]:':  # binary option set
+                _oldPrintFieldValue(field, 'hex(%s) str(%s)' % (binascii.hexlify(value), value), out, indent, as_utf8, as_one_line)
+
+        else:
+            _oldPrintFieldValue(field, value, out, indent, as_utf8, as_one_line)
+
+    google.protobuf.text_format.PrintFieldValue = _customPrintFieldValue
         3 - Invalid OTP
         4 - Cancelled by user ("no" button)
         5 - Waiting to PIN
@@ -99,6 +115,8 @@ def get_transport(transport_string, path):
 
 
 def main(args):
+    monkeypatch_google_protobuf_text_format()
+
     # Initialize debuglink transport
     if args.debuglink:
         print "Starting debug connection on '%s'" % args.debuglink_path

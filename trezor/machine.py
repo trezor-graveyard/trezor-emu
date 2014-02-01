@@ -168,7 +168,7 @@ class PassphraseState(object):
         self.func = None
         self.args = []
 
-class ResetWalletState(object):
+class ResetDeviceState(object):
     def __init__(self, layout, storage, yesno, pin, main_state_func):
         self.layout = layout
         self.storage = storage
@@ -195,10 +195,13 @@ class ResetWalletState(object):
         '''This starts resetting workflow by generating internal random
         and asking user to confirm device reset.'''
         
+        if self.storage.is_initialized():
+            return proto.Failure(message="Device is initialized already.")
+
         print "Starting device reset..."
         internal_entropy = tools.get_local_entropy()
         
-        msg = ["Reset device?"]
+        msg = ["Setup device?"]
         if display_random:
             msg += ["Random is %s" % binascii.hexlify(internal_entropy)]
         
@@ -256,9 +259,9 @@ class ResetWalletState(object):
         return self.yesno.request(self.step4, *[pin, mnemonic])
 
     def step4(self, pin, mnemonic):
-        self.storage.load_wallet(mnemonic, None, self.language, self.label, pin, self.passphrase_protection)        
+        self.storage.load_device(mnemonic, None, self.language, self.label, pin, self.passphrase_protection)        
         self._set_main_state() 
-        return proto.Success(message='Wallet loaded')
+        return proto.Success(message='Device loaded')
         
 class YesNoState(object):
     def __init__(self, layout):
@@ -335,13 +338,19 @@ class StateMachine(object):
         self.passphrase = PassphraseState(layout, storage)
         self.sign = machine_signing.SignStateMachine(layout, storage, self.yesno, self.passphrase)
         self.simplesign = machine_signing.SimpleSignStateMachine(layout, storage, self.yesno, self.passphrase)
-        self.reset_wallet = ResetWalletState(layout, storage, self.yesno, self.pin, self.set_main_state)
+        self.reset_device = ResetDeviceState(layout, storage, self.yesno, self.pin, self.set_main_state)
 
         self.set_main_state()
     
-    def protect_load(self, seed, node, pin, passphrase_protection, language, label):
-        self.layout.show_question(["Load custom seed?"], '', 'Confirm }', '{ Cancel')
-        return self.yesno.request(self.load_wallet, *[seed, node, pin, passphrase_protection, language, label])
+    def protect_wipe(self):
+        self.layout.show_question(["Reset device to",
+                                   "factory defaults?",
+                                   "All private data",
+                                   "will be removed!"],
+                                  'Wipe device?', 'Confirm }', '{ Cancel')
+
+        return self.yesno.request(self._wipe_device)
+
 
     def protect_call(self, yesno_message, question, no_text, yes_text, func, *args):
         '''
@@ -391,7 +400,7 @@ class StateMachine(object):
         self.simplesign.set_main_state()
         self.pin.set_main_state()
         self.passphrase.set_main_state()
-        self.reset_wallet.set_main_state()
+        self.reset_device.set_main_state()
 
         # Display is showing custom message which just wait for "Continue" button,
         # but doesn't require any interaction with computer
@@ -403,7 +412,7 @@ class StateMachine(object):
             self.layout.show_message(
                 ["Device hasn't been",
                  "initialized yet.",
-                 "Please initialize it",
+                 "Please run setup",
                  "from desktop client."])
     
     def apply_settings(self, settings):
@@ -434,13 +443,21 @@ class StateMachine(object):
         self.set_main_state()
         return proto.Success(message='Settings updated')
 
-    def load_wallet(self, mnemonic, node, pin, passphrase_protection, language, label):
+    def _wipe_device(self):
+        self.storage.wipe_device()
+        self.set_main_state()
+        return proto.Success()
+
+    def _load_device(self, mnemonic, node, pin, passphrase_protection, language, label):
         # Use mnemonic OR HDNodeType to initialize the device
         # If both are provided, mnemonic has higher priority
 
-        self.storage.load_wallet(mnemonic, node, language, label, pin, passphrase_protection)
+        if self.storage.is_initialized():
+            return proto.Failure(message="Device is initialized already.")
+
+        self.storage.load_device(mnemonic, node, language, label, pin, passphrase_protection)
         self.set_main_state()
-        return proto.Success(message='Wallet loaded')
+        return proto.Success(message='Device loaded')
 
     def _get_entropy(self, size):
         random.seed()
@@ -513,9 +530,9 @@ class StateMachine(object):
             self.set_main_state()
             return proto.Failure(code=proto_types.Failure_ButtonExpected, message='Button confirmation expected')
 
-        if self.reset_wallet.is_waiting():
+        if self.reset_device.is_waiting():
             if isinstance(msg, proto.EntropyAck):
-                return self.reset_wallet.step2(msg.entropy)
+                return self.reset_device.step2(msg.entropy)
 
             self.set_main_state()
             return proto.Failure(code=proto_types.Failure_UnexpectedMessage, message='EntropyAck expected')
@@ -544,11 +561,16 @@ class StateMachine(object):
         if isinstance(msg, proto.ApplySettings):
             return self.apply_settings(msg)
 
+        if isinstance(msg, proto.WipeDevice):
+            return self.protect_wipe()
+        
         if isinstance(msg, proto.LoadDevice):
-            return self.protect_load(msg.mnemonic, msg.node, msg.pin, msg.passphrase_protection, msg.language, msg.label)
+            return self.protect_call(["Load custom seed?"], '', 'Confirm }', '{ Cancel',
+                        self._load_device, *[msg.mnemonic, msg.node, msg.pin, msg.passphrase_protection,
+                        msg.language, msg.label])
 
         if isinstance(msg, proto.ResetDevice):
-            return self.reset_wallet.step1(msg.display_random, msg.strength, msg.passphrase_protection, msg.pin_protection, msg.language, msg.label)
+            return self.reset_device.step1(msg.display_random, msg.strength, msg.passphrase_protection, msg.pin_protection, msg.language, msg.label)
         
         if isinstance(msg, proto.SignMessage):
             return self.passphrase.use(self._sign_message, coindef.types[msg.coin_name], list(msg.address_n), msg.message)

@@ -52,6 +52,7 @@ class Storage(object):
         m.passphrase_protection = bool(self.struct.passphrase_protection)
         m.language = self.struct.language
         m.label = self.struct.label
+        m.initialized = bool(self.is_initialized())
         
         # Add all known coin
         types = coindef.types.keys()
@@ -216,13 +217,22 @@ class Storage(object):
     def save(self):
         open(self.filename, 'w').write(self.struct.SerializeToString())
 
-    def load_wallet(self, mnemonic, node, language, label, pin, passphrase_protection):
+    def wipe_device(self):
+        os.unlink(self.filename)
+        self._refresh_device_id()
+        self.load()
+
+        if self.struct.HasField('mnemonic') or self.struct.HasField('node'):
+            raise Exception("Unexpected state")
+        print self.get_features()
+
+    def load_device(self, mnemonic, node, language, label, pin, passphrase_protection):
         self.set_secret(language=language, mnemonic=mnemonic, node=node, passphrase_protection=passphrase_protection)
         self.set_language(language)
         self.set_label(label)
         self.set_pin(pin)
 
-        # Wallet has new secrets, which are known to potential attacker already
+        # Device has new secrets, which are known to potential attacker already
         self.clear_pin_attempt()
 
         self.save()
