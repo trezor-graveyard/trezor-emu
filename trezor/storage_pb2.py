@@ -14,7 +14,7 @@ import types_pb2
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='storage.proto',
   package='',
-  serialized_pb='\n\rstorage.proto\x1a\x0btypes.proto\"\xbd\x01\n\x07Storage\x12\x0f\n\x07version\x18\x01 \x02(\r\x12\x19\n\x04node\x18\x02 \x01(\x0b\x32\x0b.HDNodeType\x12\x16\n\x08mnemonic\x18\x03 \x01(\x0c\x42\x04\x88\xb5\x18\x01\x12\x1d\n\x15passphrase_protection\x18\x04 \x01(\x08\x12\x1b\n\x13pin_failed_attempts\x18\x05 \x01(\r\x12\x0b\n\x03pin\x18\x06 \x01(\x0c\x12\x10\n\x08language\x18\x07 \x01(\x0c\x12\x13\n\x05label\x18\x08 \x01(\x0c\x42\x04\x88\xb5\x18\x01\">\n\x07Session\x12\x18\n\npassphrase\x18\x01 \x01(\x0c\x42\x04\x88\xb5\x18\x01\x12\x19\n\x04node\x18\x02 \x01(\x0b\x32\x0b.HDNodeType')
+  serialized_pb='\n\rstorage.proto\x1a\x0btypes.proto\"\xbd\x01\n\x07Storage\x12\x0f\n\x07version\x18\x01 \x02(\r\x12\x19\n\x04node\x18\x02 \x01(\x0b\x32\x0b.HDNodeType\x12\x16\n\x08mnemonic\x18\x03 \x01(\x0c\x42\x04\x88\xb5\x18\x01\x12\x1d\n\x15passphrase_protection\x18\x04 \x01(\x08\x12\x1b\n\x13pin_failed_attempts\x18\x05 \x01(\r\x12\x0b\n\x03pin\x18\x06 \x01(\x0c\x12\x10\n\x08language\x18\x07 \x01(\x0c\x12\x13\n\x05label\x18\x08 \x01(\x0c\x42\x04\x88\xb5\x18\x01\">\n\x07Session\x12\x18\n\npassphrase\x18\x01 \x01(\x0c\x42\x04\x88\xb5\x18\x01\x12\x19\n\x04node\x18\x02 \x01(\x0b\x32\x0b.HDNodeTypeB9\n(org.multibit.hd.hardware.trezor.protobufB\rTrezorStorage')
 
 
 
@@ -148,6 +148,8 @@ class Session(_message.Message):
   # @@protoc_insertion_point(class_scope:Session)
 
 
+DESCRIPTOR.has_options = True
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), '\n(org.multibit.hd.hardware.trezor.protobufB\rTrezorStorage')
 _STORAGE.fields_by_name['mnemonic'].has_options = True
 _STORAGE.fields_by_name['mnemonic']._options = _descriptor._ParseOptions(descriptor_pb2.FieldOptions(), '\210\265\030\001')
 _STORAGE.fields_by_name['label'].has_options = True
