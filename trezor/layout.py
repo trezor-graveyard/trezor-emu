@@ -34,7 +34,7 @@ class Layout(object):
 
     def show_message(self, messages):
         # Print message to console
-        self.show_question(messages, '', 'Continue }', '')
+        self.show_question(messages, '', '', '')
 
     def show_receiving_address(self, address):
         self.show_message(

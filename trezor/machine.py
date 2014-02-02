@@ -198,6 +198,8 @@ class ResetDeviceState(object):
         if self.storage.is_initialized():
             return proto.Failure(message="Device is initialized already.")
 
+        self.set_main_state()
+        
         print "Starting device reset..."
         internal_entropy = tools.get_local_entropy()
         print "Trezor-generated entropy:", binascii.hexlify(internal_entropy)
@@ -297,6 +299,126 @@ class ResetDeviceState(object):
         self._set_main_state() 
         return proto.Success(message='Device loaded')
         
+class RecoveryDeviceState(object):
+    def __init__(self, layout, storage, pin, main_state_func):
+        self.layout = layout
+        self.storage = storage
+        self.pin = pin
+        self._set_main_state = main_state_func
+        
+        self.multiplier = 0.5  # 1  # How many fake words use in recovery process
+        self.set_main_state()
+
+    def set_main_state(self):
+        self.passphrase_protection = False
+        self.new_pin = ''
+        self.language = None
+        self.label = None
+        self.fake_word = None
+        
+        self.sequence = []
+        self.mnemonic = []
+        self.index = None
+        
+    def is_waiting(self):
+        if self.sequence and self.index != None:
+            return True
+        return False
+
+    def step1(self, word_count, passphrase_protection, pin_protection, language, label):
+        # Reset all internal variable, just for sure
+        
+        if self.storage.is_initialized():
+            return proto.Failure(message="Device is initialized already.")
+
+        self.set_main_state()
+        
+        if language not in self.storage.get_languages():
+            return proto.Failure(message="Unsupported language")
+
+        self.passphrase_protection = passphrase_protection
+        self.language = language
+        self.label = label
+        self.mnemonic = [None] * word_count
+
+        self.generate_sequence(word_count)
+
+        if pin_protection:
+            return self.pin.request_new(self.step2)
+        else:
+            return self.request_word()
+
+        return self.request_word()
+    
+    def step2(self, new_pin):
+        # This is called only if PIN protection is set
+        self.new_pin = new_pin
+        return self.request_word()
+
+    def generate_sequence(self, word_count):
+        self.sequence = range(word_count) + [None] * int(self.multiplier * word_count)
+        random.shuffle(self.sequence)
+        self.index = 0  # Ask for first word of sequence
+        
+        print "Generated sequence:", self.sequence
+        
+    def request_word(self):
+        pos = self.sequence[self.index]
+        
+        if pos == None:
+            # Ask for fake word
+            self.fake_word = random.choice(Mnemonic(self.language).wordlist)
+            self.layout.show_message(["",
+                                      "_cPlease retype word",
+                                      "",
+                                      "_c'%s'" % self.fake_word])
+                
+        else:
+            # Ask for word from mnemonic
+            self.layout.show_message(["",
+                                      "_cPlease retype",
+                                      "_c%d. word" % (pos + 1),
+                                      "_cof your mnemonic"])
+        
+        # Sleep between 0-3 seconds, this may mislead frequency analysis
+        # of retyping words on backdoored computer
+        time.sleep(random.random() * 3)
+        return proto.WordRequest()
+
+    def process_word(self, word):
+        pos = self.sequence[self.index]
+
+        if word not in Mnemonic(self.language).wordlist:
+            return proto.Failure(message="This word is not in wordlist")
+        
+        if pos == None:
+            # Word is supposed to be fake
+            if word != self.fake_word:
+                return proto.Failure(message="Unexpected word")
+        else:
+            self.mnemonic[pos] = word
+
+        print "Partial mnemonic:", self.mnemonic
+
+        self.index += 1
+        if self.index < len(self.sequence):
+            return self.request_word()
+
+        # We're done!
+        return self.finalize()
+
+    def finalize(self):
+        mnemonic = ' '.join(self.mnemonic)
+        print "Final mnemonic is", mnemonic
+
+        if not Mnemonic(self.language).check(mnemonic):
+            return proto.Failure(message="Invalid mnemonic, are words in correct order?")
+
+        self.storage.load_device(mnemonic, None, self.language,
+                                 self.label, self.new_pin, self.passphrase_protection)
+        self._set_main_state()
+        return proto.Success()
+
 class YesNoState(object):
     def __init__(self, layout):
         self.layout = layout
@@ -361,7 +483,6 @@ class YesNoState(object):
 
         return ret
 
-
 class StateMachine(object):
     def __init__(self, storage, layout):
         self.storage = storage
@@ -373,7 +494,7 @@ class StateMachine(object):
         self.sign = machine_signing.SignStateMachine(layout, storage, self.yesno, self.passphrase)
         self.simplesign = machine_signing.SimpleSignStateMachine(layout, storage, self.yesno, self.passphrase)
         self.reset_device = ResetDeviceState(layout, storage, self.yesno, self.pin, self.set_main_state)
-
+        self.recovery_device = RecoveryDeviceState(layout, storage, self.pin, self.set_main_state)
         self.set_main_state()
     
     def protect_wipe(self):
@@ -435,6 +556,7 @@ class StateMachine(object):
         self.pin.set_main_state()
         self.passphrase.set_main_state()
         self.reset_device.set_main_state()
+        self.recovery_device.set_main_state()
 
         # Display is showing custom message which just wait for "Continue" button,
         # but doesn't require any interaction with computer
@@ -488,6 +610,9 @@ class StateMachine(object):
 
         if self.storage.is_initialized():
             return proto.Failure(message="Device is initialized already.")
+
+        if mnemonic and not Mnemonic(language).check(mnemonic):
+            return proto.Failure(message="Invalid mnemonic")
 
         self.storage.load_device(mnemonic, node, language, label, pin, passphrase_protection)
         self.set_main_state()
@@ -571,6 +696,10 @@ class StateMachine(object):
             self.set_main_state()
             return proto.Failure(code=proto_types.Failure_UnexpectedMessage, message='EntropyAck expected')
 
+        if self.recovery_device.is_waiting():
+            if isinstance(msg, proto.WordAck):
+                return self.recovery_device.process_word(msg.word)
+
         if isinstance(msg, proto.Ping):
             return proto.Success(message=msg.message)
 
@@ -600,13 +729,17 @@ class StateMachine(object):
             return self.protect_wipe()
         
         if isinstance(msg, proto.LoadDevice):
-            return self.protect_call(["Load custom seed?"], '', 'Confirm }', '{ Cancel',
+            return self.protect_call(['', "_cLoad custom data?"], 'Setup device?', '{ Cancel', 'Confirm }',
                         self._load_device, *[msg.mnemonic, msg.node, msg.pin, msg.passphrase_protection,
                         msg.language, msg.label])
 
         if isinstance(msg, proto.ResetDevice):
             return self.reset_device.step1(msg.display_random, msg.strength, msg.passphrase_protection, msg.pin_protection, msg.language, msg.label)
         
+        if isinstance(msg, proto.RecoveryDevice):
+            return self.recovery_device.step1(msg.word_count, msg.passphrase_protection, msg.pin_protection,
+                                              msg.language, msg.label)
+
         if isinstance(msg, proto.SignMessage):
             return self.passphrase.use(self._sign_message, coindef.types[msg.coin_name], list(msg.address_n), msg.message)
 
