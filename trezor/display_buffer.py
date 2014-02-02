@@ -56,7 +56,18 @@ class DisplayBuffer(object):
                 if column[xoffset] & (1 << yoffset):
                     self.draw_pixel(x + xoffset, y + yoffset)
 
-    def draw_string(self, x, y, text, font):
+    def draw_string(self, x, y, msg, font):
+        # Added basic formatting
+        if msg.startswith('_c'):  # centered
+            msg = msg[2:]
+
+            left = (self.width - len(msg) * (font.width + 1)) / 2
+            self._draw_string(left, y, msg, font)
+
+        else:  # normal text
+            self._draw_string(x, y, msg, font)
+
+    def _draw_string(self, x, y, text, font):
         for i in range(len(text)):
             self.draw_char(x + (i * (font.width + 1)), y, ord(text[i]), font)
 

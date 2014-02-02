@@ -49,9 +49,9 @@ class PinState(object):
         self.matrix = self._generate_matrix()
         
         if not msg:
-            msg = 'Please enter your PIN'
+            msg = 'Please enter your PIN:'
         
-        self.layout.show_matrix(self.matrix)
+        self.layout.show_matrix(self.matrix, msg)
         return proto.PinMatrixRequest(message=msg)
 
     def change(self, is_remove):
@@ -68,11 +68,11 @@ class PinState(object):
 
     def request_new(self, func, *args):
         '''Ask user for new PIN'''
-        return self.request('Please enter new PIN', True, self._request_second, func, args)
+        return self.request('Please enter new PIN:', True, self._request_second, func, args)
         
     def _request_second(self, pin, func, args):
         '''Ask second time for new PIN to confirm user's entry'''
-        return self.request('Enter new PIN again', True, self._request_compare, *[pin, func, args])
+        return self.request('Enter new PIN again:', True, self._request_compare, *[pin, func, args])
         
     def _request_compare(self, pin2, pin1, func, args):
         '''Compare both pins and return if they're the same'''
@@ -200,11 +200,16 @@ class ResetDeviceState(object):
 
         print "Starting device reset..."
         internal_entropy = tools.get_local_entropy()
+        print "Trezor-generated entropy:", binascii.hexlify(internal_entropy)
         
-        msg = ["Setup device?"]
+        msg = []
         if display_random:
-            msg += ["Random is %s" % binascii.hexlify(internal_entropy)]
-        
+            msg += ["_cLocal entropy is", ]
+            ent = binascii.hexlify(internal_entropy)
+            while ent:
+                msg += ["_c%s" % ent[:16], ]
+                ent = ent[16:]
+
         def entropy_request():
             '''This is called after user confirmation of the action.
             Internal random is already generated, lets respond to computer with EntropyRequest
@@ -222,7 +227,7 @@ class ResetDeviceState(object):
 
             return proto.EntropyRequest()
         
-        self.layout.show_question(msg, '', 'Confirm }', '{ Cancel')
+        self.layout.show_question(msg, 'Setup device?', 'Next }', '{ Cancel')
         return self.yesno.request(entropy_request)
     
     def step2(self, external_entropy):
@@ -231,6 +236,7 @@ class ResetDeviceState(object):
         if the device need to be pin-protected
         '''
         self.external_entropy = external_entropy
+        print "Computer-generated entropy:", binascii.hexlify(self.external_entropy)
         
         if self.pin_protection:
             return self.pin.request_new(self.step3)
@@ -239,15 +245,12 @@ class ResetDeviceState(object):
             return self.step3('')
             
     def step3(self, pin):
-        '''Display mnemonic and ask user to write it down to piece of paper'''
+        '''Generate mnemonic'''
         if self.pin_protection and not pin:
             raise Exception("Pin need to be provided")
         
         if self.pin_protection == False:
             pin = ''
-            
-        print "Internal entropy:", binascii.hexlify(self.internal_entropy)
-        print "Computer-generated entropy:", binascii.hexlify(self.external_entropy)
         
         entropy = tools.generate_entropy(self.strength, self.internal_entropy, self.external_entropy)
         mnemonic = Mnemonic(self.language).to_mnemonic(entropy)
@@ -255,11 +258,42 @@ class ResetDeviceState(object):
         if not Mnemonic(self.language).check(mnemonic):
             raise Exception("Unexpected error, mnemonic doesn't pass internal check")
         
-        self.layout.show_question(mnemonic.split(" "), '', 'Done }', '{ Cancel')
-        return self.yesno.request(self.step4, *[pin, mnemonic])
+        print "Mnemonic:", mnemonic
+        return self.step4(pin, mnemonic, 0, first_pass=True)
 
-    def step4(self, pin, mnemonic):
-        self.storage.load_device(mnemonic, None, self.language, self.label, pin, self.passphrase_protection)        
+    def step4(self, pin, mnemonic, mnemonic_index, first_pass):
+        '''Display words of mnemonic and ask user to write them down'''
+        words = mnemonic.split(' ')
+
+        if first_pass:
+            text = ["_cPlease write down",
+                    "_c%d/%d" % ((mnemonic_index + 1), len(words)),
+                    "_cwords of mnemonic:",
+                    "",
+                    "_c'%s'" % words[mnemonic_index]]
+        else:
+            text = ["_cPlease check that",
+                    "_c%d. word" % (mnemonic_index + 1),
+                    "_cof your mnemonic is:",
+                    "",
+                    "_c'%s'" % words[mnemonic_index]]
+            
+        mnemonic_index += 1
+        if mnemonic_index == len(words):
+            if first_pass == True:
+                # Print second pass of printing
+                self.layout.show_question(text, '', 'Done }', '{ Cancel')
+                return self.yesno.request(self.step4, *[pin, mnemonic, 0, False])
+
+            else:
+                self.layout.show_question(text, '', 'Done }', '{ Cancel')
+                return self.yesno.request(self.step5, *[pin, mnemonic])
+
+        self.layout.show_question(text, '', 'Next }', '{ Cancel')
+        return self.yesno.request(self.step4, *[pin, mnemonic, mnemonic_index, first_pass])
+        
+    def step5(self, pin, mnemonic):
+        self.storage.load_device(mnemonic, None, self.language, self.label, pin, self.passphrase_protection)
         self._set_main_state() 
         return proto.Success(message='Device loaded')
         
@@ -343,10 +377,10 @@ class StateMachine(object):
         self.set_main_state()
     
     def protect_wipe(self):
-        self.layout.show_question(["Reset device to",
-                                   "factory defaults?",
-                                   "All private data",
-                                   "will be removed!"],
+        self.layout.show_question(["_cReset device to",
+                                   "_cfactory defaults?",
+                                   "_cAll private data",
+                                   "_cwill be removed!"],
                                   'Wipe device?', 'Confirm }', '{ Cancel')
 
         return self.yesno.request(self._wipe_device)
@@ -410,10 +444,10 @@ class StateMachine(object):
             self.layout.show_logo(None, self.storage.get_label())   
         else:
             self.layout.show_message(
-                ["Device hasn't been",
-                 "initialized yet.",
-                 "Please run setup",
-                 "from desktop client."])
+                ["_cDevice hasn't been",
+                 "_cinitialized yet.",
+                 "_cPlease run setup",
+                 "_cfrom desktop client."])
     
     def apply_settings(self, settings):
         message = []
@@ -546,8 +580,9 @@ class StateMachine(object):
             return proto.Success(message='%d bytes of firmware succesfully uploaded' % len(msg.payload))
 
         if isinstance(msg, proto.GetEntropy):
-            return self.protect_call(["Send %d bytes" % msg.size, "of entropy", "to computer?"], '',
-                                     '{ Cancel', 'Confirm }', self._get_entropy, msg.size)
+            self.layout.show_question(['', "_cSend sample entropy", "_cof %d bytes" % msg.size, "_cto computer?"],
+                                      '', 'Confirm }', '{ Cancel')
+            return self.yesno.request(self._get_entropy, *[msg.size])
 
         if isinstance(msg, proto.GetPublicKey):
             return self.passphrase.use(self._get_public_key, coindef.types[msg.coin_name], list(msg.address_n))

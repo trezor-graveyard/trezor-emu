@@ -58,7 +58,6 @@ class Layout(object):
         for i in range(len(lines)):
             msg = lines[i]
             self.buffer.draw_string(0, i * font.height + 1, msg, font)
-
         self._show_status(question, yes_text, no_text)
         self.display.refresh()
 
@@ -144,14 +143,8 @@ class Layout(object):
 
         amount = float(amount) / 10 ** 8  # From satoshis to bitcoins
         s = ("%.08f" % amount).rstrip('0').rstrip('.')
-        # if len(s) <= self.line_len_bold - 1 - len(coin.coin_shortcut):
         s = "%s %s" % (s, coin.coin_shortcut)
-        # elif len(s) <= self.line_len_bold - 2:
-        #    s = "%s \x80" % s
-        # else:
-        #    s = "%s \x80" % s[:self.line_len_bold - 2]
-
-        return s  # .rjust(self.line_len_bold, ' ')
+        return s
 
     def _show_status(self, status, yes_text, no_text, invert=False):
         # Status line
@@ -161,12 +154,10 @@ class Layout(object):
             delta = -10
 
         if status != '':
-            pos = self.buffer.width / 2 - len(status) * (smallfonts.Font5x8.width + 1) / 2
-
             self.buffer.clear(0, self.buffer.height - delta - 20, self.buffer.width - 1, self.buffer.height - 1)
 
             self.buffer.frame(0, self.buffer.height - delta - 20, self.buffer.width - 1, self.buffer.height - delta - 20)
-            self.buffer.draw_string(pos, self.buffer.height - delta - 18, status, smallfonts.Font5x8)
+            self.buffer.draw_string(0, self.buffer.height - delta - 18, "_c" + status, smallfonts.Font5x8)
         else:
 
             self.buffer.clear(0, self.buffer.height - delta - 12, self.buffer.width - 1, self.buffer.height - 1)
@@ -187,7 +178,7 @@ class Layout(object):
         if invert:
             self.buffer.invert(0, self.buffer.height - delta - 20, self.buffer.width - 1, self.buffer.height - 1)
 
-    def show_matrix(self, matrix):
+    def show_matrix(self, matrix, msg):
         '''Renders combination matrix into field of 3x3'''
 
         box_width = 16
@@ -197,7 +188,7 @@ class Layout(object):
         font_margin_y = 5
 
         left = (self.buffer.width - 3*box_width) / 2
-        top = 5
+        top = 12
 
         def draw_box(num, x, y):
             self.buffer.draw_string(left+x*box_width+font_margin_x, top+y*box_height+font_margin_y, str(num), font)
@@ -205,6 +196,9 @@ class Layout(object):
 
         self.clear()
         print 'Matrix:'
+        
+        if msg:
+            self.buffer.draw_string(0, 2, '_c' + msg, font)
         
         for y in range(3):
             for x in range(3):
