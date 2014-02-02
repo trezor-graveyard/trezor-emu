@@ -33,13 +33,13 @@ TODO
 * x Allow to modify maxfeekb, coin type, ...
 * x Implement SimpleSignTx
 * Fix SignTx
-* Safe recovery of the seed
+* x Safe recovery of the seed
 * x Finalize workflow for ResetDevice
 * x Finalize LoadDevice
 * x Allow importing xprv structure
 * x Factory reset
-* Wipe device
-* Pin change
+* x Wipe device
+* x Pin change
 * x device_id
 * x mpk_hash
 * x Exponential pin backoff
