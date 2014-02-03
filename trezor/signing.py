@@ -1,5 +1,4 @@
 import ecdsa
-import base64
 import binascii
 from hashlib import sha256
 from ecdsa import curves, numbertheory, ellipticcurve, util
@@ -22,8 +21,7 @@ def sign_message(bip32, coin, addr_n, message):
     signature = signer.sign_deterministic(sha256(magic).digest(), hashfunc=sha256)
 
     for i in range(4):
-        sig = base64.b64encode(chr(27 + i + 4) + signature)
-        print sig
+        sig = chr(27 + i + 4) + signature
         if verify_message(address, sig, message):
             return proto.MessageSignature(address=address, signature=sig)
 
@@ -35,10 +33,9 @@ def verify_message(address, signature, message):
     G = ecdsa.curves.SECP256k1.generator
     order = G.order()
     # extract r,s from signature
-    sig = base64.b64decode(signature)
-    if len(sig) != 65: raise BaseException("Wrong encoding")
-    r, s = util.sigdecode_string(sig[1:], order)
-    nV = ord(sig[0])
+    if len(signature) != 65: raise BaseException("Wrong signature")
+    r, s = util.sigdecode_string(signature[1:], order)
+    nV = ord(signature[0])
     if nV < 27 or nV >= 35:
         raise BaseException("Bad encoding")
     if nV >= 31:
@@ -46,8 +43,6 @@ def verify_message(address, signature, message):
         nV -= 4
     else:
         compressed = False
-
-    address_type = int(binascii.hexlify(tools.b58decode(address, None)[0]))
 
     recid = nV - 27
     # 1.1
@@ -67,10 +62,17 @@ def verify_message(address, signature, message):
     Q = inv_r * (s * R + minus_e * G)
     public_key = ecdsa.VerifyingKey.from_public_point(Q, curve=ecdsa.curves.SECP256k1)
     # check that Q is the public key
-    public_key.verify_digest(sig[1:], h, sigdecode=ecdsa.util.sigdecode_string)
-    addr = tools.public_key_to_bc_address('\x04' + public_key.to_string(), address_type, compress=compressed)
+    try:
+        public_key.verify_digest(signature[1:], h, sigdecode=ecdsa.util.sigdecode_string)
+    except:
+        return False
 
-    return address == addr
+    if address:
+        address_type = int(binascii.hexlify(tools.b58decode(address, None)[0]))
+        addr = tools.public_key_to_bc_address('\x04' + public_key.to_string(), address_type, compress=compressed)
+        return address == addr
+    else:
+        return True
 
 '''
 def raw_tx_header(inputs_count):

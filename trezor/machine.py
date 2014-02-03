@@ -1,6 +1,5 @@
 import time
 import random
-import base64
 import hashlib
 import traceback
 import binascii
