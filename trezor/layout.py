@@ -106,6 +106,11 @@ class Layout(object):
         self.buffer.box(2, self.buffer.height - 8, width + 2, self.buffer.height - 3)
         self.display.refresh()
 
+    def show_high_fee(self, fee, coin):
+        amount_str = self._prepare_amount(fee, coin)
+        self.show_question(['Transaction fee', amount_str, 'seem too high!'],
+                        'Really pay such fee?', '{ Cancel', 'Confirm }')
+
     def show_output(self, coin, address, amount):
         amount_str = self._prepare_amount(amount, coin)
 
@@ -113,7 +118,8 @@ class Layout(object):
         addr_1 = address[:len(address) / 2]
         addr_2 = address[len(address) / 2:]
 
-        self.show_question(["Send", amount_str, "to", addr_1, addr_2], '', 'Confirm }', '{ Cancel')
+        self.show_question(["_cSend", "_c" + amount_str, "_cto", "_c" + addr_1, "_c" + addr_2],
+                           '', 'Confirm }', '{ Cancel')
                         
     '''
     def show_transactions(self, txes, more=False):

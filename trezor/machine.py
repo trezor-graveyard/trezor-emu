@@ -650,6 +650,17 @@ class StateMachine(object):
         node = BIP32(self.storage.get_node()).get_public_node(coin, address_n)
         return proto.PublicKey(node=node)
 
+    def _ping(self, message, pin_protection, passphrase_protection):
+        if pin_protection and self.storage.get_pin():
+            return self.protect_call(["", "_cAnswer to ping?"], '', '{ Cancel', 'Confirm }',
+                        self._ping, message, False, passphrase_protection)
+                        
+        if passphrase_protection:
+            self.passphrase.use(self._ping, message, pin_protection, False)
+            
+        self.set_main_state()
+        return proto.Success(message=message)
+
     def _sign_message(self, coin, address_n, message):
         try:
             (address, sig) = signing.sign_message(BIP32(self.storage.get_node()), coin, address_n, message)
@@ -704,7 +715,7 @@ class StateMachine(object):
                 return self.recovery_device.process_word(msg.word)
 
         if isinstance(msg, proto.Ping):
-            return proto.Success(message=msg.message)
+            return self._ping(msg.message, msg.pin_protection, msg.passphrase_protection)
 
         if isinstance(msg, proto.FirmwareUpload):
             if msg.payload[:4] != 'TRZR':
@@ -737,7 +748,7 @@ class StateMachine(object):
                         msg.language, msg.label])
 
         if isinstance(msg, proto.ResetDevice):
-            return self.reset_device.step1(msg.display_random, msg.strength, msg.passphrase_protection, msg.pin_protection, msg.language, msg.label)
+            return self.reset_device.step1(msg.disargsplay_random, msg.strength, msg.passphrase_protection, msg.pin_protection, msg.language, msg.label)
         
         if isinstance(msg, proto.RecoveryDevice):
             return self.recovery_device.step1(msg.word_count, msg.passphrase_protection, msg.pin_protection,

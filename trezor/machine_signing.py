@@ -60,7 +60,7 @@ class SimpleSignStateMachine(object):
 
         if index >= len(msg.outputs):
             # All outputs are confirmed by user
-            return self.do_sign(msg, out_change)
+            return self.confirm_fee(msg, out_change)
 
         coin = coindef.types[msg.coin_name]
         out = msg.outputs[index]
@@ -78,7 +78,7 @@ class SimpleSignStateMachine(object):
         self.layout.show_output(coin, out.address, out.amount)
         return self.yesno.request(self.confirm_output, *[msg, index + 1, out_change])
     
-    def do_sign(self, msg, out_change):
+    def confirm_fee(self, msg, out_change):
         coin = coindef.types[msg.coin_name]
         print "CHANGE OUT:", out_change
 
@@ -112,13 +112,19 @@ class SimpleSignStateMachine(object):
 
         if fee > maxfee:
             # FIXME soft limit
-            return proto.Failure(code=proto_types.Failure_Other, message="Fee is over threshold")
+            #return proto.Failure(code=proto_types.Failure_Other, message="Fee is over threshold")
+            self.layout.show_high_fee(fee, coin)
+            return self.yesno.request(self.do_sign, *[msg])
 
+        return self.do_sign(msg)
+
+    def do_sign(self, msg):
         # Basic checks passed, let's sign that shit!
         version = 1
         lock_time = 0
         serialized = ''
 
+        coin = coindef.types[msg.coin_name]
         outtx = StreamTransactionSerialize(len(msg.inputs), len(msg.outputs), version, lock_time)
 
         # Sign inputs
