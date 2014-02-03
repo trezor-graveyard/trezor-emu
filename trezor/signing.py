@@ -15,17 +15,20 @@ def message_magic(message):
 
 def sign_message(bip32, coin, addr_n, message):
     signer = bip32.get_signer(addr_n)
-    address = bip32.get_address(addr_n, coin)
+    address = bip32.get_address(coin, addr_n)
 
     magic = message_magic(message)
     signature = signer.sign_deterministic(sha256(magic).digest(), hashfunc=sha256)
 
     for i in range(4):
         sig = chr(27 + i + 4) + signature
-        if verify_message(address, sig, message):
-            return proto.MessageSignature(address=address, signature=sig)
+        try:
+            verify_message(address, sig, message)
+            return (address, sig)
+        except:
+            pass
 
-    return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Cannot sign message")
+    raise Exception("Cannot sign message")
 
 def verify_message(address, signature, message):
     """ See http://www.secg.org/download/aid-780/sec1-v2.pdf for the math """
@@ -62,17 +65,13 @@ def verify_message(address, signature, message):
     Q = inv_r * (s * R + minus_e * G)
     public_key = ecdsa.VerifyingKey.from_public_point(Q, curve=ecdsa.curves.SECP256k1)
     # check that Q is the public key
-    try:
-        public_key.verify_digest(signature[1:], h, sigdecode=ecdsa.util.sigdecode_string)
-    except:
-        return False
+    public_key.verify_digest(signature[1:], h, sigdecode=ecdsa.util.sigdecode_string)
 
     if address:
         address_type = int(binascii.hexlify(tools.b58decode(address, None)[0]))
         addr = tools.public_key_to_bc_address('\x04' + public_key.to_string(), address_type, compress=compressed)
-        return address == addr
-    else:
-        return True
+        if address != addr:
+            raise Exception("Invalid signature")
 
 '''
 def raw_tx_header(inputs_count):

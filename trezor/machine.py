@@ -651,7 +651,11 @@ class StateMachine(object):
         return proto.PublicKey(node=node)
 
     def _sign_message(self, coin, address_n, message):
-        return signing.sign_message(BIP32(self.storage.get_node()), coin, address_n, message)
+        try:
+            (address, sig) = signing.sign_message(BIP32(self.storage.get_node()), coin, address_n, message)
+            return proto.MessageSignature(address=address, signature=sig)
+        except:
+            return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Cannot sign message")
         
     def _process_message(self, msg):
         if isinstance(msg, proto.Initialize):
@@ -743,9 +747,10 @@ class StateMachine(object):
             return self.passphrase.use(self._sign_message, coindef.types[msg.coin_name], list(msg.address_n), msg.message)
 
         if isinstance(msg, proto.VerifyMessage):
-            if signing.verify_message(msg.address, msg.signature, msg.message):
+            try:
+                signing.verify_message(msg.address, msg.signature, msg.message)
                 return proto.Success()
-            else:
+            except:
                 return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Invalid signature")
 
         if isinstance(msg, proto.SimpleSignTx):
