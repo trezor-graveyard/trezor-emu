@@ -650,13 +650,17 @@ class StateMachine(object):
         node = BIP32(self.storage.get_node()).get_public_node(coin, address_n)
         return proto.PublicKey(node=node)
 
-    def _ping(self, message, pin_protection, passphrase_protection):
+    def _ping(self, message, button_protection, pin_protection, passphrase_protection):
+        if button_protection:
+            self.layout.show_question(['', "_cAnswer to ping?"], '', 'Confirm }', '{ Cancel')
+            return self.yesno.request(self._ping, message, False, pin_protection, passphrase_protection)
+
         if pin_protection and self.storage.get_pin():
-            return self.protect_call(["", "_cAnswer to ping?"], '', '{ Cancel', 'Confirm }',
-                        self._ping, message, False, passphrase_protection)
+            return self.pin.request('Answer to ping?', False, self._ping,
+                    message, button_protection, False, passphrase_protection)
                         
         if passphrase_protection:
-            self.passphrase.use(self._ping, message, pin_protection, False)
+            self.passphrase.use(self._ping, message, button_protection, pin_protection, False)
             
         self.set_main_state()
         return proto.Success(message=message)
@@ -715,7 +719,7 @@ class StateMachine(object):
                 return self.recovery_device.process_word(msg.word)
 
         if isinstance(msg, proto.Ping):
-            return self._ping(msg.message, msg.pin_protection, msg.passphrase_protection)
+            return self._ping(msg.message, msg.button_protection, msg.pin_protection, msg.passphrase_protection)
 
         if isinstance(msg, proto.FirmwareUpload):
             if msg.payload[:4] != 'TRZR':
