@@ -229,7 +229,7 @@ class ResetDeviceState(object):
             return proto.EntropyRequest()
         
         self.layout.show_question(msg, 'Setup device?', 'Next }', '{ Cancel')
-        return self.yesno.request(entropy_request)
+        return self.yesno.request(proto_types.ButtonRequest_ResetDevice, entropy_request)
     
     def step2(self, external_entropy):
         '''Now the action is confirmed by user and both
@@ -284,14 +284,14 @@ class ResetDeviceState(object):
             if first_pass == True:
                 # Print second pass of printing
                 self.layout.show_question(text, '', 'Done }', '{ Cancel')
-                return self.yesno.request(self.step4, *[pin, mnemonic, 0, False])
+                return self.yesno.request(proto_types.ButtonRequest_ConfirmWord, self.step4, *[pin, mnemonic, 0, False])
 
             else:
                 self.layout.show_question(text, '', 'Done }', '{ Cancel')
-                return self.yesno.request(self.step5, *[pin, mnemonic])
+                return self.yesno.request(proto_types.ButtonRequest_ConfirmWord, self.step5, *[pin, mnemonic])
 
         self.layout.show_question(text, '', 'Next }', '{ Cancel')
-        return self.yesno.request(self.step4, *[pin, mnemonic, mnemonic_index, first_pass])
+        return self.yesno.request(proto_types.ButtonRequest_ConfirmWord, self.step4, *[pin, mnemonic, mnemonic_index, first_pass])
         
     def step5(self, pin, mnemonic):
         self.storage.load_device(mnemonic, None, self.language, self.label, pin, self.passphrase_protection)
@@ -441,13 +441,13 @@ class YesNoState(object):
         self.func = None
         self.args = []
 
-    def request(self, func, *args):
+    def request(self, code, func, *args):
         self.func = func
         self.args = args
         self.pending = True  # Waiting for confirmation from computer
 
         # Tell computer that device is waiting for HW buttons
-        return proto.ButtonRequest()
+        return proto.ButtonRequest(code=code)
         
     def store(self, button):
         if not self.func:
@@ -503,7 +503,7 @@ class StateMachine(object):
                                    "_cwill be removed!"],
                                   'Wipe device?', 'Confirm }', '{ Cancel')
 
-        return self.yesno.request(self._wipe_device)
+        return self.yesno.request(proto_types.ButtonRequest_WipeDevice, self._wipe_device)
 
 
     def protect_call(self, yesno_message, question, no_text, yes_text, func, *args):
@@ -520,10 +520,10 @@ class StateMachine(object):
 
         if self.storage.get_pin():
             # Require hw buttons and PIN
-            return self.yesno.request(self.pin.request, *['', False, func] + list(args))
+            return self.yesno.request(proto_types.ButtonRequest_ProtectCall, self.pin.request, *['', False, func] + list(args))
 
         # If confirmed, call final function directly
-        return self.yesno.request(func, *args)
+        return self.yesno.request(proto_types.ButtonRequest_ProtectCall, func, *args)
 
     def clear_custom_message(self):
         if self.custom_message:
@@ -653,7 +653,7 @@ class StateMachine(object):
     def _ping(self, message, button_protection, pin_protection, passphrase_protection):
         if button_protection:
             self.layout.show_question(['', "_cAnswer to ping?"], '', 'Confirm }', '{ Cancel')
-            return self.yesno.request(self._ping, message, False, pin_protection, passphrase_protection)
+            return self.yesno.request(proto_types.ButtonRequest_Other, self._ping, message, False, pin_protection, passphrase_protection)
 
         if pin_protection and self.storage.get_pin():
             return self.pin.request('Answer to ping?', False, self._ping,
@@ -729,7 +729,7 @@ class StateMachine(object):
         if isinstance(msg, proto.GetEntropy):
             self.layout.show_question(['', "_cSend sample entropy", "_cof %d bytes" % msg.size, "_cto computer?"],
                                       '', 'Confirm }', '{ Cancel')
-            return self.yesno.request(self._get_entropy, *[msg.size])
+            return self.yesno.request(proto_types.ButtonRequest_Other, self._get_entropy, *[msg.size])
 
         if isinstance(msg, proto.GetPublicKey):
             return self.passphrase.use(self._get_public_key, coindef.types[msg.coin_name], list(msg.address_n))
@@ -752,7 +752,7 @@ class StateMachine(object):
                         msg.language, msg.label])
 
         if isinstance(msg, proto.ResetDevice):
-            return self.reset_device.step1(msg.disargsplay_random, msg.strength, msg.passphrase_protection, msg.pin_protection, msg.language, msg.label)
+            return self.reset_device.step1(msg.display_random, msg.strength, msg.passphrase_protection, msg.pin_protection, msg.language, msg.label)
         
         if isinstance(msg, proto.RecoveryDevice):
             return self.recovery_device.step1(msg.word_count, msg.passphrase_protection, msg.pin_protection,

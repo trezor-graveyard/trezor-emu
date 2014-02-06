@@ -76,7 +76,7 @@ class SimpleSignStateMachine(object):
             out_change = index  # Remember which output is supposed to be a change
 
         self.layout.show_output(coin, out.address, out.amount)
-        return self.yesno.request(self.confirm_output, *[msg, index + 1, out_change])
+        return self.yesno.request(proto_types.ButtonRequest_ConfirmOutput, self.confirm_output, *[msg, index + 1, out_change])
     
     def confirm_fee(self, msg, out_change):
         coin = coindef.types[msg.coin_name]
@@ -114,7 +114,7 @@ class SimpleSignStateMachine(object):
             # FIXME soft limit
             #return proto.Failure(code=proto_types.Failure_Other, message="Fee is over threshold")
             self.layout.show_high_fee(fee, coin)
-            return self.yesno.request(self.do_sign, *[msg])
+            return self.yesno.request(proto_types.ButtonRequest_FeeOverThreshold, self.do_sign, *[msg])
 
         return self.do_sign(msg)
 

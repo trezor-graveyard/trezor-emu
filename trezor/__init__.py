@@ -9,7 +9,7 @@
     I tried to avoid any dynamic language features, so rewriting
     this prototype to final device should be quite straighforward.
 
-    @author: Marek Palatinus (slush) <info@bitcoin.cz>
+    @author: Marek Palatinus <slush@satoshilabs.com>
     @license: GPLv3
 '''
 import argparse
@@ -20,48 +20,14 @@ from buttons import Buttons
 from layout import Layout
 from display import Display
 from display_buffer import DisplayBuffer
-#from logo import logo                          # uncomment this line if you uncomment 'layout.show_logo(logo)' on line 180
 
 from storage import Storage
 from machine import StateMachine
 
 from tools import monkeypatch_google_protobuf_text_format
-'''
-    TODO:
-        * PIN-protected seed
-        * master private key derived from PIN?
-        * Store PIN as a hash
-        * SPV
-        * P2SH
-        * BIP32
-
-    Failure codes:
-        1 - Unknown method
-        2 - Waiting to OTPdef monkeypatch_google_protobuf_text_format():
-    # monkeypatching: text formatting of protobuf messages
-    import google.protobuf.text_format
-    import google.protobuf.descriptor
-
-    _oldPrintFieldValue = google.protobuf.text_format.PrintFieldValue
-
-    def _customPrintFieldValue(field, value, out, indent=0, as_utf8=False, as_one_line=False):
-        if field.cpp_type == google.protobuf.descriptor.FieldDescriptor.CPPTYPE_STRING and \
-            str(field.GetOptions()).strip() == '[binary]:':  # binary option set
-                _oldPrintFieldValue(field, 'hex(%s) str(%s)' % (binascii.hexlify(value), value), out, indent, as_utf8, as_one_line)
-
-        else:
-            _oldPrintFieldValue(field, value, out, indent, as_utf8, as_one_line)
-
-    google.protobuf.text_format.PrintFieldValue = _customPrintFieldValue
-        3 - Invalid OTP
-        4 - Cancelled by user ("no" button)
-        5 - Waiting to PIN
-        6 - Invalid PIN
-'''
 
 DISPLAY_WIDTH = 128
 DISPLAY_HEIGHT = 64
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description='TREZOR simulator optimized for Raspberry Pi (but works on any '
