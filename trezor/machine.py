@@ -313,6 +313,7 @@ class RecoveryDeviceState(object):
         self.new_pin = ''
         self.language = None
         self.label = None
+        self.enforce_wordlist = False
         self.fake_word = None
         
         self.sequence = []
@@ -324,7 +325,8 @@ class RecoveryDeviceState(object):
             return True
         return False
 
-    def step1(self, word_count, passphrase_protection, pin_protection, language, label):
+    def step1(self, word_count, passphrase_protection, pin_protection, language,
+              label, enforce_wordlist):
         # Reset all internal variable, just for sure
         
         if self.storage.is_initialized():
@@ -338,6 +340,7 @@ class RecoveryDeviceState(object):
         self.passphrase_protection = passphrase_protection
         self.language = language
         self.label = label
+        self.enforce_wordlist = enforce_wordlist
         self.mnemonic = [None] * word_count
 
         self.generate_sequence(word_count)
@@ -387,7 +390,7 @@ class RecoveryDeviceState(object):
     def process_word(self, word):
         pos = self.sequence[self.index]
 
-        if word not in Mnemonic(self.language).wordlist:
+        if self.enforce_wordlist and word not in Mnemonic(self.language).wordlist:
             return proto.Failure(message="This word is not in wordlist")
         
         if pos == None:
@@ -715,6 +718,9 @@ class StateMachine(object):
             return proto.Failure(code=proto_types.Failure_UnexpectedMessage, message='EntropyAck expected')
 
         if self.recovery_device.is_waiting():
+            if isinstance(msg, proto.Cancel):
+                self.set_main_state()
+                return self.Failure(message='Recovery cancelled')
             if isinstance(msg, proto.WordAck):
                 return self.recovery_device.process_word(msg.word)
 
@@ -756,7 +762,7 @@ class StateMachine(object):
         
         if isinstance(msg, proto.RecoveryDevice):
             return self.recovery_device.step1(msg.word_count, msg.passphrase_protection, msg.pin_protection,
-                                              msg.language, msg.label)
+                                              msg.language, msg.label, msg.enforce_wordlist)
 
         if isinstance(msg, proto.SignMessage):
             return self.passphrase.use(self._sign_message, coindef.types[msg.coin_name], list(msg.address_n), msg.message)
