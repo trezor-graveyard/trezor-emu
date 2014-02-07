@@ -2,7 +2,6 @@ import ecdsa
 import binascii
 from hashlib import sha256
 from ecdsa import curves, numbertheory, ellipticcurve, util
-import msqr
 
 # from bip32 import BIP32
 import messages_pb2 as proto
@@ -52,7 +51,7 @@ def verify_message(address, signature, message):
     x = r + (recid / 2) * order
     # 1.3
     alpha = (x * x * x + curve.a() * x + curve.b()) % curve.p()
-    beta = msqr.modular_sqrt(alpha, curve.p())
+    beta = ecdsa.numbertheory.square_root_mod_prime(alpha, curve.p())
     y = beta if (beta - recid) % 2 == 0 else curve.p() - beta
     # 1.4 the constructor checks that nR is at infinity
     R = ellipticcurve.Point(curve, x, y, order)
