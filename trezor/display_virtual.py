@@ -35,7 +35,7 @@ class VirtualDisplay(object):
             size = (pygame.display.Info().current_w, pygame.display.Info().current_h)
             self.screen = pygame.display.set_mode(size, pygame.FULLSCREEN)
             self.scale = 1
-
+        pygame.display.set_caption('TREZOR')
         self.surface = pygame.Surface((self.buffer.width, self.buffer.height))
 
     def refresh(self):
