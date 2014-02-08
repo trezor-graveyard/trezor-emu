@@ -110,7 +110,7 @@ class SimpleSignStateMachine(object):
         print "Now please be patient..."
 
         if spending > to_spend:
-            return proto.Failure(code=proto_types.Failure_Other, message="Not enough funds")
+            return proto.Failure(code=proto_types.Failure_NotEnoughFunds, message="Not enough funds")
 
         if fee > maxfee:
             # FIXME soft limit
