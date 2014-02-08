@@ -46,4 +46,4 @@ TODO
 * x PassphraseRequest
 * x Encrypted seed
 * x Plugin - signing script
-
+* Change address - rule of similar path, limit n<100000
