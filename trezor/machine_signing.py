@@ -102,6 +102,8 @@ class SimpleSignStateMachine(object):
         maxfee = coin.maxfee_kb * est_size
         fee = to_spend - spending
 
+        print "To spend:", to_spend
+        print "Spending:", spending
         print "Est tx size:", est_size
         print "Maxfee:", maxfee
         print "Tx fee:", fee
