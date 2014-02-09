@@ -47,3 +47,5 @@ TODO
 * x Encrypted seed
 * x Plugin - signing script
 * Change address - rule of similar path, limit n<100000
+* Protect SimpleSignTx, SignTx
+* Check protection levels of all methods

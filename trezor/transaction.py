@@ -269,7 +269,7 @@ class StreamTransactionSign(StreamTransactionHash):
     def sign(self):
         sk = ecdsa.SigningKey.from_secret_exponent(self.secexp, curve=ecdsa.curves.SECP256k1)
         signature = sk.sign_digest_deterministic(self.calc_txid(),
-                                                 hashfunc=hashlib.sha256, sigencode=ecdsa.util.sigencode_der)
+                                                 hashfunc=hashlib.sha256, sigencode=ecdsa.util.sigencode_der_canonize)
         pubkey = '\x04' + sk.get_verifying_key().to_string()  # \x04 -> uncompressed key
         pubkey = tools.compress_pubkey(pubkey)
         return (signature, pubkey)

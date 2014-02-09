@@ -152,7 +152,7 @@ def raw_tx(inputs, outputs, for_sig):
 def sign_input(bip32, addr_n, tx_hash):
     pk = bip32.get_private_key(addr_n)
     private_key = ecdsa.SigningKey.from_string(pk, curve=curves.SECP256k1)
-    sig = private_key.sign_digest_deterministic(tx_hash, hashfunc=sha256, sigencode=ecdsa.util.sigencode_der)
+    sig = private_key.sign_digest_deterministic(tx_hash, hashfunc=sha256, sigencode=ecdsa.util.sigencode_der_canonize)
     pubkey = private_key.get_verifying_key().to_string()
     return (pubkey, sig)
 
