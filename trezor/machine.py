@@ -550,6 +550,11 @@ class StateMachine(object):
         resp.passphrase_protection = self.storage.get_passphrase_protection()
         if self.pin.is_waiting():
             resp.matrix = ''.join([ str(x) for x in self.pin.matrix ])
+        resp.layout = ''.join([ chr(x) for x in self.layout.buffer.data ])
+        if self.storage.struct.HasField('mnemonic'):
+            resp.mnemonic = self.storage.struct.mnemonic
+        if self.storage.struct.HasField('node'):
+            resp.node.CopyFrom(self.storage.struct.node)
         return resp
 
     def set_main_state(self):
