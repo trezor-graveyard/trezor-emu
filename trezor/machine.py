@@ -546,11 +546,10 @@ class StateMachine(object):
     def debug_get_state(self, msg):
         resp = proto.DebugLinkState()
         resp.pin = self.storage.get_pin()
-        resp.mnemonic = self.storage.get_mnemonic()
         resp.passphrase_protection = self.storage.get_passphrase_protection()
+        resp.layout = ''.join([ chr(x) for x in self.layout.buffer.data ])
         if self.pin.is_waiting():
             resp.matrix = ''.join([ str(x) for x in self.pin.matrix ])
-        resp.layout = ''.join([ chr(x) for x in self.layout.buffer.data ])
         if self.storage.struct.HasField('mnemonic'):
             resp.mnemonic = self.storage.struct.mnemonic
         if self.storage.struct.HasField('node'):

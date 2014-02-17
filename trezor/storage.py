@@ -49,7 +49,7 @@ class Storage(object):
         m.device_id = self.get_device_id()
         
         m.pin_protection = bool(self.struct.pin != '')
-        m.passphrase_protection = bool(self.struct.passphrase_protection)
+        m.passphrase_protection = self.get_passphrase_protection()
         m.language = self.struct.language
         m.label = self.struct.label
         m.initialized = bool(self.is_initialized())
@@ -110,9 +110,6 @@ class Storage(object):
     def get_pin(self):
         return self.struct.pin
 
-    def get_mnemonic(self):
-        return self.struct.mnemonic
-
     def get_passphrase_protection(self):
         return bool(self.struct.passphrase_protection)
 
@@ -166,7 +163,7 @@ class Storage(object):
         '''Return False if mnemonic/node is locked by passphrase, so
         get_node() will fail.'''
 
-        if not self.struct.passphrase_protection:
+        if not self.get_passphrase_protection():
             return False
 
         if self.session.HasField('passphrase'):
