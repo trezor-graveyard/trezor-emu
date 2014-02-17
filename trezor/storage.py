@@ -110,6 +110,12 @@ class Storage(object):
     def get_pin(self):
         return self.struct.pin
 
+    def get_mnemonic(self):
+        return self.struct.mnemonic
+
+    def get_passphrase_protection(self):
+        return bool(self.struct.passphrase_protection)
+
     def set_secret(self, language, passphrase_protection, mnemonic=None, node=None):
         '''This should be the only method which *set* mnemonir or node'''
         if node != None and node.IsInitialized():
