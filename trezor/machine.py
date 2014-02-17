@@ -669,7 +669,7 @@ class StateMachine(object):
                     message, button_protection, False, passphrase_protection)
                         
         if passphrase_protection:
-            self.passphrase.use(self._ping, message, button_protection, pin_protection, False)
+            return self.passphrase.use(self._ping, message, button_protection, pin_protection, False)
             
         self.set_main_state()
         return proto.Success(message=message)
