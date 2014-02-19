@@ -12,6 +12,32 @@ from mnemonic import Mnemonic
 class NotInitializedException(Exception):
     pass
 
+class Session(object):
+    def __init__(self):
+        self.node = None
+        self.passphrase = None
+        self.pin = ''
+
+    def has_node(self):
+        # Node is already cached
+        return self.node != None
+
+    def has_passphrase(self):
+        # Passphrase is already set
+        return self.passphrase != None
+
+    def set_passphrase(self, passphrase):
+        # Drop cached node, next get_node will generate fresh one
+        self.passphrase = passphrase
+        self.node = None
+
+    def set_node(self, node):
+        self.node = types.HDNodeType()
+        self.node.CopyFrom(node)
+
+    def set_pin(self, pin):
+        self.pin = pin
+
 class Storage(object):
     def __init__(self, filename, bootloader_mode=False):
         self.vendor = 'bitcointrezor.com'
@@ -36,7 +62,7 @@ class Storage(object):
         self.init_session()
 
     def init_session(self):
-        self.session = proto_storage.Session()
+        self.session = Session()
 
     def get_features(self):
         m = proto.Features()
@@ -166,14 +192,26 @@ class Storage(object):
         if not self.get_passphrase_protection():
             return False
 
-        if self.session.HasField('passphrase'):
+        if self.session.has_passphrase():
             return False
 
         return True
 
+    def is_authorized(self):
+        '''Return False if PIN has not been entered in this session'''
+        if self.get_pin() == self.session.pin:
+            return True
+
+        return False
+
+    def authorize(self, pin):
+        if self.get_pin() == pin:
+            self.session.set_pin(pin)
+
+        return self.is_authorized()
+
     def unlock(self, passphrase):
-        self.session.passphrase = passphrase
-        self.session.ClearField('node')
+        self.session.set_passphrase(passphrase)
 
     def get_node(self):
         '''Return decrypted HDNodeType (from stored mnemonic or encrypted HDNodeType)'''
@@ -186,23 +224,26 @@ class Storage(object):
         if self.struct.HasField('mnemonic') and self.struct.HasField('node'):
             raise Exception("Cannot have both mnemonic and node at the same time")
         
-        if self.session.HasField('node'):
+        if self.session.has_node():
             # If we've already unlocked node, let's use it
             return self.session.node
 
         if self.struct.HasField('mnemonic'):
             print "Loading mnemonic"
             seed = Mnemonic(self.struct.language).to_seed(self.struct.mnemonic, passphrase=self.session.passphrase)
-            self.session.node.CopyFrom(BIP32.get_node_from_seed(seed))
+            self.session.set_node(BIP32.get_node_from_seed(seed))
         else:
             print "Loading node"
-            self.session.node.CopyFrom(self.struct.node)
+            self.session.set_node(self.struct.node)
 
         return self.session.node
 
     def set_pin(self, pin):
         self.struct.pin = pin
         self.save()
+
+        # Drop cached PIN
+        self.init_session()
 
     def increase_pin_attempt(self):
         self.struct.pin_failed_attempts += 1

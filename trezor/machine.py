@@ -42,11 +42,19 @@ class PinState(object):
         return pin    
         
     def request(self, msg, pass_or_check, func, *args):
+
         self.pass_or_check = pass_or_check
         self.func = func
         self.args = args
         self.matrix = self._generate_matrix()
-        
+
+        if not pass_or_check:        
+            # We just want to check PIN / authorize user,
+            # so we can use PIN cached in session
+
+            if self.storage.is_authorized():
+                return self._check(self.storage.session.pin)
+
         if not msg:
             msg = 'Please enter your PIN:'
         
@@ -85,6 +93,9 @@ class PinState(object):
         except ValueError:
             return proto.Failure(code=proto_types.Failure_SyntaxError, message="Syntax error")
         
+        return self._check(pin)
+
+    def _check(self, pin):
         if self.pass_or_check:
             # Pass PIN to method
             func = self.func
@@ -99,6 +110,7 @@ class PinState(object):
                 args = self.args
                 self.cancel()
                 self.storage.clear_pin_attempt()
+                self.storage.session.set_pin(pin)
                 msg = func(*args)
 
                 return msg
