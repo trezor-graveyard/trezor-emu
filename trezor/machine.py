@@ -62,7 +62,6 @@ class PinState(object):
         return proto.PinMatrixRequest(message=msg)
 
     def change(self, is_remove):
-
         if is_remove:
             self.storage.set_pin('')
             return proto.Success(message="Pin has been succesfully removed")
@@ -196,6 +195,7 @@ class ResetDeviceState(object):
         self.pin_protection = False
         self.language = 'english'
         self.label = ''
+        self.current_word = None
     
     def is_waiting(self):
         if self.internal_entropy:
@@ -277,19 +277,20 @@ class ResetDeviceState(object):
     def step4(self, pin, mnemonic, mnemonic_index, first_pass):
         '''Display words of mnemonic and ask user to write them down'''
         words = mnemonic.split(' ')
+        self.current_word = words[mnemonic_index]
 
         if first_pass:
             text = ["_cPlease write down",
                     "_c%d/%d" % ((mnemonic_index + 1), len(words)),
                     "_cwords of mnemonic:",
                     "",
-                    "_c'%s'" % words[mnemonic_index]]
+                    "_c'%s'" % self.current_word]
         else:
             text = ["_cPlease check that",
                     "_c%d. word" % (mnemonic_index + 1),
                     "_cof your mnemonic is:",
                     "",
-                    "_c'%s'" % words[mnemonic_index]]
+                    "_c'%s'" % self.current_word]
             
         mnemonic_index += 1
         if mnemonic_index == len(words):
@@ -376,6 +377,15 @@ class RecoveryDeviceState(object):
         
         print "Generated sequence:", self.sequence
         
+    def get_debug(self):
+        # Provide current fakt word and expected index for debuglink
+        pos = self.sequence[self.index]
+        if pos == None:
+            # Fake word
+            return (self.fake_word, 0)
+        else:
+            return ('', pos + 1)
+
     def request_word(self):
         pos = self.sequence[self.index]
         
@@ -389,6 +399,7 @@ class RecoveryDeviceState(object):
                 
         else:
             # Ask for word from mnemonic
+            self.fake_word = ''
             self.layout.show_message(["",
                                       "_cPlease retype",
                                       "_c%d. word" % (pos + 1),
@@ -560,12 +571,21 @@ class StateMachine(object):
         resp.pin = self.storage.get_pin()
         resp.passphrase_protection = self.storage.get_passphrase_protection()
         resp.layout = ''.join([ chr(x) for x in self.layout.buffer.data ])
+
         if self.pin.is_waiting():
             resp.matrix = ''.join([ str(x) for x in self.pin.matrix ])
         if self.storage.struct.HasField('mnemonic'):
             resp.mnemonic = self.storage.struct.mnemonic
         if self.storage.struct.HasField('node'):
             resp.node.CopyFrom(self.storage.struct.node)
+
+        if self.reset_device.current_word != None:
+            resp.word = self.reset_device.current_word
+            resp.entropy = self.reset_device.internal_entropy
+
+        if self.recovery_device.is_waiting():
+            (resp.word, resp.word_pos) = self.recovery_device.get_debug()
+
         return resp
 
     def set_main_state(self):

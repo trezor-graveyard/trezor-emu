@@ -26,6 +26,11 @@ class Session(object):
         # Passphrase is already set
         return self.passphrase != None
 
+    def get_passphrase(self):
+        if self.passphrase == None:
+            return u''
+        return self.passphrase
+
     def set_passphrase(self, passphrase):
         # Drop cached node, next get_node will generate fresh one
         self.passphrase = passphrase
@@ -230,7 +235,7 @@ class Storage(object):
 
         if self.struct.HasField('mnemonic'):
             print "Loading mnemonic"
-            seed = Mnemonic(self.struct.language).to_seed(self.struct.mnemonic, passphrase=self.session.passphrase)
+            seed = Mnemonic(self.struct.language).to_seed(self.struct.mnemonic, passphrase=self.session.get_passphrase())
             self.session.set_node(BIP32.get_node_from_seed(seed))
         else:
             print "Loading node"
