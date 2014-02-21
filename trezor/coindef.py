@@ -5,8 +5,6 @@ BTC = types.CoinType(
     coin_name='Bitcoin',
     coin_shortcut='BTC',
     address_type=0,
-    ser_private=0x0488ADE4,
-    ser_public=0x0488B21E,
 )
 
 tBTC = types.CoinType(
@@ -14,8 +12,6 @@ tBTC = types.CoinType(
     coin_name='Testnet',
     coin_shortcut='tBTC',
     address_type=111,
-    ser_private=0x04358394,
-    ser_public=0x043587CF,
 )
 
 NMC = types.CoinType(
@@ -23,8 +19,6 @@ NMC = types.CoinType(
     coin_name='Namecoin',
     coin_shortcut='NMC',
     address_type=52,
-    ser_private=0x0488ADE4, # xprv 
-    ser_public=0x0488B21E,  # xpub
 )
 
 LTC = types.CoinType(
@@ -32,8 +26,6 @@ LTC = types.CoinType(
     coin_name='Litecoin',
     coin_shortcut='LTC',
     address_type=48,
-    ser_private=0x019D9CFE,
-    ser_public=0x019dA462,
 )
 
 types = {

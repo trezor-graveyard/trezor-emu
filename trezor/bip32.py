@@ -25,7 +25,6 @@ class BIP32(object):
         I64 = hmac.HMAC(key=b"Bitcoin seed", msg=seed, digestmod=hashlib.sha512).digest()
 
         node = types.HDNodeType()
-        # node.version = 0x0488ADE4  # Main net
         node.depth = 0
         node.fingerprint = 0x00000000
         node.child_num = 0
@@ -53,7 +52,7 @@ class BIP32(object):
         return vk
 
     def get_address(self, coin, n):
-        pubkey = self.get_public_node(coin, n).public_key
+        pubkey = self.get_public_node(n).public_key
         address = public_key_to_bc_address(pubkey, coin.address_type)
         return address
 
@@ -64,9 +63,8 @@ class BIP32(object):
         signer = self.get_signer(n)
         return signer.get_verifying_key()
 
-    def get_public_node(self, coin, n):
+    def get_public_node(self, n):
         node = self.get_private_node(n)
-        node.version = coin.ser_public
         node.private_key = ''
         return node
 
@@ -107,7 +105,6 @@ class BIP32(object):
             raise Exception("secexp cannot be zero")
 
         node_out = types.HDNodeType()
-        node_out.version = node.version
         node_out.depth = node.depth + 1
         node_out.child_num = i
         node_out.chain_code = I64[32:]

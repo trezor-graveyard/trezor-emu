@@ -684,8 +684,8 @@ class StateMachine(object):
         self.custom_message = True  # Yes button will redraw screen
         return proto.Address(address=address)
 
-    def _get_public_key(self, coin, address_n):
-        node = BIP32(self.storage.get_node()).get_public_node(coin, address_n)
+    def _get_public_key(self, address_n):
+        node = BIP32(self.storage.get_node()).get_public_node(address_n)
         return proto.PublicKey(node=node)
 
     def _ping(self, message, button_protection, pin_protection, passphrase_protection):
@@ -708,7 +708,8 @@ class StateMachine(object):
             (address, sig) = signing.sign_message(BIP32(self.storage.get_node()), coin, address_n, message)
             return proto.MessageSignature(address=address, signature=sig)
         except:
-            return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Cannot sign message")
+            raise
+            # return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Cannot sign message")
         
     def _process_message(self, msg):
         if isinstance(msg, proto.Initialize):
@@ -773,7 +774,7 @@ class StateMachine(object):
             return self.yesno.request(proto_types.ButtonRequest_Other, self._get_entropy, *[msg.size])
 
         if isinstance(msg, proto.GetPublicKey):
-            return self.passphrase.use(self._get_public_key, coindef.types[msg.coin_name], list(msg.address_n))
+            return self.passphrase.use(self._get_public_key, list(msg.address_n))
 
         if isinstance(msg, proto.GetAddress):
             return self.passphrase.use(self._get_address, coindef.types[msg.coin_name], list(msg.address_n))
@@ -788,19 +789,30 @@ class StateMachine(object):
             return self.protect_wipe()
         
         if isinstance(msg, proto.LoadDevice):
-            return self.protect_call(['', "_cLoad custom data?"], 'Setup device?', '{ Cancel', 'Confirm }',
-                        self._load_device, *[msg.mnemonic, msg.node, msg.pin, msg.passphrase_protection,
-                        msg.language, msg.label, msg.skip_checksum])
+            self.layout.show_question(['', "_cLoad custom data?"], 'Setup device?', 'Confirm }', '{ Cancel')
+            return self.yesno.request(proto_types.ButtonRequest_Other, self._load_device,
+                        msg.mnemonic, msg.node, msg.pin, msg.passphrase_protection,
+                        msg.language, msg.label, msg.skip_checksum)
 
         if isinstance(msg, proto.ResetDevice):
             return self.reset_device.step1(msg.display_random, msg.strength, msg.passphrase_protection, msg.pin_protection, msg.language, msg.label)
         
         if isinstance(msg, proto.RecoveryDevice):
-            return self.recovery_device.step1(msg.word_count, msg.passphrase_protection, msg.pin_protection,
-                                              msg.language, msg.label, msg.enforce_wordlist)
+            self.layout.show_question(['', "_cRecover mnemonic", "_cto this device?"],
+                                      '', 'Confirm }', '{ Cancel')
+            return self.yesno.request(proto_types.ButtonRequest_Other, self.recovery_device.step1,
+                                      msg.word_count, msg.passphrase_protection, msg.pin_protection,
+                                      msg.language, msg.label, msg.enforce_wordlist)
 
         if isinstance(msg, proto.SignMessage):
-            return self.passphrase.use(self._sign_message, coindef.types[msg.coin_name], list(msg.address_n), msg.message)
+            return self.protect_call([msg.message[:21],
+                                      msg.message[21:42],
+                                      msg.message[42:63],
+                                      msg.message[63:84],
+                                      msg.message[84:105]],
+                                     'Sign this message?', '{ Cancel', 'Confirm }',
+                                     self.passphrase.use, self._sign_message,
+                                     coindef.types[msg.coin_name], list(msg.address_n), msg.message)
 
         if isinstance(msg, proto.VerifyMessage):
             try:
