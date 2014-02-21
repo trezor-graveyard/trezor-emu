@@ -153,7 +153,7 @@ class PassphraseState(object):
         self.pass_or_check = pass_or_check
         self.func = func
         self.args = args
-        
+        self.layout.request_passphrase(msg)
         return proto.PassphraseRequest()
         
     def check(self, passphrase):       
@@ -405,9 +405,9 @@ class RecoveryDeviceState(object):
                                       "_c%d. word" % (pos + 1),
                                       "_cof your mnemonic"])
         
-        # Sleep between 0-3 seconds, this may mislead frequency analysis
+        # Sleep for a moment, this may mislead frequency analysis
         # of retyping words on backdoored computer
-        time.sleep(random.random() * 3)
+        time.sleep(1)
         return proto.WordRequest()
 
     def process_word(self, word):
@@ -516,8 +516,8 @@ class StateMachine(object):
         self.yesno = YesNoState(layout)
         self.pin = PinState(layout, storage)
         self.passphrase = PassphraseState(layout, storage)
-        self.sign = machine_signing.SignStateMachine(layout, storage, self.yesno, self.passphrase)
-        self.simplesign = machine_signing.SimpleSignStateMachine(layout, storage, self.yesno, self.passphrase)
+        self.sign = machine_signing.SignStateMachine(layout, storage, self.yesno, self.pin, self.passphrase)
+        self.simplesign = machine_signing.SimpleSignStateMachine(layout, storage, self.yesno, self.pin, self.passphrase)
         self.reset_device = ResetDeviceState(layout, storage, self.yesno, self.pin, self.set_main_state)
         self.recovery_device = RecoveryDeviceState(layout, storage, self.pin, self.set_main_state)
         self.set_main_state()
@@ -708,8 +708,7 @@ class StateMachine(object):
             (address, sig) = signing.sign_message(BIP32(self.storage.get_node()), coin, address_n, message)
             return proto.MessageSignature(address=address, signature=sig)
         except:
-            raise
-            # return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Cannot sign message")
+            return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Cannot sign message")
         
     def _process_message(self, msg):
         if isinstance(msg, proto.Initialize):
@@ -817,6 +816,8 @@ class StateMachine(object):
         if isinstance(msg, proto.VerifyMessage):
             try:
                 signing.verify_message(msg.address, msg.signature, msg.message)
+                self.layout.show_verified_message(msg.address, msg.message)
+                self.custom_message = True  # Yes button will redraw screen
                 return proto.Success()
             except:
                 return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Invalid signature")

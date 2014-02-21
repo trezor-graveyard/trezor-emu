@@ -39,10 +39,11 @@ S TxRequest(type=output, index=-1, serialized_tx=<str>)
 '''
 
 class SimpleSignStateMachine(object):
-    def __init__(self, layout, storage, yesno, passphrase):
+    def __init__(self, layout, storage, yesno, pin, passphrase):
         self.layout = layout
         self.storage = storage
         self.yesno = yesno
+        self.pin = pin
         self.passphrase = passphrase
 
         self.set_main_state()
@@ -71,9 +72,13 @@ class SimpleSignStateMachine(object):
 
         # Calculate proper address for given address_n
         if len(list(out.address_n)):
-            out.address = self.bip32.get_address(coin, list(out.address_n))
-            out.ClearField('address_n')
-            out_change = index  # Remember which output is supposed to be a change
+            if out_change == None:
+                out.address = self.bip32.get_address(coin, list(out.address_n))
+                out.ClearField('address_n')
+                out_change = index  # Remember which output is supposed to be a change
+            else:
+                return proto.Failure(code=proto_types.Failure_Other,
+                                     message="Only one change output allowed")
 
         self.layout.show_output(coin, out.address, out.amount)
         return self.yesno.request(proto_types.ButtonRequest_ConfirmOutput, self.confirm_output, *[msg, index + 1, out_change])
@@ -98,6 +103,11 @@ class SimpleSignStateMachine(object):
         for out in msg.outputs:
             spending += out.amount
 
+        if out_change != None:
+            change_amount = msg.outputs[out_change].amount
+        else:
+            change_amount = 0
+
         est_size = estimate_size_kb(len(msg.inputs), len(msg.outputs))
         maxfee = coin.maxfee_kb * est_size
         fee = to_spend - spending
@@ -107,6 +117,7 @@ class SimpleSignStateMachine(object):
         print "Est tx size:", est_size
         print "Maxfee:", maxfee
         print "Tx fee:", fee
+        print "Change output amount:", change_amount
         print "Now please be patient..."
 
         if spending > to_spend:
@@ -116,10 +127,15 @@ class SimpleSignStateMachine(object):
             # FIXME soft limit
             #return proto.Failure(code=proto_types.Failure_Other, message="Fee is over threshold")
             self.layout.show_high_fee(fee, coin)
-            return self.yesno.request(proto_types.ButtonRequest_FeeOverThreshold, self.do_sign, *[msg])
+            return self.yesno.request(proto_types.ButtonRequest_FeeOverThreshold, self.do_confirm_sign, *[msg, to_spend])
 
-        return self.do_sign(msg)
+        return self.do_confirm_sign(msg, to_spend)
 
+    def do_confirm_sign(self, msg, to_spend):
+        coin = coindef.types[msg.coin_name]
+        self.layout.show_send_tx(to_spend, coin) # - change_amount)
+        return self.yesno.request(proto_types.ButtonRequest_SignTx, self.do_sign, *[msg])
+    
     def do_sign(self, msg):
         # Basic checks passed, let's sign that shit!
         version = 1
@@ -170,15 +186,17 @@ class SimpleSignStateMachine(object):
 
     def process_message(self, msg):
         if isinstance(msg, proto.SimpleSignTx):
-            return self.passphrase.use(self.simple_sign_tx, msg)
+            return self.pin.request('', False,
+                                    self.passphrase.use, self.simple_sign_tx, msg)
 
 class SignStateMachine(object):
-    def __init__(self, layout, storage, yesno, passphrase):
+    def __init__(self, layout, storage, yesno, pin, passphrase):
         self.layout = layout
         self.storage = storage
         self.yesno = yesno
+        self.pin = pin
         self.passphrase = passphrase
-
+        
         self.set_main_state()
 
     def set_main_state(self):
@@ -423,7 +441,7 @@ class SignStateMachine(object):
 
     def process_message(self, msg):
         if isinstance(msg, proto.EstimateTxSize):
-            return self.passphrase.use(self.estimate_tx_size, msg)
+            return self.estimate_tx_size(msg)
 
         if isinstance(msg, proto.SignTx):
             # Start signing process

@@ -36,14 +36,32 @@ class Layout(object):
         # Print message to console
         self.show_question(messages, '', '', '')
 
+    def show_verified_message(self, address, message):
+        msg = ['_c' + address[:len(address) / 2],
+               '_c' + address[len(address) / 2:],
+               '_c' + message[:21],
+               '_c' + message[21:42],
+               '_c' + message[42:63]]
+        self.show_question(msg, "Successfully verified", 'Continue', '')
+        
     def show_receiving_address(self, address):
         self.show_message(
             # .....................
-            ['This address can be',
-             'safely used for',
-             'receiving new funds:',
-             address[:len(address)],
-             address[len(address):], ])
+            ['_cThis address can be',
+             '_csafely used for',
+             '_creceiving new funds:',
+             '_c' + address[:len(address) / 2],
+             '_c' + address[len(address) / 2:], ])
+
+    def show_send_tx(self, amount, coin):
+        self.show_question(
+            #   .....................
+            ['',
+             '_cReally send amount of',
+             '_c' + self._prepare_amount(amount, coin),
+             '_cout of the wallet?'],
+             'Really send?', 'Confirm', 'Cancel'
+        )
 
     def show_question(self, lines, question, yes_text, no_text):
         # Print message to console
@@ -60,6 +78,16 @@ class Layout(object):
             self.buffer.draw_string(0, i * font.height + 1, msg, font)
         self._show_status(question, yes_text, no_text)
         self.display.refresh()
+
+    def request_passphrase(self, msg):
+        self.show_message(
+            #   .....................
+            ['',
+             '_cPlease enter',
+             '',
+             '_cwallet passphrase',
+             '',
+             '_con computer keyboard'])
 
     def show_question_dummy(self):
         self.show_question(
@@ -164,7 +192,7 @@ class Layout(object):
 
             self.buffer.frame(0, self.buffer.height - delta - 20, self.buffer.width - 1, self.buffer.height - delta - 20)
             self.buffer.draw_string(0, self.buffer.height - delta - 18, "_c" + status, smallfonts.Font5x8)
-        else:
+        elif yes_text or no_text:
 
             self.buffer.clear(0, self.buffer.height - delta - 12, self.buffer.width - 1, self.buffer.height - 1)
             self.buffer.frame(0, self.buffer.height - 12, self.buffer.width - 1, self.buffer.height - 12)
