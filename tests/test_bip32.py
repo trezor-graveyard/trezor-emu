@@ -6,10 +6,8 @@ import struct
 from hashlib import sha256
 from binascii import hexlify, unhexlify
 from trezor.bip32 import BIP32
-from ecdsa.keys import SigningKey, VerifyingKey
-from ecdsa.curves import SECP256k1
-from ecdsa.rfc6979 import generate_k
 from ecdsa.util import string_to_number
+from trezor.coindef import BTC
 #import pycoin.wallet as pywallet
 
 # from trezor import tools
@@ -43,13 +41,13 @@ class TestBIP32(unittest.TestCase):
 
         self.assertEqual(string_to_number(bip32.node.private_key), int('e8f32e723decf4051aefac8e2c93c9c5b214313817cdb01a1494b917c8436b35', 16))
 
-        self.assertEqual(bip32.get_address([], 0), '15mKKb2eos1hWa6tisdPwwDC1a5J1y9nma')
-        self.assertEqual(bip32.get_address([bip32.prime(0)], 0), '19Q2WoS5hSS6T8GjhK8KZLMgmWaq4neXrh')
+        self.assertEqual(bip32.get_address(BTC, []), '15mKKb2eos1hWa6tisdPwwDC1a5J1y9nma')
+        self.assertEqual(bip32.get_address(BTC, [bip32.prime(0)]), '19Q2WoS5hSS6T8GjhK8KZLMgmWaq4neXrh')
 
         seed = unhexlify('fffcf9f6f3f0edeae7e4e1dedbd8d5d2cfccc9c6c3c0bdbab7b4b1aeaba8a5a29f9c999693908d8a8784817e7b7875726f6c696663605d5a5754514e4b484542')
         bip32 = BIP32.from_seed(seed)
-        self.assertEqual(bip32.get_address([0], 0), '19EuDJdgfRkwCmRzbzVBHZWQG9QNWhftbZ')
-        self.assertEqual(bip32.get_address([0, bip32.prime(2147483647)], 0), '1Lke9bXGhn5VPrBuXgN12uGUphrttUErmk')
+        self.assertEqual(bip32.get_address(BTC, [0]), '19EuDJdgfRkwCmRzbzVBHZWQG9QNWhftbZ')
+        self.assertEqual(bip32.get_address(BTC, [0, bip32.prime(2147483647)]), '1Lke9bXGhn5VPrBuXgN12uGUphrttUErmk')
 
         pw = pywallet.Wallet(chain_code=bip32.node.chain_code,
                        secret_exponent_bytes=bip32.node.private_key,
@@ -136,8 +134,8 @@ class TestBIP32(unittest.TestCase):
 
         bip32 = BIP32.from_seed(seed)
 
-        self.assertEqual(bip32.get_address([bip32.prime(0), 1, bip32.prime(2)], 0), '1NjxqbA9aZWnh17q1UW3rB4EPu79wDXj7x')
-        self.assertEqual(bip32.get_address([bip32.prime(0), 1, bip32.prime(2), 2], 0), '1LjmJcdPnDHhNTUgrWyhLGnRDKxQjoxAgt')
+        self.assertEqual(bip32.get_address(BTC, [bip32.prime(0), 1, bip32.prime(2)]), '1NjxqbA9aZWnh17q1UW3rB4EPu79wDXj7x')
+        self.assertEqual(bip32.get_address(BTC, [bip32.prime(0), 1, bip32.prime(2), 2]), '1LjmJcdPnDHhNTUgrWyhLGnRDKxQjoxAgt')
         '''
         path_string = '-0/1/2'
         wallet = pywallet.Wallet.from_master_secret(seed)
