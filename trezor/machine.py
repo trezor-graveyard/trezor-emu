@@ -644,17 +644,14 @@ class StateMachine(object):
         self.set_main_state()
         return proto.Success()
 
-    def _load_device(self, mnemonic, node, pin, passphrase_protection, language, label):
+    def _load_device(self, mnemonic, node, pin, passphrase_protection, language, label, skip_checksum):
         # Use mnemonic OR HDNodeType to initialize the device
         # If both are provided, mnemonic has higher priority
 
         if self.storage.is_initialized():
             return proto.Failure(message="Device is initialized already.")
 
-        if mnemonic and not Mnemonic(language).check(mnemonic):
-            return proto.Failure(message="Invalid mnemonic")
-
-        self.storage.load_device(mnemonic, node, language, label, pin, passphrase_protection)
+        self.storage.load_device(mnemonic, node, language, label, pin, passphrase_protection, skip_checksum=skip_checksum)
         self.set_main_state()
         return proto.Success(message='Device loaded')
 
@@ -793,7 +790,7 @@ class StateMachine(object):
         if isinstance(msg, proto.LoadDevice):
             return self.protect_call(['', "_cLoad custom data?"], 'Setup device?', '{ Cancel', 'Confirm }',
                         self._load_device, *[msg.mnemonic, msg.node, msg.pin, msg.passphrase_protection,
-                        msg.language, msg.label])
+                        msg.language, msg.label, msg.skip_checksum])
 
         if isinstance(msg, proto.ResetDevice):
             return self.reset_device.step1(msg.display_random, msg.strength, msg.passphrase_protection, msg.pin_protection, msg.language, msg.label)

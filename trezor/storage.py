@@ -144,7 +144,7 @@ class Storage(object):
     def get_passphrase_protection(self):
         return bool(self.struct.passphrase_protection)
 
-    def set_secret(self, language, passphrase_protection, mnemonic=None, node=None):
+    def set_secret(self, language, passphrase_protection, mnemonic=None, node=None, skip_checksum=False):
         '''This should be the only method which *set* mnemonir or node'''
         if node != None and node.IsInitialized():
             self.struct.passphrase_protection = False # Node cannot be passphrase protected
@@ -152,7 +152,7 @@ class Storage(object):
             self.struct.ClearField('mnemonic')
                     
         elif mnemonic != '':
-            if not Mnemonic(language).check(mnemonic):
+            if not skip_checksum and not Mnemonic(language).check(mnemonic):
                 raise Exception("Invalid mnemonic")
 
             self.struct.passphrase_protection = bool(passphrase_protection)
@@ -275,8 +275,9 @@ class Storage(object):
             raise Exception("Unexpected state")
         print self.get_features()
 
-    def load_device(self, mnemonic, node, language, label, pin, passphrase_protection):
-        self.set_secret(language=language, mnemonic=mnemonic, node=node, passphrase_protection=passphrase_protection)
+    def load_device(self, mnemonic, node, language, label, pin, passphrase_protection, skip_checksum=False):
+        self.set_secret(language=language, mnemonic=mnemonic, skip_checksum=skip_checksum,
+                        node=node, passphrase_protection=passphrase_protection)
         self.set_language(language)
         self.set_label(label)
         self.set_pin(pin)
