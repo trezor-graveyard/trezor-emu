@@ -328,15 +328,14 @@ class RecoveryDeviceState(object):
         self.label = None
         self.enforce_wordlist = False
         self.fake_word = None
+        self.pending_request = False
         
         self.sequence = []
         self.mnemonic = []
         self.index = None
         
     def is_waiting(self):
-        if self.sequence and self.index != None:
-            return True
-        return False
+        return self.pending_request
 
     def step1(self, word_count, passphrase_protection, pin_protection, language,
               label, enforce_wordlist):
@@ -378,10 +377,9 @@ class RecoveryDeviceState(object):
         print "Generated sequence:", self.sequence
         
     def get_debug(self):
-        # Provide current fakt word and expected index for debuglink
+        # Provide current fake word and expected index for debuglink
         pos = self.sequence[self.index]
         if pos == None:
-            # Fake word
             return (self.fake_word, 0)
         else:
             return ('', pos + 1)
@@ -408,9 +406,13 @@ class RecoveryDeviceState(object):
         # Sleep for a moment, this may mislead frequency analysis
         # of retyping words on backdoored computer
         time.sleep(1)
+        
+        # Flag for state machine and debuglink to report fakeword/pos
+        self.pending_request = True
         return proto.WordRequest()
 
     def process_word(self, word):
+        self.pending_request = False
         pos = self.sequence[self.index]
 
         if self.enforce_wordlist and word not in Mnemonic(self.language).wordlist:
