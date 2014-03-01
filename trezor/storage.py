@@ -7,6 +7,7 @@ from bip32 import BIP32
 import tools
 import signing
 import coindef
+import binascii
 from mnemonic import Mnemonic
 
 class NotInitializedException(Exception):
@@ -113,7 +114,7 @@ class Storage(object):
         f = open(self.device_id_filename, 'r')
         sernum = f.read()
         f.close()
-        return sernum
+        return binascii.hexlify(sernum).upper()
         
     def check_struct(self, struct):
         # Check if protobuf struct loaded from local storage

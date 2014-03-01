@@ -14,7 +14,7 @@ import types_pb2
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='storage.proto',
   package='',
-  serialized_pb='\n\rstorage.proto\x1a\x0btypes.proto\"\xbd\x01\n\x07Storage\x12\x0f\n\x07version\x18\x01 \x02(\r\x12\x19\n\x04node\x18\x02 \x01(\x0b\x32\x0b.HDNodeType\x12\x16\n\x08mnemonic\x18\x03 \x01(\x0c\x42\x04\x88\xb5\x18\x01\x12\x1d\n\x15passphrase_protection\x18\x04 \x01(\x08\x12\x1b\n\x13pin_failed_attempts\x18\x05 \x01(\r\x12\x0b\n\x03pin\x18\x06 \x01(\x0c\x12\x10\n\x08language\x18\x07 \x01(\x0c\x12\x13\n\x05label\x18\x08 \x01(\x0c\x42\x04\x88\xb5\x18\x01\x42\x39\n(org.multibit.hd.hardware.trezor.protobufB\rTrezorStorage')
+  serialized_pb='\n\rstorage.proto\x1a\x0btypes.proto\"\xb1\x01\n\x07Storage\x12\x0f\n\x07version\x18\x01 \x02(\r\x12\x19\n\x04node\x18\x02 \x01(\x0b\x32\x0b.HDNodeType\x12\x10\n\x08mnemonic\x18\x03 \x01(\t\x12\x1d\n\x15passphrase_protection\x18\x04 \x01(\x08\x12\x1b\n\x13pin_failed_attempts\x18\x05 \x01(\r\x12\x0b\n\x03pin\x18\x06 \x01(\t\x12\x10\n\x08language\x18\x07 \x01(\t\x12\r\n\x05label\x18\x08 \x01(\tB9\n(org.multibit.hd.hardware.trezor.protobufB\rTrezorStorage')
 
 
 
@@ -42,11 +42,11 @@ _STORAGE = _descriptor.Descriptor(
       options=None),
     _descriptor.FieldDescriptor(
       name='mnemonic', full_name='Storage.mnemonic', index=2,
-      number=3, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value="",
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), '\210\265\030\001')),
+      options=None),
     _descriptor.FieldDescriptor(
       name='passphrase_protection', full_name='Storage.passphrase_protection', index=3,
       number=4, type=8, cpp_type=7, label=1,
@@ -63,25 +63,25 @@ _STORAGE = _descriptor.Descriptor(
       options=None),
     _descriptor.FieldDescriptor(
       name='pin', full_name='Storage.pin', index=5,
-      number=6, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value="",
+      number=6, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
       name='language', full_name='Storage.language', index=6,
-      number=7, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value="",
+      number=7, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
       name='label', full_name='Storage.label', index=7,
-      number=8, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value="",
+      number=8, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), '\210\265\030\001')),
+      options=None),
   ],
   extensions=[
   ],
@@ -92,7 +92,7 @@ _STORAGE = _descriptor.Descriptor(
   is_extendable=False,
   extension_ranges=[],
   serialized_start=31,
-  serialized_end=220,
+  serialized_end=208,
 )
 
 _STORAGE.fields_by_name['node'].message_type = types_pb2._HDNODETYPE
@@ -107,8 +107,4 @@ class Storage(_message.Message):
 
 DESCRIPTOR.has_options = True
 DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), '\n(org.multibit.hd.hardware.trezor.protobufB\rTrezorStorage')
-_STORAGE.fields_by_name['mnemonic'].has_options = True
-_STORAGE.fields_by_name['mnemonic']._options = _descriptor._ParseOptions(descriptor_pb2.FieldOptions(), '\210\265\030\001')
-_STORAGE.fields_by_name['label'].has_options = True
-_STORAGE.fields_by_name['label']._options = _descriptor._ParseOptions(descriptor_pb2.FieldOptions(), '\210\265\030\001')
 # @@protoc_insertion_point(module_scope)
