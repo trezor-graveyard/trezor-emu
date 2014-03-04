@@ -47,8 +47,8 @@ class Session(object):
 class Storage(object):
     def __init__(self, filename, bootloader_mode=False):
         self.vendor = 'bitcointrezor.com'
-        self.major_version = 0
-        self.minor_version = 1
+        self.major_version = 1
+        self.minor_version = 0
         self.bugfix_version = 0
 
         self.storage_version = 1  # Version of wallet file
