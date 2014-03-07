@@ -221,14 +221,6 @@ class ResetDeviceState(object):
         internal_entropy = tools.get_local_entropy()
         print "Trezor-generated entropy:", binascii.hexlify(internal_entropy)
         
-        msg = []
-        if display_random:
-            msg += ["_cLocal entropy is", ]
-            ent = binascii.hexlify(internal_entropy)
-            while ent:
-                msg += ["_c%s" % ent[:16], ]
-                ent = ent[16:]
-
         if language not in self.storage.get_languages():
             raise Exception("Unsupported language")
 
@@ -241,8 +233,17 @@ class ResetDeviceState(object):
         self.language = language
         self.new_pin = None
 
-        self.layout.show_question(msg, 'Setup device?', 'Next }', '{ Cancel')
-        return self.yesno.request(proto_types.ButtonRequest_ResetDevice, self.step2)
+        if display_random:
+            msg = ["_cLocal entropy is", ]
+            ent = binascii.hexlify(internal_entropy)
+            while ent:
+                msg += ["_c%s" % ent[:16], ]
+                ent = ent[16:]
+
+            self.layout.show_question(msg, 'Setup device?', 'Next }', '{ Cancel')
+            return self.yesno.request(proto_types.ButtonRequest_ResetDevice, self.step2)
+
+        return self.step2()
 
     def step2(self):
         if self.pin_protection:
