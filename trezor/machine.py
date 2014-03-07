@@ -202,6 +202,12 @@ class ResetDeviceState(object):
             return True
         return False
 
+    def get_debug(self):
+        if self.current_word != None:
+            return (self.current_word , self.internal_entropy)
+        else:
+            return ('' , self.internal_entropy)
+
     def step1(self, display_random, strength, passphrase_protection, pin_protection, language, label):
         '''This starts resetting workflow by generating internal random
         and asking user to confirm device reset.'''
@@ -223,58 +229,57 @@ class ResetDeviceState(object):
                 msg += ["_c%s" % ent[:16], ]
                 ent = ent[16:]
 
-        def entropy_request():
-            '''This is called after user confirmation of the action.
-            Internal random is already generated, lets respond to computer with EntropyRequest
-            and wait for EntropyAck'''
-            if language not in self.storage.get_languages():
-                raise Exception("Unsupported language")
+        if language not in self.storage.get_languages():
+            raise Exception("Unsupported language")
 
-            self.internal_entropy = internal_entropy
-            self.external_entropy = None
-            self.strength = strength
-            self.passphrase_protection = passphrase_protection
-            self.pin_protection = pin_protection
-            self.label = label            
-            self.language = language
+        self.internal_entropy = internal_entropy
+        self.external_entropy = None
+        self.strength = strength
+        self.passphrase_protection = passphrase_protection
+        self.pin_protection = pin_protection
+        self.label = label
+        self.language = language
+        self.new_pin = None
 
-            return proto.EntropyRequest()
-        
         self.layout.show_question(msg, 'Setup device?', 'Next }', '{ Cancel')
-        return self.yesno.request(proto_types.ButtonRequest_ResetDevice, entropy_request)
+        return self.yesno.request(proto_types.ButtonRequest_ResetDevice, self.step2)
+
+    def step2(self):
+        if self.pin_protection:
+            return self.pin.request_new(self.step3)
+        else:
+            return self.step3('')
+
+    def step3(self, pin):
+        if self.pin_protection and not pin:
+            raise Exception("Pin need to be provided")
+
+        if self.pin_protection == False:
+            pin = ''
+        
+        self.new_pin = pin
+        return proto.EntropyRequest()
     
-    def step2(self, external_entropy):
+    def step4(self, external_entropy):
         '''Now the action is confirmed by user and both
-        internal and external entropy is generated. Lets ask for PIN
-        if the device need to be pin-protected
+        internal and external entropy is generated.
         '''
         self.external_entropy = external_entropy
         print "Computer-generated entropy:", binascii.hexlify(self.external_entropy)
         
-        if self.pin_protection:
-            return self.pin.request_new(self.step3)
-
-        else:
-            return self.step3('')
-            
-    def step3(self, pin):
-        '''Generate mnemonic'''
-        if self.pin_protection and not pin:
-            raise Exception("Pin need to be provided")
-        
-        if self.pin_protection == False:
-            pin = ''
-        
         entropy = tools.generate_entropy(self.strength, self.internal_entropy, self.external_entropy)
         mnemonic = Mnemonic(self.language).to_mnemonic(entropy)
         
+        pin = self.new_pin
+        self.new_pin = None
+
         if not Mnemonic(self.language).check(mnemonic):
             raise Exception("Unexpected error, mnemonic doesn't pass internal check")
         
         print "Mnemonic:", mnemonic
-        return self.step4(pin, mnemonic, 0, first_pass=True)
+        return self.step5(pin, mnemonic, 0, first_pass=True)
 
-    def step4(self, pin, mnemonic, mnemonic_index, first_pass):
+    def step5(self, pin, mnemonic, mnemonic_index, first_pass):
         '''Display words of mnemonic and ask user to write them down'''
         words = mnemonic.split(' ')
         self.current_word = words[mnemonic_index]
@@ -297,16 +302,16 @@ class ResetDeviceState(object):
             if first_pass == True:
                 # Print second pass of printing
                 self.layout.show_question(text, '', 'Done }', '{ Cancel')
-                return self.yesno.request(proto_types.ButtonRequest_ConfirmWord, self.step4, *[pin, mnemonic, 0, False])
+                return self.yesno.request(proto_types.ButtonRequest_ConfirmWord, self.step5, *[pin, mnemonic, 0, False])
 
             else:
                 self.layout.show_question(text, '', 'Done }', '{ Cancel')
-                return self.yesno.request(proto_types.ButtonRequest_ConfirmWord, self.step5, *[pin, mnemonic])
+                return self.yesno.request(proto_types.ButtonRequest_ConfirmWord, self.step6, *[pin, mnemonic])
 
         self.layout.show_question(text, '', 'Next }', '{ Cancel')
-        return self.yesno.request(proto_types.ButtonRequest_ConfirmWord, self.step4, *[pin, mnemonic, mnemonic_index, first_pass])
+        return self.yesno.request(proto_types.ButtonRequest_ConfirmWord, self.step5, *[pin, mnemonic, mnemonic_index, first_pass])
         
-    def step5(self, pin, mnemonic):
+    def step6(self, pin, mnemonic):
         self.storage.load_device(mnemonic, None, self.language, self.label, pin, self.passphrase_protection)
         self._set_main_state() 
         return proto.Success(message='Device loaded')
@@ -581,12 +586,11 @@ class StateMachine(object):
         if self.storage.struct.HasField('node'):
             resp.node.CopyFrom(self.storage.struct.node)
 
-        if self.reset_device.current_word != None:
-            resp.word = self.reset_device.current_word
-            resp.entropy = self.reset_device.internal_entropy
+        if self.reset_device.is_waiting():
+            (resp.reset_word, resp.reset_entropy) = self.reset_device.get_debug()
 
         if self.recovery_device.is_waiting():
-            (resp.word, resp.word_pos) = self.recovery_device.get_debug()
+            (resp.recovery_fake_word, resp.recovery_word_pos) = self.recovery_device.get_debug()
 
         return resp
 
@@ -749,7 +753,7 @@ class StateMachine(object):
 
         if self.reset_device.is_waiting():
             if isinstance(msg, proto.EntropyAck):
-                return self.reset_device.step2(msg.entropy)
+                return self.reset_device.step4(msg.entropy)
 
             self.set_main_state()
             return proto.Failure(code=proto_types.Failure_UnexpectedMessage, message='EntropyAck expected')
