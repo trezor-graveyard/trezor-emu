@@ -795,19 +795,14 @@ class StateMachine(object):
             return self.protect_wipe()
         
         if isinstance(msg, proto.LoadDevice):
-            self.layout.show_question(['', "_cLoad custom data?"], 'Setup device?', 'Confirm }', '{ Cancel')
-            return self.yesno.request(proto_types.ButtonRequest_Other, self._load_device,
-                        msg.mnemonic, msg.node, msg.pin, msg.passphrase_protection,
+            return self._load_device(msg.mnemonic, msg.node, msg.pin, msg.passphrase_protection,
                         msg.language, msg.label, msg.skip_checksum)
 
         if isinstance(msg, proto.ResetDevice):
             return self.reset_device.step1(msg.display_random, msg.strength, msg.passphrase_protection, msg.pin_protection, msg.language, msg.label)
         
         if isinstance(msg, proto.RecoveryDevice):
-            self.layout.show_question(['', "_cRecover mnemonic", "_cto this device?"],
-                                      '', 'Confirm }', '{ Cancel')
-            return self.yesno.request(proto_types.ButtonRequest_Other, self.recovery_device.step1,
-                                      msg.word_count, msg.passphrase_protection, msg.pin_protection,
+            return self.recovery_device.step1(msg.word_count, msg.passphrase_protection, msg.pin_protection,
                                       msg.language, msg.label, msg.enforce_wordlist)
 
         if isinstance(msg, proto.SignMessage):
