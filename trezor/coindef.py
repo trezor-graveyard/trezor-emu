@@ -7,10 +7,10 @@ BTC = types.CoinType(
     address_type=0,
 )
 
-tBTC = types.CoinType(
-    maxfee_kb=10000000,  # == 0.1 tBTC/kB
+TEST = types.CoinType(
+    maxfee_kb=10000000,  # == 0.1 TEST/kB
     coin_name='Testnet',
-    coin_shortcut='tBTC',
+    coin_shortcut='TEST',
     address_type=111,
 )
 
@@ -30,7 +30,7 @@ LTC = types.CoinType(
 
 types = {
     'Bitcoin': BTC,
-    'Testnet': tBTC,
+    'Testnet': TEST,
     'Namecoin': NMC,
     'Litecoin': LTC,
 }
