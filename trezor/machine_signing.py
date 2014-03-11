@@ -80,8 +80,11 @@ class SimpleSignStateMachine(object):
                 return proto.Failure(code=proto_types.Failure_Other,
                                      message="Only one change output allowed")
 
-        self.layout.show_output(coin, out.address, out.amount)
-        return self.yesno.request(proto_types.ButtonRequest_ConfirmOutput, self.confirm_output, *[msg, index + 1, out_change])
+        if out_change == index: # we have a change output
+            return self.confirm_output(msg, index + 1, out_change)
+        else:
+            self.layout.show_output(coin, out.address, out.amount)
+            return self.yesno.request(proto_types.ButtonRequest_ConfirmOutput, self.confirm_output, *[msg, index + 1, out_change])
     
     def confirm_fee(self, msg, out_change):
         coin = coindef.types[msg.coin_name]
