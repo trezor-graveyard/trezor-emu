@@ -49,7 +49,7 @@ class Storage(object):
         self.vendor = 'bitcointrezor.com'
         self.major_version = 1
         self.minor_version = 0
-        self.bugfix_version = 0
+        self.patch_version = 0
 
         self.storage_version = 1  # Version of wallet file
 
@@ -75,7 +75,7 @@ class Storage(object):
         m.vendor = self.vendor
         m.major_version = self.major_version
         m.minor_version = self.minor_version
-        m.bugfix_version = self.bugfix_version
+        m.patch_version = self.patch_version
         m.bootloader_mode = self.bootloader_mode
         
         m.device_id = self.get_device_id()
