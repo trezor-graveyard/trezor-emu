@@ -35,7 +35,7 @@ S TxRequest(type=output, index=0, signed_index=1, signature=<str>, serialized_tx
 C TxOutput
 S TxRequest(type=output, index=1, serialized_tx=<str>)
 C TxOutput
-S TxRequest(type=output, index=-1, serialized_tx=<str>)
+S TxRequest(finished=True, serialized_tx=<str>)
 '''
 
 class SimpleSignStateMachine(object):
@@ -183,9 +183,7 @@ class SimpleSignStateMachine(object):
 
         self.layout.show_logo()
         self.set_main_state()
-        return proto.TxRequest(request_type=proto_types.TXOUTPUT,
-                               request_index=-1,
-                               serialized_tx=serialized)
+        return proto.TxRequest(finished=True, serialized_tx=serialized)
 
     def process_message(self, msg):
         if isinstance(msg, proto.SimpleSignTx):
@@ -386,7 +384,7 @@ class SignStateMachine(object):
             self.input_hash = hashlib.sha256()
             return proto.TxRequest(request_type=proto.TXINPUT,
                                    request_index=self.input_index,
-                                   signed_index=now_signed,
+                                   signature_index=now_signed,
                                    signature=signature,
                                    serialized_tx=serialized_tx)
 
@@ -398,7 +396,7 @@ class SignStateMachine(object):
         self.ser_output = True
         return proto.TxRequest(request_type=proto.TXOUTPUT,
                                request_index=0,
-                               signed_index=self.signing_index,
+                               signature_index=self.signing_index,
                                signature=signature,
                                serialized_tx=serialized_tx)
 
@@ -437,9 +435,7 @@ class SignStateMachine(object):
 
         print "FINISHING"
         # We're done with serializing outputs!
-        return proto.TxRequest(request_type=proto.TXOUTPUT,
-                               request_index=-1,
-                               serialized_tx=serialized_tx)
+        return proto.TxRequest(finished=True, serialized_tx=serialized_tx)
     '''
 
     def process_message(self, msg):

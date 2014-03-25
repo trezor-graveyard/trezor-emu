@@ -27,7 +27,7 @@ def raw_tx(txhash):
 def get_tx(txhash):
     # Build protobuf transaction structure from blockchain.info
     d = raw_tx(txhash)
-    t = types.TransactionType()
+    t = types.TransactionType(version = 1, lock_time = 0)
 
     for inp in d['inputs']:
         di = raw_tx(inp['prev_out']['tx_index'])
