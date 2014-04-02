@@ -51,7 +51,11 @@ def compile_TxOutput(txout):
         ret.script_pubkey = script
 
     elif txout.script_type == types.PAYTOSCRIPTHASH:
-        raise Exception("Not implemented")
+        script = '\xa9'  # op_hash_160
+        script += '\x14'  # push 0x14 bytes
+        script += tools.bc_address_to_hash_160(txout.address)
+        script += '\x87'  # op_equal
+        ret.script_pubkey = script
 
     else:
         raise Exception("Unknown script type")
