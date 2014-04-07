@@ -59,7 +59,7 @@ class PinState(object):
             msg = 'Please enter your PIN:'
         
         self.layout.show_matrix(self.matrix, msg)
-        return proto.PinMatrixRequest(message=msg)
+        return proto.PinMatrixRequest(type=proto_types.PinMatrixRequestType_NewFirst)
 
     def change(self, is_remove):
         if is_remove:
@@ -411,7 +411,7 @@ class RecoveryDeviceState(object):
         
         # Sleep for a moment, this may mislead frequency analysis
         # of retyping words on backdoored computer
-        time.sleep(1)
+        # time.sleep(1)
         
         # Flag for state machine and debuglink to report fakeword/pos
         self.pending_request = True
@@ -827,7 +827,7 @@ class StateMachine(object):
         if isinstance(msg, proto.SimpleSignTx):
             return self.simplesign.process_message(msg)
 
-        if isinstance(msg, (proto.EstimateTxSize, proto.SignTx, proto.TxInput, proto.TxOutput)):
+        if isinstance(msg, (proto.EstimateTxSize, proto.SignTx, proto.TxAck)):
             return self.sign.process_message(msg)
 
         self.set_main_state()

@@ -103,7 +103,7 @@ class SimpleSignStateMachine(object):
                 tx = txes[binascii.hexlify(inp.prev_hash)]
             except:
                 return proto.Failure(code=proto_types.Failure_Other, message="Prev hash %s not found in [%s]" % (binascii.hexlify(inp.prev_hash), ','.join(txes.keys())))
-            to_spend += tx.outputs[inp.prev_index].amount
+            to_spend += tx.bin_outputs[inp.prev_index].amount
 
         spending = 0
         for out in msg.outputs:

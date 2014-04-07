@@ -218,12 +218,12 @@ class StreamTransactionHash(StreamTransaction):
     @classmethod
     def calculate(cls, tx):
         # Demonstration of hash calculation in streamed fashion
-        th = cls(len(tx.inputs), len(tx.outputs), tx.version, tx.lock_time)
+        th = cls(len(tx.inputs), len(tx.bin_outputs), tx.version, tx.lock_time)
 
         for i in tx.inputs:
             th.serialize_input(i)
 
-        for o in tx.outputs:
+        for o in tx.bin_outputs:
             th.serialize_output(o)
 
         return th.calc_txid()
