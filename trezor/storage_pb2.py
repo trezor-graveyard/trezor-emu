@@ -14,7 +14,7 @@ import types_pb2
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='storage.proto',
   package='',
-  serialized_pb='\n\rstorage.proto\x1a\x0btypes.proto\"\xb1\x01\n\x07Storage\x12\x0f\n\x07version\x18\x01 \x02(\r\x12\x19\n\x04node\x18\x02 \x01(\x0b\x32\x0b.HDNodeType\x12\x10\n\x08mnemonic\x18\x03 \x01(\t\x12\x1d\n\x15passphrase_protection\x18\x04 \x01(\x08\x12\x1b\n\x13pin_failed_attempts\x18\x05 \x01(\r\x12\x0b\n\x03pin\x18\x06 \x01(\t\x12\x10\n\x08language\x18\x07 \x01(\t\x12\r\n\x05label\x18\x08 \x01(\tB9\n(org.multibit.hd.hardware.trezor.protobufB\rTrezorStorage')
+  serialized_pb='\n\rstorage.proto\x1a\x0btypes.proto\"\xb1\x01\n\x07Storage\x12\x0f\n\x07version\x18\x01 \x02(\r\x12\x19\n\x04node\x18\x02 \x01(\x0b\x32\x0b.HDNodeType\x12\x10\n\x08mnemonic\x18\x03 \x01(\t\x12\x1d\n\x15passphrase_protection\x18\x04 \x01(\x08\x12\x1b\n\x13pin_failed_attempts\x18\x05 \x01(\r\x12\x0b\n\x03pin\x18\x06 \x01(\t\x12\x10\n\x08language\x18\x07 \x01(\t\x12\r\n\x05label\x18\x08 \x01(\tB0\n\x1f\x63om.satoshilabs.trezor.protobufB\rTrezorStorage')
 
 
 
@@ -106,5 +106,5 @@ class Storage(_message.Message):
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), '\n(org.multibit.hd.hardware.trezor.protobufB\rTrezorStorage')
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), '\n\037com.satoshilabs.trezor.protobufB\rTrezorStorage')
 # @@protoc_insertion_point(module_scope)
