@@ -186,7 +186,8 @@ class SimpleSignStateMachine(object):
 
         self.layout.show_logo()
         self.set_main_state()
-        return proto.TxRequest(finished=True, serialized_tx=serialized)
+        return proto.TxRequest(request_type=proto_types.TXFINISHED,
+                               serialized=proto_types.TxRequestSerializedType(serialized_tx=serialized))
 
     def process_message(self, msg):
         if isinstance(msg, proto.SimpleSignTx):
