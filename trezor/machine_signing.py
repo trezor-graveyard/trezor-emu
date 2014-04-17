@@ -12,30 +12,47 @@ from transaction import StreamTransactionHash, StreamTransactionSerialize, \
         StreamTransactionSign, compile_TxOutput, estimate_size, estimate_size_kb
 
 '''
-Workflow for two inputs and two outputs:
+Workflow of streamed signing
 
-C SignTx
-S TxRequest(type=input, index=0)
-C TxInput
-S TxRequest(type=input, index=1)
-C TxInput
-S TxRequest(type=output, index=0)
-C TxOutput
-S TxRequest(type=output, index=1)
-C TxOutput
-S TxRequest(type=input, index=0, signed_index=0, signature=<str>, serialized_tx=<str>
-C TxInput
-S TxRequest(type=input, index=1)
-C TxInput
-S TxRequest(type=output, index=0)
-C TxOutput
-S TxRequest(type=output, index=1)
-C TxOutput
-S TxRequest(type=output, index=0, signed_index=1, signature=<str>, serialized_tx=<str>
-C TxOutput
-S TxRequest(type=output, index=1, serialized_tx=<str>)
-C TxOutput
-S TxRequest(finished=True, serialized_tx=<str>)
+I - input
+O - output
+
+foreach I:
+    Request I
+
+    Calculate amount of I:
+        Request prevhash I, META
+        foreach prevhash I:
+            Request prevhash I
+        foreach prevhash O:
+            Request prevhash O
+            Store amount of I
+        Calculate hash of streamed tx, compare to prevhash I
+
+    Request META
+    Add META to StreamTransactionSign
+    foreach I:
+        Request I
+        If I == I-to-be-signed:
+            Fill scriptsig
+        Add I to StreamTransactionSign
+    foreach O:
+        Request O
+        If I=0:
+            Display output
+            Ask for confirmation
+        Add O to StreamTransactionSign
+
+    If I=0:
+        Check tx fee
+        Calculate txhash
+    else:
+        Compare current hash with txhash
+        If different:
+            Failure
+
+    Sign StreamTransactionSign
+    Return signed chunk
 '''
 
 class SimpleSignStateMachine(object):
@@ -176,8 +193,10 @@ class SimpleSignStateMachine(object):
                 tx.serialize_output(compile_TxOutput(o))
 
             (signature, pubkey) = tx.sign()
-            print "PUBKEY", binascii.hexlify(pubkey)
             serialized += outtx.serialize_input(inp, signature, pubkey)
+            print "SIGNATURE", binascii.hexlify(signature)
+            print "PUBKEY", binascii.hexlify(pubkey)
+
             index += 1
 
         for out in msg.outputs:
@@ -194,35 +213,190 @@ class SimpleSignStateMachine(object):
             return self.pin.request('', False,
                                     self.passphrase.use, self.simple_sign_tx, msg)
 
-class SignStateMachine(object):
+class Workflow(object):
+    def workflow(self, msg):
+        raise Exception("Override me")
+    
+    def start(self, msg):
+        self.generator = self.workflow(msg)
+        return self.generator.next()
+
+    def process(self, msg):
+        return self.generator.send(msg)
+
+class TrezorIface(object):
     def __init__(self, layout, storage, yesno, pin, passphrase):
         self.layout = layout
         self.storage = storage
         self.yesno = yesno
         self.pin = pin
         self.passphrase = passphrase
-        
-        self.set_main_state()
 
-    def set_main_state(self):
-        self.inputs_count = 0  # Count of inputs in transaction
-        self.outputs_count = 0  # Count ot outputs in transaction
-        self.input_index = 0  # Index <0, inputs_count) of currently processed input
-        self.output_index = 0  # Index <0, outputs_count) of currently processed output
-        self.signing_index = 0  # Index <0, inputs_count) of currently processed signature
-        self.signing_input = None  # Cache of currently signing input, for sending back serialized input
+class StreamingSigningWorkflow(Workflow):
+    def __init__(self, iface):
+        self.iface = iface
 
-        self.input_hash = None  # sha256 object of currently processed input
-        self.output_hash = None  # sha256 object of currently processed output
-        self.tx_hash = None  # sha256 object of whole transaction
+    def workflow(self, msg):
+        if msg.inputs_count < 1:
+            raise Exception(proto.Failure(message='Transaction must have at least one input'))
 
-        # When flag is set, tx_output streams back it's part of tx template.
-        # This is used in final phase of signing, where computer needs to know the rest
-        # of transaction template, from last signature to the end
-        self.ser_output = False
+        if msg.outputs_count < 1:
+            raise Exception(proto.Failure(message='Transaction must have at least one output'))
 
-        self.bip32 = None  # Reference to fresh BIP32 instance
+        bip32 = BIP32(self.iface.storage.get_node())
+        coin = coindef.types[msg.coin_name]
+ 
+        version = 1
+        lock_time = 0
+        serialized = ''
+        ser = ''
 
+        outtx = StreamTransactionSerialize(msg.inputs_count, msg.outputs_count,
+                                           version, lock_time)
+
+        # foreach I:
+        for i in range(msg.inputs_count):
+            # Request I
+            ret = yield(proto.TxRequest(request_type=proto_types.TXINPUT,
+                                        details=proto_types.TxRequestDetailsType(
+                                            request_index=i, tx_hash='')))
+            inp = ret.tx.inputs[0]
+
+            # ----------- Calculate amount of I:
+            amount = None
+
+            # Request prevhash I, META
+            ret = yield(proto.TxRequest(request_type=proto_types.TXMETA,
+                    details=proto_types.TxRequestDetailsType(
+                        tx_hash=inp.prev_hash)))
+            
+            amount_hash = StreamTransactionHash(ret.tx.inputs_count, ret.tx.outputs_count,
+                                                version, lock_time)
+            # foreach prevhash I:
+            for i2 in range(ret.tx.inputs_count):
+                # Request prevhash I
+                ret2 = yield(proto.TxRequest(request_type=proto_types.TXINPUT,
+                        details=proto_types.TxRequestDetailsType(
+                            request_index=i2, tx_hash=inp.prev_hash)))
+                amount_hash.serialize_input(ret2.tx.inputs[0])
+
+            # foreach prevhash O:
+            for o2 in range(ret.tx.outputs_count):
+                # Request prevhash O
+                ret2 = yield(proto.TxRequest(request_type=proto_types.TXOUTPUT,
+                        details=proto_types.TxRequestDetailsType(
+                            request_index=o2, tx_hash=inp.prev_hash)))
+                amount_hash.serialize_output(ret2.tx.bin_outputs[0])
+
+                if inp.prev_index == o2:
+                    # Store amount of I
+                    amount = ret2.tx.bin_outputs[0].amount
+
+            # Calculate hash of streamed tx, compare to prevhash I
+            if inp.prev_hash != amount_hash.calc_txid()[::-1]:
+                raise Exception(proto.Failure(message="Provided input data doesn't match to prev_hash"))
+
+            # ------------- End of streaming amounts
+            
+            # Request META
+            ret = yield(proto.TxRequest(request_type=proto_types.TXMETA,
+                                        details=proto_types.TxRequestDetailsType(tx_hash='')))
+
+            # Add META to StreamTransactionSign
+            sign = StreamTransactionSign(i, ret.tx.inputs_count, ret.tx.outputs_count,
+                                         version, lock_time)
+
+            # foreach I:
+            for i2 in range(ret.tx.inputs_count):
+                # Request I
+                ret2 = yield(proto.TxRequest(request_type=proto_types.TXINPUT,
+                        details=proto_types.TxRequestDetailsType(request_index=i2)))
+
+                # If I == I-to-be-signed:
+                if i2 == i:
+                    # Fill scriptsig
+                    address = bip32.get_address(coin, list(ret2.tx.inputs[0].address_n))
+                    private_key = bip32.get_private_node(list(ret2.tx.inputs[0].address_n)).private_key
+                    print "ADDRESS", address
+                    print "PRIVKEY", binascii.hexlify(private_key)
+
+                    secexp = string_to_number(private_key)
+                    ser += sign.serialize_input(ret2.tx.inputs[0], address, secexp)
+                else:
+                    # Add I to StreamTransactionSign
+                    ser = sign.serialize_input(ret2.tx.inputs[0])
+
+            # foreach O:
+            out_change = None
+            for o2 in range(ret.tx.outputs_count):
+                # Request O
+                ret2 = yield(proto.TxRequest(request_type=proto_types.TXOUTPUT,
+                        details=proto_types.TxRequestDetailsType(request_index=o2)))
+
+                out = ret2.tx.outputs[0]
+                if len(list(out.address_n)) and out.HasField('address'):
+                    raise Exception(proto.Failure(code=proto_types.Failure_Other,
+                                 message="Cannot have both address and address_n for the output"))
+
+                # Calculate proper address for given address_n
+                if len(list(out.address_n)):
+                    if out_change == None:
+                        out.address = bip32.get_address(coin, list(out.address_n))
+                        out.ClearField('address_n')
+                        out_change = o2  # Remember which output is supposed to be a change
+
+                # If I=0:
+                if i == 0:
+                    # Display output, TODO
+                    print "SENDING", out.amount, "TO", out.address
+
+                    # Ask for confirmation, TODO
+
+                # Add O to StreamTransactionSign
+                ser += sign.serialize_output(compile_TxOutput(out))
+
+        #    If I=0:
+        #        Calculate to_spend, check tx fees - TODO
+        #        Ask for confirmation of tx fees - TODO
+        #        Calculate txhash
+        #    else:
+        #        Compare current hash with txhash
+        #        If different:
+        #            Failure
+
+            # Sign StreamTransactionSign
+            (signature, pubkey) = sign.sign()
+            serialized += outtx.serialize_input(inp, signature, pubkey)
+
+            print "SIGNATURE", binascii.hexlify(signature)
+            print "PUBKEY", binascii.hexlify(pubkey)
+
+
+        # Serialize outputs
+        for o2 in range(ret.tx.outputs_count):
+            # Request O
+            ret2 = yield(proto.TxRequest(request_type=proto_types.TXOUTPUT,
+                    details=proto_types.TxRequestDetailsType(request_index=o2)))
+
+            out = ret2.tx.outputs[0]
+            if len(list(out.address_n)) and out.HasField('address'):
+                raise Exception(proto.Failure(code=proto_types.Failure_Other,
+                             message="Cannot have both address and address_n for the output"))
+
+            # Calculate proper address for given address_n
+            if len(list(out.address_n)):
+                out.address = bip32.get_address(coin, list(out.address_n))
+                out.ClearField('address_n')
+
+            serialized += outtx.serialize_output(compile_TxOutput(out))
+
+        yield proto.TxRequest(request_type=proto_types.TXFINISHED,
+                              serialized=proto_types.TxRequestSerializedType(serialized_tx=serialized))
+
+class SignStateMachine(object):
+    def __init__(self, layout, storage, yesno, pin, passphrase):
+        self.iface = TrezorIface(layout, storage, yesno, pin, passphrase)
+        self.workflow = None
 
     def estimate_tx_size(self, msg):
         '''This is stub implementation, which will be replaced by exact
@@ -230,29 +404,21 @@ class SignStateMachine(object):
         est_size = estimate_size(msg.inputs_count, msg.outputs_count)
         return proto.TxSize(tx_size=est_size)
 
-    def sign_tx(self, msg):
-        # This function starts workflow of signing Bitcoin transaction.
-        # Function set up the environment and send back a input request message,
-        # asking computer for first input.
+    def process_message(self, msg):
+        if isinstance(msg, proto.EstimateTxSize):
+            return self.estimate_tx_size(msg)
 
-        raise Exception("Not implemented")
+        if isinstance(msg, proto.SignTx):
+            # Start signing process
+            self.workflow = StreamingSigningWorkflow(self.iface)
+            return self.iface.passphrase.use(self.workflow.start, msg)
 
-        self.set_main_state()
+        if isinstance(msg, proto.TxAck):
+            return self.iface.passphrase.use(self.workflow.process, msg)
 
-        if msg.inputs_count < 1:
-            return proto.Failure(message='Transaction must have at least one input')
+        # return Failure message to indicate problems to upstream SM
+        return proto.Failure(code=1, message="Signing failed")
 
-        if msg.outputs_count < 1:
-            return proto.Failure(message='Transaction must have at least one output')
-
-        self.inputs_count = msg.inputs_count
-        self.outputs_count = msg.outputs_count
-
-
-        self.bip32 = BIP32(self.storage.get_xprv())
-
-        return proto.TxRequest(request_type=proto_types.TXINPUT,
-                               request_index=self.input_index)
 
     '''
     def tx_input(self, msg):
@@ -441,26 +607,3 @@ class SignStateMachine(object):
         # We're done with serializing outputs!
         return proto.TxRequest(finished=True, serialized_tx=serialized_tx)
     '''
-
-    def process_message(self, msg):
-        if isinstance(msg, proto.EstimateTxSize):
-            return self.estimate_tx_size(msg)
-
-        if isinstance(msg, proto.SignTx):
-            # Start signing process
-            return self.passphrase.use(self.sign_tx, msg)
-
-        '''
-        if isinstance(msg, proto.TxInput):
-            return self.tx_input(msg)
-
-        if isinstance(msg, proto.TxOutput):
-            if self.ser_output:
-                # We just want to serialize part of output
-                # and send it back to computer
-                return self.serialize_output(msg)
-            else:
-                return self.tx_output(msg)
-        '''
-        # return Failure message to indicate problems to upstream SM
-        return proto.Failure(code=1, message="Signing failed")
