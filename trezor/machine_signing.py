@@ -308,16 +308,12 @@ class StreamingSigningWorkflow(Workflow):
 
             # ------------- End of streaming amounts
             
-            # Request META
-            ret = yield(proto.TxRequest(request_type=proto_types.TXMETA,
-                                        details=proto_types.TxRequestDetailsType()))
-
             # Add META to StreamTransactionSign
-            sign = StreamTransactionSign(i, ret.tx.inputs_cnt, ret.tx.outputs_cnt,
+            sign = StreamTransactionSign(i, msg.inputs_count, msg.outputs_count,
                                          version, lock_time)
 
             # foreach I:
-            for i2 in range(ret.tx.inputs_cnt):
+            for i2 in range(msg.inputs_count):
                 # Request I
                 ret2 = yield(proto.TxRequest(request_type=proto_types.TXINPUT,
                         details=proto_types.TxRequestDetailsType(request_index=i2)))
@@ -338,7 +334,7 @@ class StreamingSigningWorkflow(Workflow):
 
             # foreach O:
             out_change = None
-            for o2 in range(ret.tx.outputs_cnt):
+            for o2 in range(msg.outputs_count):
                 # Request O
                 ret2 = yield(proto.TxRequest(request_type=proto_types.TXOUTPUT,
                         details=proto_types.TxRequestDetailsType(request_index=o2)))
@@ -382,7 +378,7 @@ class StreamingSigningWorkflow(Workflow):
             print "PUBKEY", binascii.hexlify(pubkey)
 
         # Serialize outputs
-        for o2 in range(ret.tx.outputs_cnt):
+        for o2 in range(msg.outputs_count):
             # Request O
             req = proto.TxRequest(request_type=proto_types.TXOUTPUT,
                     details=proto_types.TxRequestDetailsType(request_index=o2),
