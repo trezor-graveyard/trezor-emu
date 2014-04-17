@@ -249,7 +249,7 @@ class StreamingSigningWorkflow(Workflow):
         version = 1
         lock_time = 0
         serialized = ''
-        ser = ''
+        signature = None
 
         outtx = StreamTransactionSerialize(msg.inputs_count, msg.outputs_count,
                                            version, lock_time)
@@ -257,9 +257,19 @@ class StreamingSigningWorkflow(Workflow):
         # foreach I:
         for i in range(msg.inputs_count):
             # Request I
-            ret = yield(proto.TxRequest(request_type=proto_types.TXINPUT,
-                                        details=proto_types.TxRequestDetailsType(
-                                            request_index=i, tx_hash='')))
+            req = proto.TxRequest(request_type=proto_types.TXINPUT,
+                                  details=proto_types.TxRequestDetailsType(request_index=i),
+                                  serialized=proto_types.TxRequestSerializedType(
+                                                        serialized_tx=serialized))
+            
+            if signature:
+                # Fill values from previous round
+                req.serialized.signature = signature
+                req.serialized.signature_index = i - 1
+
+            serialized = ''
+
+            ret = yield req
             inp = ret.tx.inputs[0]
 
             # ----------- Calculate amount of I:
@@ -270,10 +280,10 @@ class StreamingSigningWorkflow(Workflow):
                     details=proto_types.TxRequestDetailsType(
                         tx_hash=inp.prev_hash)))
             
-            amount_hash = StreamTransactionHash(ret.tx.inputs_count, ret.tx.outputs_count,
+            amount_hash = StreamTransactionHash(ret.tx.inputs_cnt, ret.tx.outputs_cnt,
                                                 version, lock_time)
             # foreach prevhash I:
-            for i2 in range(ret.tx.inputs_count):
+            for i2 in range(ret.tx.inputs_cnt):
                 # Request prevhash I
                 ret2 = yield(proto.TxRequest(request_type=proto_types.TXINPUT,
                         details=proto_types.TxRequestDetailsType(
@@ -281,7 +291,7 @@ class StreamingSigningWorkflow(Workflow):
                 amount_hash.serialize_input(ret2.tx.inputs[0])
 
             # foreach prevhash O:
-            for o2 in range(ret.tx.outputs_count):
+            for o2 in range(ret.tx.outputs_cnt):
                 # Request prevhash O
                 ret2 = yield(proto.TxRequest(request_type=proto_types.TXOUTPUT,
                         details=proto_types.TxRequestDetailsType(
@@ -300,14 +310,14 @@ class StreamingSigningWorkflow(Workflow):
             
             # Request META
             ret = yield(proto.TxRequest(request_type=proto_types.TXMETA,
-                                        details=proto_types.TxRequestDetailsType(tx_hash='')))
+                                        details=proto_types.TxRequestDetailsType()))
 
             # Add META to StreamTransactionSign
-            sign = StreamTransactionSign(i, ret.tx.inputs_count, ret.tx.outputs_count,
+            sign = StreamTransactionSign(i, ret.tx.inputs_cnt, ret.tx.outputs_cnt,
                                          version, lock_time)
 
             # foreach I:
-            for i2 in range(ret.tx.inputs_count):
+            for i2 in range(ret.tx.inputs_cnt):
                 # Request I
                 ret2 = yield(proto.TxRequest(request_type=proto_types.TXINPUT,
                         details=proto_types.TxRequestDetailsType(request_index=i2)))
@@ -321,14 +331,14 @@ class StreamingSigningWorkflow(Workflow):
                     print "PRIVKEY", binascii.hexlify(private_key)
 
                     secexp = string_to_number(private_key)
-                    ser += sign.serialize_input(ret2.tx.inputs[0], address, secexp)
+                    sign.serialize_input(ret2.tx.inputs[0], address, secexp)
                 else:
                     # Add I to StreamTransactionSign
-                    ser = sign.serialize_input(ret2.tx.inputs[0])
+                    sign.serialize_input(ret2.tx.inputs[0])
 
             # foreach O:
             out_change = None
-            for o2 in range(ret.tx.outputs_count):
+            for o2 in range(ret.tx.outputs_cnt):
                 # Request O
                 ret2 = yield(proto.TxRequest(request_type=proto_types.TXOUTPUT,
                         details=proto_types.TxRequestDetailsType(request_index=o2)))
@@ -353,7 +363,7 @@ class StreamingSigningWorkflow(Workflow):
                     # Ask for confirmation, TODO
 
                 # Add O to StreamTransactionSign
-                ser += sign.serialize_output(compile_TxOutput(out))
+                sign.serialize_output(compile_TxOutput(out))
 
         #    If I=0:
         #        Calculate to_spend, check tx fees - TODO
@@ -371,13 +381,23 @@ class StreamingSigningWorkflow(Workflow):
             print "SIGNATURE", binascii.hexlify(signature)
             print "PUBKEY", binascii.hexlify(pubkey)
 
-
         # Serialize outputs
-        for o2 in range(ret.tx.outputs_count):
+        for o2 in range(ret.tx.outputs_cnt):
             # Request O
-            ret2 = yield(proto.TxRequest(request_type=proto_types.TXOUTPUT,
-                    details=proto_types.TxRequestDetailsType(request_index=o2)))
+            req = proto.TxRequest(request_type=proto_types.TXOUTPUT,
+                    details=proto_types.TxRequestDetailsType(request_index=o2),
+                    serialized=proto_types.TxRequestSerializedType(serialized_tx=serialized))
 
+            if signature:
+                # Fill signature of last input
+                req.serialized.signature = signature
+                req.serialized.signature_index = i - 1
+                signature = None
+
+            serialized = ''
+
+            ret2 = yield req
+                
             out = ret2.tx.outputs[0]
             if len(list(out.address_n)) and out.HasField('address'):
                 raise Exception(proto.Failure(code=proto_types.Failure_Other,
@@ -418,192 +438,3 @@ class SignStateMachine(object):
 
         # return Failure message to indicate problems to upstream SM
         return proto.Failure(code=1, message="Signing failed")
-
-
-    '''
-    def tx_input(self, msg):
-        # This message is called on tx input message.
-
-        if msg.index != self.input_index:
-            self.set_main_state()
-            return proto.Failure(message="Input index doesn't correspond with internal state")
-
-        print "RECEIVED INPUT", msg
-
-        if msg.index == self.signing_index:
-            # Store message to cache for serializing input in tx_output
-            self.signing_input = msg
-
-        
-        #There we have received one input.
-        if self.signing_index == 0:
-            # If it is first one, we have to prepare
-            # and hash the beginning of the transaction.
-
-            if self.input_index == 0:
-                # First input, let's hash the beginning of tx
-                self.input_hash = hashlib.sha256(signing.raw_tx_header(self.inputs_count))
-                self.tx_hash = self.input_hash
-
-                #self.tx_hash.update()
-
-                #self.input_hash.update(signing.raw_tx_input())
-                #self.tx_hash.update(signing.raw_tx_input())
-                # TODO
-
-        # For every input, hash the input itself.
-        print "INPUT HASH", self.input_hash.hexdigest()
-        # TODO
-
-        if self.input_index < self.inputs_count - 1:
-            # If this is not the last input, request next input in the row.
-            self.input_index += 1
-            return proto.TxRequest(request_type=proto_types.TXINPUT,
-                                   request_index=self.input_index)
-
-        # We have processed all inputs. Let's request transaction outputs now.
-        self.output_index = 0
-        self.output_hash = hashlib.sha256()
-        return proto.TxRequest(request_type=proto_types.TXOUTPUT,
-                               request_index=self.output_index)
-
-    def _check_address_n(self, msg):
-        if len(msg.address_n):
-            # Recalculate output address and compare with msg.address
-            if msg.address != self.bip32.get_address(list(msg.address_n), self.storage.get_address_type()):
-                self.set_main_state()
-                return proto.Failure(message="address_n doesn't belong to given bitcoin address")
-
-    def _check_output_index(self, msg):
-        if msg.index != self.output_index:
-            self.set_main_state()
-            return proto.Failure(message="Output index doesn't correspond with internal state")
-
-    def tx_output(self, msg):
-        # This message is called on TxInput message, when serialize_output is False.
-        # It does all the hashing for making input signatures.
-
-        res = self._check_output_index(msg)
-        if res is not None:
-            return res
-
-        res = self._check_address_n(msg)
-        if res is not None:
-            return res
-
-        if self.output_index == 0:
-            # If it is first one, we have to prepare
-            # and hash the middle of the transaction (between inputs and outputs).
-            # TODO
-
-        # Let's hash tx output
-        print "RECEIVED OUTPUT", msg
-
-        if self.input_index == 0:
-            # This is first time we're processing this output,
-            # let's display output details on screen
-            # self.layout.show_transactions()
-            print "OUTPUT", msg.address, msg.amount
-
-        if self.output_index < self.outputs_count - 1:
-            # This was not the last tx output, so request next one.
-            self.output_index += 1
-            return proto.TxRequest(request_type=proto.TXOUTPUT,
-                                   request_index=self.output_index)
-
-        # Now we have processed all inputs and outputs. Let's finalize
-        # hash of transaction.
-
-        # Now we have hash of all outputs
-        print "OUTPUT HASH", self.output_hash.hexdigest()
-
-        # We also have tx hash now
-        print "TX HASH", self.tx_hash.hexdigest()
-
-        # We want to send header of tx template
-        serialized_tx = ''
-        if self.signing_index == 0:
-            print "!!! SENDING TX HEADER"
-            serialized_tx += signing.raw_tx_header(self.inputs_count)
-
-        # Compute signature for current signing index
-        print "FINISH INPUT SIGNATURE", self.signing_index
-
-        # FIXME, TODO, CHECK
-        start = time.time()
-        # privkey = self.bip32.get_private_key(self.signing_input.address_n)
-        (_, signature) = signing.sign_input(self.bip32,
-                                    list(self.signing_input.address_n),
-                                    hashlib.sha256(self.tx_hash.digest()).digest())
-        # (_, signature) = self.bip32.sign_input(self.signing_input.address_n,
-        #                                        hashlib.sha256(self.tx_hash.digest()).digest())
-        print 'xxxx', time.time() - start
-
-        serialized_tx += 'aaaa' + signing.raw_tx_input(self.signing_input, signature) + 'aaaa'  # FIXME, TODO, CHECK
-
-        if self.signing_index < self.inputs_count - 1:
-            # If we didn't process all signatures yet,
-            # let's restart the signing process
-            # and ask for first input again.
-
-            # We're also sending signature for now_signed's input
-            # back to the computer.
-            now_signed = self.signing_index
-            self.signing_index += 1
-            self.input_index = 0
-            self.input_hash = hashlib.sha256()
-            return proto.TxRequest(request_type=proto.TXINPUT,
-                                   request_index=self.input_index,
-                                   signature_index=now_signed,
-                                   signature=signature,
-                                   serialized_tx=serialized_tx)
-
-        # We signed all inputs, so it looks like we're done!
-        # Let's ask again for all outputs to finalize serialized transaction.
-        # process_message knows that we're in final stage by self.ser_output flag
-        # and will route messages to serialize_output instead to tx_output.
-        self.output_index = 0  # We need to reset counter
-        self.ser_output = True
-        return proto.TxRequest(request_type=proto.TXOUTPUT,
-                               request_index=0,
-                               signature_index=self.signing_index,
-                               signature=signature,
-                               serialized_tx=serialized_tx)
-
-    def serialize_output(self, msg):
-        # This message is called on TxInput message, when ser_output is True.
-        # It just finalize serialized_tx structure in computer by dumping template
-        # used for creating signatures.
-
-        res = self._check_output_index(msg)
-        if res is not None:
-            return res
-
-        res = self._check_address_n(msg)
-        if res is not None:
-            return res
-
-        serialized_tx = ''
-
-        if self.output_index == 0:
-            # If it is first one, we have to send middle part of tx.
-            serialized_tx += signing.raw_tx_middle(self.outputs_count)
-
-        # Let's serialize tx output
-        serialized_tx += signing.raw_tx_output(msg)
-
-        if self.output_index < self.outputs_count - 1:
-            # This was not the last tx output, so request next one.
-            self.output_index += 1
-            print "REQUESTING", self.output_index
-            return proto.TxRequest(request_type=proto.TXOUTPUT,
-                                   request_index=self.output_index,
-                                   serialized_tx=serialized_tx)
-
-        # Ok, this looks like last output, so we need send tx footer
-        serialized_tx += signing.raw_tx_footer(for_sign=False)
-
-        print "FINISHING"
-        # We're done with serializing outputs!
-        return proto.TxRequest(finished=True, serialized_tx=serialized_tx)
-    '''
