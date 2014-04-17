@@ -249,7 +249,6 @@ class StreamingSigningWorkflow(Workflow):
         version = 1
         lock_time = 0
         serialized = ''
-        signature = None
 
         outtx = StreamTransactionSerialize(msg.inputs_count, msg.outputs_count,
                                            version, lock_time)
@@ -259,10 +258,9 @@ class StreamingSigningWorkflow(Workflow):
             # Request I
             req = proto.TxRequest(request_type=proto_types.TXINPUT,
                                   details=proto_types.TxRequestDetailsType(request_index=i),
-                                  serialized=proto_types.TxRequestSerializedType(
-                                                        serialized_tx=serialized))
+                                  serialized=proto_types.TxRequestSerializedType(serialized_tx=serialized))
             
-            if signature:
+            if i > 0:
                 # Fill values from previous round
                 req.serialized.signature = signature
                 req.serialized.signature_index = i - 1
@@ -384,11 +382,10 @@ class StreamingSigningWorkflow(Workflow):
                     details=proto_types.TxRequestDetailsType(request_index=o2),
                     serialized=proto_types.TxRequestSerializedType(serialized_tx=serialized))
 
-            if signature:
+            if i == msg.inputs_count - 1 and o2 == 0:
                 # Fill signature of last input
                 req.serialized.signature = signature
-                req.serialized.signature_index = i - 1
-                signature = None
+                req.serialized.signature_index = i
 
             serialized = ''
 
