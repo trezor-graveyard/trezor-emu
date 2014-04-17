@@ -598,7 +598,7 @@ class StateMachine(object):
     def set_main_state(self):
         # Switch device to default state
         self.yesno.set_main_state()
-        self.sign.set_main_state()
+        # self.sign.set_main_state()
         self.simplesign.set_main_state()
         self.pin.set_main_state()
         self.passphrase.set_main_state()
@@ -856,6 +856,8 @@ class StateMachine(object):
         except Exception as exc:
             traceback.print_exc()
             self.set_main_state()
+            if isinstance(exc.args[0], proto.Failure):
+                return exc.args[0]
             return proto.Failure(message=str(exc))
 
     def process_debug_message(self, msg):
@@ -865,4 +867,6 @@ class StateMachine(object):
         except Exception as exc:
             traceback.print_exc()
             self.set_main_state()
+            if isinstance(exc.args[0], proto.Failure):
+                return exc.args[0]
             return proto.Failure(message=str(exc))
