@@ -163,7 +163,7 @@ class SimpleSignStateMachine(object):
         # Basic checks passed, let's sign that shit!
         version = 1
         lock_time = 0
-        serialized = ''
+        serialized_tx = ''
 
         coin = coindef.types[msg.coin_name]
         outtx = StreamTransactionSerialize(len(msg.inputs), len(msg.outputs), version, lock_time)
@@ -193,7 +193,7 @@ class SimpleSignStateMachine(object):
                 tx.serialize_output(compile_TxOutput(o))
 
             (signature, pubkey) = tx.sign()
-            serialized += outtx.serialize_input(inp, signature, pubkey)
+            serialized_tx += outtx.serialize_input(inp, signature, pubkey)
             print "SIGNATURE", binascii.hexlify(signature)
             print "PUBKEY", binascii.hexlify(pubkey)
 
@@ -201,12 +201,12 @@ class SimpleSignStateMachine(object):
 
         for out in msg.outputs:
             print '.',
-            serialized += outtx.serialize_output(compile_TxOutput(out))
+            serialized_tx += outtx.serialize_output(compile_TxOutput(out))
 
         self.layout.show_logo()
         self.set_main_state()
         return proto.TxRequest(request_type=proto_types.TXFINISHED,
-                               serialized=proto_types.TxRequestSerializedType(serialized_tx=serialized))
+                               serialized=proto_types.TxRequestSerializedType(serialized_tx=serialized_tx))
 
     def process_message(self, msg):
         if isinstance(msg, proto.SimpleSignTx):
@@ -248,7 +248,7 @@ class StreamingSigningWorkflow(Workflow):
  
         version = 1
         lock_time = 0
-        serialized = ''
+        serialized_tx = ''
 
         outtx = StreamTransactionSerialize(msg.inputs_count, msg.outputs_count,
                                            version, lock_time)
@@ -257,15 +257,15 @@ class StreamingSigningWorkflow(Workflow):
         for i in range(msg.inputs_count):
             # Request I
             req = proto.TxRequest(request_type=proto_types.TXINPUT,
-                                  details=proto_types.TxRequestDetailsType(request_index=i),
-                                  serialized=proto_types.TxRequestSerializedType(serialized_tx=serialized))
-            
+                                  details=proto_types.TxRequestDetailsType(request_index=i))
+
+            # Fill values from previous round
             if i > 0:
-                # Fill values from previous round
+                req.serialized.serialized_tx = serialized_tx
                 req.serialized.signature = signature
                 req.serialized.signature_index = i - 1
 
-            serialized = ''
+            serialized_tx = ''
 
             ret = yield req
             inp = ret.tx.inputs[0]
@@ -370,7 +370,7 @@ class StreamingSigningWorkflow(Workflow):
 
             # Sign StreamTransactionSign
             (signature, pubkey) = sign.sign()
-            serialized += outtx.serialize_input(inp, signature, pubkey)
+            serialized_tx += outtx.serialize_input(inp, signature, pubkey)
 
             print "SIGNATURE", binascii.hexlify(signature)
             print "PUBKEY", binascii.hexlify(pubkey)
@@ -380,14 +380,14 @@ class StreamingSigningWorkflow(Workflow):
             # Request O
             req = proto.TxRequest(request_type=proto_types.TXOUTPUT,
                     details=proto_types.TxRequestDetailsType(request_index=o2),
-                    serialized=proto_types.TxRequestSerializedType(serialized_tx=serialized))
+                    serialized=proto_types.TxRequestSerializedType(serialized_tx=serialized_tx))
 
             if i == msg.inputs_count - 1 and o2 == 0:
                 # Fill signature of last input
                 req.serialized.signature = signature
                 req.serialized.signature_index = i
 
-            serialized = ''
+            serialized_tx = ''
 
             ret2 = yield req
                 
@@ -401,10 +401,10 @@ class StreamingSigningWorkflow(Workflow):
                 out.address = bip32.get_address(coin, list(out.address_n))
                 out.ClearField('address_n')
 
-            serialized += outtx.serialize_output(compile_TxOutput(out))
+            serialized_tx += outtx.serialize_output(compile_TxOutput(out))
 
         yield proto.TxRequest(request_type=proto_types.TXFINISHED,
-                              serialized=proto_types.TxRequestSerializedType(serialized_tx=serialized))
+                              serialized=proto_types.TxRequestSerializedType(serialized_tx=serialized_tx))
 
 class SignStateMachine(object):
     def __init__(self, layout, storage, yesno, pin, passphrase):
