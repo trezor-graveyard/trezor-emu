@@ -382,7 +382,7 @@ class StreamingSigningWorkflow(Workflow):
                     details=proto_types.TxRequestDetailsType(request_index=o2),
                     serialized=proto_types.TxRequestSerializedType(serialized_tx=serialized_tx))
 
-            if i == msg.inputs_count - 1 and o2 == 0:
+            if o2 == 0:
                 # Fill signature of last input
                 req.serialized.signature = signature
                 req.serialized.signature_index = i
