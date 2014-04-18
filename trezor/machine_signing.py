@@ -249,6 +249,8 @@ class StreamingSigningWorkflow(Workflow):
         version = 1
         lock_time = 0
         serialized_tx = ''
+        signature = None
+        checkhash = None
 
         outtx = StreamTransactionSerialize(msg.inputs_count, msg.outputs_count,
                                            version, lock_time)
@@ -310,11 +312,17 @@ class StreamingSigningWorkflow(Workflow):
             sign = StreamTransactionSign(i, msg.inputs_count, msg.outputs_count,
                                          version, lock_time)
 
+            # Calculate hash for each input, then compare to checkhash
+            check = StreamTransactionHash(msg.inputs_count, msg.outputs_count,
+                                          version, lock_time, True)
+
             # foreach I:
             for i2 in range(msg.inputs_count):
                 # Request I
                 ret2 = yield(proto.TxRequest(request_type=proto_types.TXINPUT,
                         details=proto_types.TxRequestDetailsType(request_index=i2)))
+
+                check.serialize_input(ret2.tx.inputs[0])
 
                 # If I == I-to-be-signed:
                 if i2 == i:
@@ -326,6 +334,7 @@ class StreamingSigningWorkflow(Workflow):
 
                     secexp = string_to_number(private_key)
                     sign.serialize_input(ret2.tx.inputs[0], address, secexp)
+
                 else:
                     # Add I to StreamTransactionSign
                     sign.serialize_input(ret2.tx.inputs[0])
@@ -356,17 +365,20 @@ class StreamingSigningWorkflow(Workflow):
 
                     # Ask for confirmation, TODO
 
+                check.serialize_output(compile_TxOutput(out))
+
                 # Add O to StreamTransactionSign
                 sign.serialize_output(compile_TxOutput(out))
 
         #    If I=0:
         #        Calculate to_spend, check tx fees - TODO
         #        Ask for confirmation of tx fees - TODO
-        #        Calculate txhash
-        #    else:
-        #        Compare current hash with txhash
-        #        If different:
-        #            Failure
+
+            if i == 0:
+                checkhash = check.calc_txid()
+            else:
+                if check.calc_txid() != checkhash:
+                    raise Exception(proto.Failure(message='Serialization check failed'))
 
             # Sign StreamTransactionSign
             (signature, pubkey) = sign.sign()
