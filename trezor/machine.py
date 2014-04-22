@@ -827,11 +827,11 @@ class StateMachine(object):
         if isinstance(msg, proto.SimpleSignTx):
             return self.simplesign.process_message(msg)
 
-        if isinstance(msg, (proto.EstimateTxSize, proto.SignTx, proto.TxAck)):
+        if isinstance(msg, (proto.EstimateTxSize, proto.SignTx, proto.TxAck, proto.ButtonAck, proto.Cancel)):
             return self.sign.process_message(msg)
 
         self.set_main_state()
-        return proto.Failure(code=proto_types.Failure_UnexpectedMessage, message="Unexpected message")
+        return proto.Failure(code=proto_types.Failure_UnexpectedMessage, message="Unexpected message (%s)" % msg.__class__.__name__)
 
     def _process_debug_message(self, msg):
         if isinstance(msg, proto.DebugLinkGetState):
@@ -843,7 +843,7 @@ class StateMachine(object):
             sys.exit()
 
         self.set_main_state()
-        return proto.Failure(code=proto_types.Failure_UnexpectedMessage, message="Unexpected message")
+        return proto.Failure(code=proto_types.Failure_UnexpectedMessage, message="Unexpected message (%s) " % msg.__class__.__name__)
 
     def process_message(self, msg):
         # Any exception thrown during message processing

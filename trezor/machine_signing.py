@@ -251,7 +251,9 @@ class StreamingSigningWorkflow(Workflow):
         serialized_tx = ''
         signature = None
         checkhash = None
-
+        to_spend = 0
+        spending = 0
+        change_amount = 0
         outtx = StreamTransactionSerialize(msg.inputs_count, msg.outputs_count,
                                            version, lock_time)
 
@@ -301,6 +303,7 @@ class StreamingSigningWorkflow(Workflow):
                 if inp.prev_index == o2:
                     # Store amount of I
                     amount = ret2.tx.bin_outputs[0].amount
+                    to_spend += amount
 
             # Calculate hash of streamed tx, compare to prevhash I
             if inp.prev_hash != amount_hash.calc_txid()[::-1]:
@@ -357,22 +360,26 @@ class StreamingSigningWorkflow(Workflow):
                         out.address = bip32.get_address(coin, list(out.address_n))
                         out.ClearField('address_n')
                         out_change = o2  # Remember which output is supposed to be a change
+                    else:
+                        raise Exception(proto.Failure(code=proto_types.Failure_Other, message="Only one change output allowed"))
+                    if i == 0:
+                        change_amount = out.amount
 
                 # If I=0:
                 if i == 0:
-                    # Display output, TODO
-                    print "SENDING", out.amount, "TO", out.address
+                    spending += out.amount
 
-                    # Ask for confirmation, TODO
+                    print "SENDING", out.amount, "TO", out.address
+                    if out_change != o2: # confirm non change output
+                        self.iface.layout.show_output(coin, out.address, out.amount)
+                        ret = yield proto.ButtonRequest(code=proto_types.ButtonRequest_ConfirmOutput)
+                        if not isinstance(ret, proto.ButtonAck):
+                            raise Exception(proto.Failure(code=proto_types.Failure_Other, message="Signing aborted"))
 
                 check.serialize_output(compile_TxOutput(out))
 
                 # Add O to StreamTransactionSign
                 sign.serialize_output(compile_TxOutput(out))
-
-        #    If I=0:
-        #        Calculate to_spend, check tx fees - TODO
-        #        Ask for confirmation of tx fees - TODO
 
             if i == 0:
                 checkhash = check.calc_txid()
@@ -386,6 +393,24 @@ class StreamingSigningWorkflow(Workflow):
 
             print "SIGNATURE", binascii.hexlify(signature)
             print "PUBKEY", binascii.hexlify(pubkey)
+
+        if spending > to_spend:
+            raise Exception(proto.Failure(code=proto_types.Failure_NotEnoughFunds, message="Not enough funds"))
+
+        est_size = estimate_size_kb(msg.inputs_count, msg.outputs_count)
+        maxfee = coin.maxfee_kb * est_size
+        fee = to_spend - spending
+
+        if fee > maxfee:
+            self.iface.layout.show_high_fee(fee, coin)
+            ret = yield proto.ButtonRequest(code=proto_types.ButtonRequest_FeeOverThreshold)
+            if not isinstance(ret, proto.ButtonAck):
+                raise Exception(proto.Failure(code=proto_types.Failure_Other, message="Signing aborted"))
+
+        self.iface.layout.show_send_tx(to_spend - change_amount - fee, coin)
+        ret = yield proto.ButtonRequest(code=proto_types.ButtonRequest_SignTx)
+        if not isinstance(ret, proto.ButtonAck):
+            raise Exception(proto.Failure(code=proto_types.Failure_Other, message="Signing aborted"))
 
         # Serialize outputs
         for o2 in range(msg.outputs_count):
@@ -439,6 +464,9 @@ class SignStateMachine(object):
             return self.iface.passphrase.use(self.workflow.start, msg)
 
         if isinstance(msg, proto.TxAck):
+            return self.iface.passphrase.use(self.workflow.process, msg)
+
+        if isinstance(msg, proto.ButtonAck) or isinstance(msg, proto.Cancel):
             return self.iface.passphrase.use(self.workflow.process, msg)
 
         # return Failure message to indicate problems to upstream SM
