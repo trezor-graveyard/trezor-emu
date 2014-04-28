@@ -698,7 +698,7 @@ class StateMachine(object):
     def _ping(self, message, button_protection, pin_protection, passphrase_protection):
         if button_protection:
             self.layout.show_question(['', "_cAnswer to ping?"], '', 'Confirm }', '{ Cancel')
-            return self.yesno.request(proto_types.ButtonRequest_Other, self._ping, message, False, pin_protection, passphrase_protection)
+            return self.yesno.request(proto_types.ButtonRequest_ProtectCall, self._ping, message, False, pin_protection, passphrase_protection)
 
         if pin_protection and self.storage.get_pin():
             return self.pin.request('Answer to ping?', False, self._ping,
@@ -777,7 +777,7 @@ class StateMachine(object):
         if isinstance(msg, proto.GetEntropy):
             self.layout.show_question(['', "_cSend sample entropy", "_cof %d bytes" % msg.size, "_cto computer?"],
                                       '', 'Confirm }', '{ Cancel')
-            return self.yesno.request(proto_types.ButtonRequest_Other, self._get_entropy, *[msg.size])
+            return self.yesno.request(proto_types.ButtonRequest_ProtectCall, self._get_entropy, *[msg.size])
 
         if isinstance(msg, proto.GetPublicKey):
             return self.passphrase.use(self._get_public_key, list(msg.address_n))
