@@ -795,8 +795,10 @@ class StateMachine(object):
             return self.protect_wipe()
         
         if isinstance(msg, proto.LoadDevice):
-            return self._load_device(msg.mnemonic, msg.node, msg.pin, msg.passphrase_protection,
-                        msg.language, msg.label, msg.skip_checksum)
+            self.layout.show_question(["Loading private seed", "is not recommended.", "Continue only if you", "know what you are", "doing!"],
+                                      '', 'Confirm }', '{ Cancel')
+            return self.yesno.request(proto_types.ButtonRequest_ProtectCall, self._load_device,
+                                      *[msg.mnemonic, msg.node, msg.pin, msg.passphrase_protection, msg.language, msg.label, msg.skip_checksum])
 
         if isinstance(msg, proto.ResetDevice):
             return self.reset_device.step1(msg.display_random, msg.strength, msg.passphrase_protection, msg.pin_protection, msg.language, msg.label)
