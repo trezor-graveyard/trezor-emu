@@ -85,6 +85,7 @@ class Storage(object):
         m.language = self.struct.language
         m.label = self.struct.label
         m.initialized = bool(self.is_initialized())
+        m.imported = bool(self.struct.imported)
         
         # Add all known coin
         types = coindef.types.keys()
@@ -182,6 +183,10 @@ class Storage(object):
             self.struct.language = language
         else:
             raise Exception("Unsupported language")
+        self.save()
+
+    def set_imported(self, imported):
+        self.struct.imported = imported
         self.save()
 
     def is_initialized(self):

@@ -659,6 +659,7 @@ class StateMachine(object):
             return proto.Failure(message="Device is initialized already.")
 
         self.storage.load_device(mnemonic, node, language, label, pin, passphrase_protection, skip_checksum=skip_checksum)
+        self.storage.set_imported(True)
         self.set_main_state()
         return proto.Success(message='Device loaded')
 
