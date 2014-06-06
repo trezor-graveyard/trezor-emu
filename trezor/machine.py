@@ -3,6 +3,8 @@ import random
 import hashlib
 import traceback
 import binascii
+import hmac
+import pyaes
 
 import signing
 import tools
@@ -720,8 +722,20 @@ class StateMachine(object):
 
     def _cipher_keyvalue(self, address_n, key, value, encrypt, ask_on_encrypt, ask_on_decrypt):
         self.set_main_state()
-        action = 'encrypt' if encrypt else 'decrypt'
-        return proto.Success(payload=action + str(key) + value)
+        if len(value) % 16 > 0:
+            return proto.Failure(code=proto_types.Failure_SyntaxError, message="Input length must be a multiple of 16")
+        private_key = BIP32(self.storage.get_node()).get_private_node(list(address_n)).private_key
+        key += "E1" if ask_on_encrypt else "E0"
+        key += "D1" if ask_on_decrypt else "D0"
+        secret = hmac.HMAC(key=private_key, msg=key, digestmod=hashlib.sha512).digest()
+        aes_key = secret[0:32]
+        aes_iv = secret[32:48]
+        aes = pyaes.AESModeOfOperationCBC(key=aes_key, iv=aes_iv)
+        if encrypt:
+            res = ''.join([aes.encrypt(value[i:i+16]) for i in range(0, len(value), 16)])
+        else:
+            res = ''.join([aes.decrypt(value[i:i+16]) for i in range(0, len(value), 16)])
+        return proto.Success(payload=res)
 
     def _process_message(self, msg):
         if isinstance(msg, proto.Initialize):
@@ -843,16 +857,6 @@ class StateMachine(object):
                                      self.passphrase.use, self._cipher_keyvalue,
                                      msg.address_n, msg.key, msg.value, msg.encrypt,
                                      msg.ask_on_encrypt, msg.ask_on_decrypt)
-
-        if isinstance(msg, proto.DecryptKeyValue):
-            return self.protect_call([msg.key[:21],
-                                      msg.key[21:42],
-                                      msg.key[42:63],
-                                      msg.key[63:84],
-                                      msg.key[84:105]],
-                                     'Decrypt?', '{ Cancel', 'Confirm }',
-                                     self.passphrase.use, self._decrypt_keyvalue,
-                                     msg.address_n, msg.key, msg.value)
 
         if isinstance(msg, proto.SimpleSignTx):
             return self.simplesign.process_message(msg)
