@@ -73,7 +73,7 @@ def compile_script_sig(address):
         script = '\x76\xa9'  # op_dup, op_hash_160
         script += '\x14'  # push 0x14 bytes
         script += tools.bc_address_to_hash_160(address)
-        script += '\x88\xac'
+        script += '\x88\xac' # op_equalverify, op_checksig
         return script
 
     elif address_type == 5:  # BTC, P2SH

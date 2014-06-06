@@ -717,7 +717,12 @@ class StateMachine(object):
             return proto.MessageSignature(address=address, signature=sig)
         except:
             return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Cannot sign message")
-        
+
+    def _cipher_keyvalue(self, address_n, key, value, encrypt, ask_on_encrypt, ask_on_decrypt):
+        self.set_main_state()
+        action = 'encrypt' if encrypt else 'decrypt'
+        return proto.Success(payload=action + str(key) + value)
+
     def _process_message(self, msg):
         if isinstance(msg, proto.Initialize):
             self.set_main_state()
@@ -826,6 +831,28 @@ class StateMachine(object):
                 return proto.Success()
             except:
                 return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Invalid signature")
+
+        if isinstance(msg, proto.CipherKeyValue):
+            return self.protect_call([msg.key[:21],
+                                      msg.key[21:42],
+                                      msg.key[42:63],
+                                      msg.key[63:84],
+                                      msg.key[84:105]],
+                                     'Encrypt?' if msg.encrypt else 'Decrypt?',
+                                     '{ Cancel', 'Confirm }',
+                                     self.passphrase.use, self._cipher_keyvalue,
+                                     msg.address_n, msg.key, msg.value, msg.encrypt,
+                                     msg.ask_on_encrypt, msg.ask_on_decrypt)
+
+        if isinstance(msg, proto.DecryptKeyValue):
+            return self.protect_call([msg.key[:21],
+                                      msg.key[21:42],
+                                      msg.key[42:63],
+                                      msg.key[63:84],
+                                      msg.key[84:105]],
+                                     'Decrypt?', '{ Cancel', 'Confirm }',
+                                     self.passphrase.use, self._decrypt_keyvalue,
+                                     msg.address_n, msg.key, msg.value)
 
         if isinstance(msg, proto.SimpleSignTx):
             return self.simplesign.process_message(msg)
