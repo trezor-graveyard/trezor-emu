@@ -98,6 +98,36 @@ def compress_pubkey(public_key):
         return chr((ord(public_key[64]) & 1) + 2) + public_key[1:33]
     raise Exception("Pubkey is already compressed")
 
+def point_y_from_x(x, odd=True):
+    curve = ecdsa.ecdsa.curve_secp256k1
+    alpha = (x * x * x + curve.a() * x + curve.b()) % curve.p()
+    beta = ecdsa.numbertheory.square_root_mod_prime(alpha, curve.p())
+    return beta if odd == bool(beta & 1) else curve.p() - beta
+
+def point_to_public_key(P, comp=True):
+    if comp:
+        return (('%02x'%(2+(P.y()&1)))+('%064x'%P.x())).decode('hex')
+    return ('04'+('%064x'%P.x())+('%064x'%P.y())).decode('hex')
+
+def public_key_to_point(public_key):
+    curve = ecdsa.ecdsa.curve_secp256k1
+    generator = ecdsa.ecdsa.generator_secp256k1
+    order  = generator.order()
+    assert public_key[0] in ['\x02','\x03','\x04']
+    if public_key[0] == '\x04':
+        return ecdsa.ellipticcurve.Point(curve, ecdsa.util.string_to_number(public_key[1:33]), ecdsa.util.string_to_number(public_key[33:]), order)
+    Mx = ecdsa.util.string_to_number(public_key[1:])
+    return ecdsa.ellipticcurve.Point(curve, Mx, point_y_from_x(Mx, public_key[0]=='\x03'), order)
+
+class EcKey(object):
+    def __init__(self, k):
+        self.secret = ecdsa.util.string_to_number(k)
+        self.pubkey = ecdsa.ecdsa.Public_key(ecdsa.ecdsa.generator_secp256k1, ecdsa.ecdsa.generator_secp256k1 * self.secret)
+        self.privkey = ecdsa.ecdsa.Private_key(self.pubkey, self.secret)
+
+    def get_public_key(self, compressed=True):
+        return point_to_public_key(self.pubkey.point, compressed).encode('hex')
+
 def public_key_to_bc_address(public_key, address_type, compress=True):
     if public_key[0] == '\x04' and compress:
         public_key = compress_pubkey(public_key)

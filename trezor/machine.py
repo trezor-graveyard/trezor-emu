@@ -843,8 +843,20 @@ class StateMachine(object):
                 self.layout.show_verified_message(msg.address, msg.message)
                 self.custom_message = True  # Yes button will redraw screen
                 return proto.Success()
-            except:
+            except Exception as e:
+                traceback.print_exc()
                 return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Invalid signature")
+
+        if isinstance(msg, proto.EncryptMessage):
+            ret = signing.encrypt_message(msg.pubkey, msg.message, msg.display_only)
+            return proto.Success(payload=ret)
+
+        if isinstance(msg, proto.DecryptMessage):
+            (ret, display_only) = signing.decrypt_message(BIP32(self.storage.get_node()), list(msg.address_n), msg.message)
+            if display_only:
+                return proto.Success()
+            else:
+                return proto.Success(payload=ret)
 
         if isinstance(msg, proto.CipherKeyValue):
             return self.protect_call([msg.key[:21],
