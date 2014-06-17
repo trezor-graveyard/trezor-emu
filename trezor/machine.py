@@ -648,6 +648,10 @@ class StateMachine(object):
         self.set_main_state()
         return proto.Success(message='Settings updated')
 
+    def _clear_session(self):
+        self.storage.init_session()
+        return proto.Success()
+
     def _wipe_device(self):
         self.storage.wipe_device()
         self.set_main_state()
@@ -807,6 +811,9 @@ class StateMachine(object):
         
         if isinstance(msg, proto.ChangePin):
             return self._change_pin(msg.remove)
+
+        if isinstance(msg, proto.ClearSession):
+            return self._clear_session()
 
         if isinstance(msg, proto.ApplySettings):
             return self.apply_settings(msg)

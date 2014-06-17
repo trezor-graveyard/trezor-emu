@@ -5,7 +5,6 @@ from ecdsa import curves, numbertheory, ellipticcurve, util
 import pyaes
 import hmac
 
-# from bip32 import BIP32
 import messages_pb2 as proto
 import types_pb2 as proto_types
 import tools
