@@ -325,8 +325,6 @@ class RecoveryDeviceState(object):
         self.storage = storage
         self.pin = pin
         self._set_main_state = main_state_func
-        
-        self.multiplier = 0.5  # 1  # How many fake words use in recovery process
         self.set_main_state()
 
     def set_main_state(self):
@@ -378,7 +376,7 @@ class RecoveryDeviceState(object):
         return self.request_word()
 
     def generate_sequence(self, word_count):
-        self.sequence = range(word_count) + [None] * int(self.multiplier * word_count)
+        self.sequence = range(word_count) + [None] * (24 - word_count)
         random.shuffle(self.sequence)
         self.index = 0  # Ask for first word of sequence
         
