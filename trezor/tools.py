@@ -10,6 +10,15 @@ Hash = lambda x: hashlib.sha256(hashlib.sha256(x).digest()).digest()
 __b58chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 __b58base = len(__b58chars)
 
+def ser_length(l):
+    if l < 253:
+        return chr(l)
+    elif l < 0x10000:
+        return chr(253) + struct.pack("<H", l)
+    elif l < 0x100000000L:
+        return chr(254) + struct.pack("<I", l)
+    else:
+        return chr(255) + struct.pack("<Q", l)
 
 def b58encode(v):
     """ encode v, which is a string of bytes, to base58."""

@@ -853,7 +853,7 @@ class StateMachine(object):
                 return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Invalid signature")
 
         if isinstance(msg, proto.EncryptMessage):
-            ret = signing.encrypt_message(msg.pubkey, msg.message, msg.display_only)
+            ret = signing.encrypt_message(msg.pubkey, msg.message, msg.display_only, BIP32(self.storage.get_node()), coindef.types[msg.coin_name], list(msg.address_n))
             return proto.Success(payload=ret)
 
         if isinstance(msg, proto.DecryptMessage):

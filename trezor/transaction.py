@@ -9,16 +9,6 @@ from hashlib import sha256
 import tools
 import types_pb2 as types
 
-def ser_length(l):
-    if l < 253:
-        return chr(l)
-    elif l < 0x10000:
-        return chr(253) + struct.pack("<H", l)
-    elif l < 0x100000000L:
-        return chr(254) + struct.pack("<I", l)
-    else:
-        return chr(255) + struct.pack("<Q", l)
-
 def op_push(i):
     if i<0x4c:
         return chr(i)
@@ -128,7 +118,7 @@ class StreamTransaction(object):
 
     def _serialize_header(self):
         r = struct.pack("<i", self.version)
-        r += ser_length(self.inputs_len)
+        r += tools.ser_length(self.inputs_len)
         return r
 
     def serialize_input(self, inp):
@@ -141,7 +131,7 @@ class StreamTransaction(object):
 
         r += ser_uint256(int(binascii.hexlify(inp.prev_hash), 16))
         r += struct.pack("<I", inp.prev_index)
-        r += ser_length(len(inp.script_sig))
+        r += tools.ser_length(len(inp.script_sig))
         r += inp.script_sig
         r += struct.pack("<I", inp.sequence)
 
@@ -150,7 +140,7 @@ class StreamTransaction(object):
         return r
 
     def _serialize_middle(self):
-        return ser_length(self.outputs_len)
+        return tools.ser_length(self.outputs_len)
 
     def serialize_output(self, output):
         if self.have_inputs < self.inputs_len:
@@ -165,7 +155,7 @@ class StreamTransaction(object):
             r += self._serialize_middle()
 
         r += struct.pack("<q", output.amount)
-        r += ser_length(len(output.script_pubkey))
+        r += tools.ser_length(len(output.script_pubkey))
         r += output.script_pubkey
 
         self.have_outputs += 1
