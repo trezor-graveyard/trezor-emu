@@ -4,87 +4,17 @@ from hashlib import sha256, sha512
 from ecdsa import curves, numbertheory, ellipticcurve, util
 import pyaes
 import hmac
+from pbkdf2 import PBKDF2
 
 import messages_pb2 as proto
 import types_pb2 as proto_types
 import tools
 
-def encrypt_message(pubkey, message, display_only):
-    pk = tools.public_key_to_point(pubkey)
-    if not ecdsa.ecdsa.point_is_valid(ecdsa.ecdsa.generator_secp256k1, pk.x(), pk.y()):
-        raise Exception('invalid pubkey')
-
-    deter = hmac.new(message, pubkey, sha512).digest()
-    secexp, iv = deter[:32], deter[32:48]
-
-    ephemeral_exponent = ecdsa.util.number_to_string(ecdsa.util.string_to_number(secexp), ecdsa.ecdsa.generator_secp256k1.order())
-    ephemeral = tools.EcKey(ephemeral_exponent)
-
-    ecdh_key = (pk * ephemeral.privkey.secret_multiplier).x()
-    ecdh_key = ('%064x' % ecdh_key).decode('hex')
-    if display_only:
-        ecdh_key += '\x00'
-    key = sha512(ecdh_key).digest()
-    key_e, key_m = key[:32], key[32:]
-
-    assert len(message) % 16 == 0
-    aes = pyaes.AESModeOfOperationCBC(key=key_e, iv=iv)
-    ciphertext = ''.join([aes.encrypt(message[i:i+16]) for i in range(0, len(message), 16)])
-
-    ephemeral_pubkey = ephemeral.get_public_key(compressed=True).decode('hex')
-    encrypted = 'BIE1' + ephemeral_pubkey + iv + ciphertext
-    mac = hmac.new(key_m, encrypted, sha256).digest()
-
-    return encrypted + mac
-
-def decrypt_message(bip32, address_n, encrypted):
-
-    if len(encrypted) < 85:
-        raise Exception('invalid ciphertext length')
-
-    magic = encrypted[:4]
-    ephemeral_pubkey = encrypted[4:37]
-    iv = encrypted[37:53]
-    ciphertext = encrypted[53:-32]
-    mac = encrypted[-32:]
-
-    if magic != 'BIE1':
-        raise Exception('invalid ciphertext: invalid magic bytes')
-
-    try:
-        ephemeral_pubkey = tools.public_key_to_point(ephemeral_pubkey)
-    except AssertionError, e:
-        raise Exception('invalid ciphertext: invalid ephemeral pubkey')
-
-    if not ecdsa.ecdsa.point_is_valid(ecdsa.ecdsa.generator_secp256k1, ephemeral_pubkey.x(), ephemeral_pubkey.y()):
-        raise Exception('invalid ciphertext: invalid ephemeral pubkey')
-
-    priv_node = bip32.get_private_node(address_n)
-    priv_key = tools.EcKey(priv_node.private_key)
-    ecdh_key = (ephemeral_pubkey * priv_key.privkey.secret_multiplier).x()
-    ecdh_key = ('%064x' % ecdh_key).decode('hex')
-
-    display_only = False
-    key = sha512(ecdh_key).digest()
-    key_e, key_m = key[:32], key[32:]
-    if mac != hmac.new(key_m, encrypted[:-32], sha256).digest():
-        # try again with display_only setting
-        display_only = True
-        ecdh_key += '\x00'
-        key = sha512(ecdh_key).digest()
-        key_e, key_m = key[:32], key[32:]
-        if mac != hmac.new(key_m, encrypted[:-32], sha256).digest():
-            # fail
-            raise Exception('invalid ciphertext: invalid mac')
-
-    assert len(ciphertext) % 16 == 0
-    aes = pyaes.AESModeOfOperationCBC(key=key_e, iv=iv)
-    decrypted = ''.join([aes.decrypt(ciphertext[i:i+16]) for i in range(0, len(ciphertext), 16)])
-    return (decrypted, display_only)
-
 def message_magic(message):
-    magic = "\x18Bitcoin Signed Message:\n" + chr(len(message)) + message
+    magic = chr(24) + "Bitcoin Signed Message:\n" + tools.ser_length(len(message)) + message
     return magic
+
+###### sign/verify ######
 
 def sign_message(bip32, coin, addr_n, message):
     signer = bip32.get_signer(addr_n)
@@ -143,6 +73,80 @@ def verify_message(address, signature, message):
         addr = tools.public_key_to_bc_address('\x04' + public_key.to_string(), address_type, compress=compressed)
         if address != addr:
             raise Exception("Invalid signature")
+
+###### ECIES : http://memwallet.info/btcmssgs.html ######
+
+def encrypt_message(pubkey, message, display_only, bip32, coin, address_n):
+
+    if len(address_n) > 0:
+        priv_node = bip32.get_private_node(address_n)
+        priv_key = tools.EcKey(priv_node.private_key)
+        signing = True
+    else:
+        signing = False
+
+    if signing:
+        if display_only:
+            msg = chr(0x80 + 1)
+        else:
+            msg = chr(1)
+        address, signature = sign_message(bip32, coin, address_n, message)
+        address_bin = tools.bc_address_decode(address)[:21]
+        msg += tools.ser_length(len(message)) + message + address_bin + signature
+    else:
+        if display_only:
+            msg = chr(0x80)
+        else:
+            msg = chr(0)
+        msg += tools.ser_length(len(message)) + message
+
+    nonce = tools.get_local_entropy()
+    nonce_key = tools.EcKey(nonce)
+    nonce_pub = binascii.unhexlify(nonce_key.get_public_key(True))
+    dest_pub = tools.public_key_to_point(pubkey)
+    shared_secret_point = dest_pub * nonce_key.privkey.secret_multiplier
+    shared_secret = tools.point_to_public_key(shared_secret_point, True)
+    keying_bytes = PBKDF2(shared_secret, "Bitcoin Secure Message" + nonce_pub, iterations=2048, macmodule=hmac, digestmodule=sha256).read(80)
+    aes_key = keying_bytes[:32]
+    hmac_key = keying_bytes[32:64]
+    aes_iv = keying_bytes[64:80]
+    aes = pyaes.AESModeOfOperationCFB(key=aes_key, iv=aes_iv)
+    payload = aes.encrypt(msg)
+    msg_hmac = hmac.HMAC(key=hmac_key, msg=payload, digestmod=sha256).digest()[:8]
+    return nonce_pub + payload + msg_hmac
+
+def decrypt_message(bip32, address_n, encrypted):
+
+    priv_node = bip32.get_private_node(address_n)
+    priv_key = tools.EcKey(priv_node.private_key)
+
+    nonce_pub = encrypted[:33]
+    payload = encrypted[33:-8]
+    msg_hmac = encrypted[-8:]
+    shared_secret_point = tools.public_key_to_point(nonce_pub) * priv_key.privkey.secret_multiplier
+    shared_secret = tools.point_to_public_key(shared_secret_point, True)
+    keying_bytes = PBKDF2(shared_secret, "Bitcoin Secure Message" + nonce_pub, iterations=2048, macmodule=hmac, digestmodule=sha256).read(80)
+    aes_key = keying_bytes[:32]
+    hmac_key = keying_bytes[32:64]
+    aes_iv = keying_bytes[64:80]
+    msg_hmac_new = hmac.HMAC(key=hmac_key, msg=payload, digestmod=sha256).digest()[:8]
+    if msg_hmac_new != msg_hmac:
+        raise Exception('Message_HMAC does not match')
+    aes = pyaes.AESModeOfOperationCFB(key=aes_key, iv=aes_iv)
+    msg = aes.decrypt(payload)
+    display_only = (ord(msg[0]) & 0x80) > 0
+    if (ord(msg[0]) & 0x01) > 0:
+        signature = msg[-65:]
+        address_bin = msg[-(21+65):-65]
+        address = tools.hash_160_to_bc_address(address_bin[1:], ord(address_bin[0]))
+        message = msg[1:-(21+65)]
+        message = tools.deser_length_string(message)
+        verify_message(address, signature, message)
+        decrypted = message
+    else:
+        decrypted = tools.deser_length_string(msg[1:])
+        address = None
+    return (decrypted, display_only, address)
 
 '''
 def raw_tx_header(inputs_count):

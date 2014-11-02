@@ -857,7 +857,7 @@ class StateMachine(object):
             return proto.Success(payload=ret)
 
         if isinstance(msg, proto.DecryptMessage):
-            (ret, display_only) = signing.decrypt_message(BIP32(self.storage.get_node()), list(msg.address_n), msg.message)
+            (ret, display_only, address) = signing.decrypt_message(BIP32(self.storage.get_node()), list(msg.address_n), msg.message)
             if display_only:
                 return proto.Success()
             else:

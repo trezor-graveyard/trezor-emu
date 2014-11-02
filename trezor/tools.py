@@ -13,12 +13,26 @@ __b58base = len(__b58chars)
 def ser_length(l):
     if l < 253:
         return chr(l)
-    elif l < 0x10000:
+    if l < 0x10000:
         return chr(253) + struct.pack("<H", l)
-    elif l < 0x100000000L:
+    if l < 0x100000000L:
         return chr(254) + struct.pack("<I", l)
-    else:
-        return chr(255) + struct.pack("<Q", l)
+    return chr(255) + struct.pack("<Q", l)
+
+def deser_length(s):
+    if ord(s[0]) < 253:
+        return ord(s[0]), 1
+    if ord(s[0]) == 253:
+        return struct.unpack("<H", s[1:]), 1 + 2
+    if ord(s[0]) == 254:
+        return struct.unpack("<I", s[1:]), 1 + 4
+    return struct.unpack("<Q", s[1:]), 1 + 8
+
+def deser_length_string(s):
+    l, b = deser_length(s)
+    if len(s) != l + b:
+        raise Exception('Broken format')
+    return s[b:]
 
 def b58encode(v):
     """ encode v, which is a string of bytes, to base58."""
@@ -98,6 +112,9 @@ def hash_160_to_bc_address(h160, address_type):
 
 def bc_address_type(addr):
     return ord(b58decode(addr, 25)[0])
+
+def bc_address_decode(addr):
+    return b58decode(addr, 25)
 
 def bc_address_to_hash_160(addr):
     return b58decode(addr, 25)[1:21]
