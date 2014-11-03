@@ -737,7 +737,7 @@ class StateMachine(object):
             res = ''.join([aes.encrypt(value[i:i+16]) for i in range(0, len(value), 16)])
         else:
             res = ''.join([aes.decrypt(value[i:i+16]) for i in range(0, len(value), 16)])
-        return proto.Success(payload=res)
+        return proto.CipheredKeyValue(value=res)
 
     def _process_message(self, msg):
         if isinstance(msg, proto.Initialize):
@@ -853,15 +853,18 @@ class StateMachine(object):
                 return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Invalid signature")
 
         if isinstance(msg, proto.EncryptMessage):
-            ret = signing.encrypt_message(msg.pubkey, msg.message, msg.display_only, BIP32(self.storage.get_node()), coindef.types[msg.coin_name], list(msg.address_n))
-            return proto.Success(payload=ret)
+            nonce, msg, hmac = signing.encrypt_message(msg.pubkey, msg.message, msg.display_only, BIP32(self.storage.get_node()), coindef.types[msg.coin_name], list(msg.address_n))
+            return proto.EncryptedMessage(nonce=nonce, message=msg, hmac=hmac)
 
         if isinstance(msg, proto.DecryptMessage):
-            (ret, display_only, address) = signing.decrypt_message(BIP32(self.storage.get_node()), list(msg.address_n), msg.message)
+            (msg, address, display_only) = signing.decrypt_message(BIP32(self.storage.get_node()), list(msg.address_n), msg.nonce, msg.message, msg.hmac)
             if display_only:
-                return proto.Success()
+                return proto.DecryptedMessage()
             else:
-                return proto.Success(payload=ret)
+                if address:
+                    return proto.DecryptedMessage(message=msg, address=address)
+                else:
+                    return proto.DecryptedMessage(message=msg)
 
         if isinstance(msg, proto.CipherKeyValue):
             return self.protect_call([msg.key[:21],

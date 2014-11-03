@@ -23,10 +23,10 @@ def deser_length(s):
     if ord(s[0]) < 253:
         return ord(s[0]), 1
     if ord(s[0]) == 253:
-        return struct.unpack("<H", s[1:]), 1 + 2
+        return struct.unpack("<H", s[1:3])[0], 1 + 2
     if ord(s[0]) == 254:
-        return struct.unpack("<I", s[1:]), 1 + 4
-    return struct.unpack("<Q", s[1:]), 1 + 8
+        return struct.unpack("<I", s[1:5])[0], 1 + 4
+    return struct.unpack("<Q", s[1:9])[0], 1 + 8
 
 def deser_length_string(s):
     l, b = deser_length(s)
