@@ -68,11 +68,10 @@ def verify_message(address, signature, message):
     # check that Q is the public key
     public_key.verify_digest(signature[1:], h, sigdecode=ecdsa.util.sigdecode_string)
 
-    if address:
-        address_type = int(binascii.hexlify(tools.b58decode(address, None)[0]), 16)
-        addr = tools.public_key_to_bc_address('\x04' + public_key.to_string(), address_type, compress=compressed)
-        if address != addr:
-            raise Exception("Invalid signature")
+    address_type = int(binascii.hexlify(tools.b58decode(address, None)[0]), 16)
+    addr = tools.public_key_to_bc_address('\x04' + public_key.to_string(), address_type, compress=compressed)
+    if address != addr:
+        raise Exception("Invalid signature")
 
 ###### ECIES : http://memwallet.info/btcmssgs.html ######
 
