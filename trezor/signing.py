@@ -86,18 +86,18 @@ def encrypt_message(pubkey, message, display_only, bip32, coin, address_n):
 
     if signing:
         if display_only:
-            msg = chr(0x80 + 1)
+            payload = chr(0x80 + 1)
         else:
-            msg = chr(1)
+            payload = chr(1)
         address, signature = sign_message(bip32, coin, address_n, message)
         address_bin = tools.bc_address_decode(address)[:21]
-        msg += tools.ser_length(len(message)) + message + address_bin + signature
+        payload += tools.ser_length(len(message)) + message + address_bin + signature
     else:
         if display_only:
-            msg = chr(0x80)
+            payload = chr(0x80)
         else:
-            msg = chr(0)
-        msg += tools.ser_length(len(message)) + message
+            payload = chr(0)
+        payload += tools.ser_length(len(message)) + message
 
     nonce = tools.get_local_entropy()
     nonce_key = tools.EcKey(nonce)
@@ -110,7 +110,7 @@ def encrypt_message(pubkey, message, display_only, bip32, coin, address_n):
     hmac_key = keying_bytes[32:64]
     aes_iv = keying_bytes[64:]
     encrypter = pyaes.Encrypter(pyaes.AESModeOfOperationCFB(key=aes_key, iv=aes_iv, segment_size=16))
-    payload = encrypter.feed(msg) + encrypter.feed()
+    payload = encrypter.feed(payload) + encrypter.feed()
     msg_hmac = hmac.HMAC(key=hmac_key, msg=payload, digestmod=sha256).digest()[:8]
     return (nonce_pub, payload, msg_hmac)
 
@@ -129,20 +129,18 @@ def decrypt_message(bip32, address_n, nonce_pub, payload, msg_hmac):
     if msg_hmac_new != msg_hmac:
         raise Exception('Message_HMAC does not match')
     decrypter = pyaes.Decrypter(pyaes.AESModeOfOperationCFB(key=aes_key, iv=aes_iv, segment_size=16))
-    msg = decrypter.feed(payload) + decrypter.feed()
-    if not ord(msg[0]) in [0x00, 0x01, 0x80, 0x81]:
+    payload = decrypter.feed(payload) + decrypter.feed()
+    if not ord(payload[0]) in [0x00, 0x01, 0x80, 0x81]:
         raise Exception('AES decryption failed')
-    signing = (ord(msg[0]) & 0x01) > 0
-    display_only = (ord(msg[0]) & 0x80) > 0
+    signing = (ord(payload[0]) & 0x01) > 0
+    display_only = (ord(payload[0]) & 0x80) > 0
     if signing:
-        message = msg[1:-(21+65)]
-        address_bin = msg[-(21+65):-65]
-        signature = msg[-65:]
+        message = tools.deser_length_string(payload[1:-(21+65)])
+        address_bin = payload[-(21+65):-65]
+        signature = payload[-65:]
         address = tools.hash_160_to_bc_address(address_bin[1:], ord(address_bin[0]))
-        message = tools.deser_length_string(message)
         verify_message(address, signature, message)
-        decrypted = message
     else:
-        decrypted = tools.deser_length_string(msg[1:])
+        message = tools.deser_length_string(payload[1:])
         address = None
-    return (decrypted, address, display_only)
+    return (message, address, display_only)
