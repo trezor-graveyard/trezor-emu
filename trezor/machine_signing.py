@@ -461,7 +461,7 @@ class SignStateMachine(object):
         if isinstance(msg, proto.SignTx):
             # Start signing process
             self.workflow = StreamingSigningWorkflow(self.iface)
-            return self.iface.passphrase.use(self.workflow.start, msg)
+            return self.iface.pin.request('', False, self.iface.passphrase.use, self.workflow.start, msg)
 
         if isinstance(msg, proto.TxAck):
             return self.iface.passphrase.use(self.workflow.process, msg)
