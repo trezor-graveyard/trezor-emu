@@ -53,23 +53,38 @@ def compile_TxOutput(txout):
     return ret
 
 def compile_script_sig(address):
-    def get_all_types():
-        return [ t.address_type for t in coindef.types.values() ]
+    # paytoaddress
 
-    # Compile address to paytoaddress script
-    address_type = tools.bc_address_type(address)
+    script = '\x76\xa9'  # op_dup, op_hash_160
+    script += '\x14'  # push 0x14 bytes
+    script += tools.bc_address_to_hash_160(address)
+    script += '\x88\xac' # op_equalverify, op_checksig
+    return script
 
-    if address_type in get_all_types():  # paytoaddress
-        script = '\x76\xa9'  # op_dup, op_hash_160
-        script += '\x14'  # push 0x14 bytes
-        script += tools.bc_address_to_hash_160(address)
-        script += '\x88\xac' # op_equalverify, op_checksig
-        return script
+def compile_script_multisig(multisig):
+    # P2SH
 
-    elif address_type == 5:  # BTC, P2SH
-        raise Exception("P2SH not implemented yet")
+    def n_to_op(n):
+        if n == 2:
+            return '\x52'
+        elif n == 3:
+            return '\x53'
+        else:
+            raise Exception("Unsupported multisig type")
+        
+    n = len(multisig.pubkeys)
+    m = multisig.m
+    
+    script = n_to_op(m)
 
-    raise Exception("Unsupported address type")
+    for pubkey in multisig.pubkeys:
+        script += '\x21'
+        script += pubkey
+    
+    script += n_to_op(n)
+    script += '\xae' # OP_CHECKMULTISIG
+    
+    return script
 
 def serialize_script_sig(signature, pubkey):
     # Put signature and pubkey together for serializing signed tx
@@ -79,6 +94,25 @@ def serialize_script_sig(signature, pubkey):
     script += signature
     script += op_push(len(pubkey))
     script += pubkey
+    
+    return script
+
+def serialize_script_multisig(signatures, multisig):
+    # Put signatures and redeemscript together for serializing signed tx
+    
+    script = '\x00'
+
+    for sig in signatures:
+        if not sig:
+            continue
+
+        sig += '\x01'  # hashtype
+        script += op_push(len(sig))
+        script += sig
+    
+    redeemscript = compile_script_multisig(multisig)
+    script += op_push(len(redeemscript))
+    script += redeemscript
     
     return script
 
@@ -223,6 +257,11 @@ class StreamTransactionSerialize(StreamTransaction):
     def __init__(self, inputs_len, outputs_len, version, lock_time):
         super(StreamTransactionSerialize, self).__init__(inputs_len, outputs_len, version, lock_time, False)
 
+    def serialize_input_multisig(self, inp, signatures, multisig):
+        inp.script_sig = serialize_script_multisig(signatures, multisig)
+        r = super(StreamTransactionSerialize, self).serialize_input(inp)
+        return r
+
     def serialize_input(self, inp, signature, pubkey):
         inp.script_sig = serialize_script_sig(signature, pubkey)
         r = super(StreamTransactionSerialize, self).serialize_input(inp)
@@ -236,7 +275,26 @@ class StreamTransactionSign(StreamTransactionHash):
         self.secexp = None
         super(StreamTransactionSign, self).__init__(inputs_len, outputs_len, version, lock_time, True)
 
-    def serialize_input(self, inp, address=None, secexp=None):
+    def serialize_input_multisig(self, inp, multisig, secexp):
+        if self.have_inputs == self.input_index:
+            # Let's prepare current index to sign
+
+            if secexp == None:
+                raise Exception("secexp for current privkey needed")
+            if self.secexp != None:
+                raise Exception("secexp for this round has been already set")
+
+            self.secexp = secexp
+
+            inp.script_sig = compile_script_multisig(multisig)
+
+        else:
+            inp.script_sig = ''
+
+        r = super(StreamTransactionSign, self).serialize_input(inp)
+        return r
+        
+    def serialize_input(self, inp, address=None, secexp=None, multisig=None):
         if self.have_inputs == self.input_index:
             # Let's prepare current index to sign
 
@@ -255,10 +313,6 @@ class StreamTransactionSign(StreamTransactionHash):
 
         r = super(StreamTransactionSign, self).serialize_input(inp)
         return r
-
-    # def serialize_output(self, output):
-    #    r = super(StreamTransactionSign, self).serialize_output(output)
-    #    return r
 
     def sign(self):
         sk = ecdsa.SigningKey.from_secret_exponent(self.secexp, curve=ecdsa.curves.SECP256k1)

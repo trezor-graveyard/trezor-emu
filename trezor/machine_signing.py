@@ -331,12 +331,17 @@ class StreamingSigningWorkflow(Workflow):
                 if i2 == i:
                     # Fill scriptsig
                     address = bip32.get_address(coin, list(ret2.tx.inputs[0].address_n))
+                    multisig = ret2.tx.inputs[0].multisig
                     private_key = bip32.get_private_node(list(ret2.tx.inputs[0].address_n)).private_key
+
                     print "ADDRESS", address
                     print "PRIVKEY", binascii.hexlify(private_key)
 
                     secexp = string_to_number(private_key)
-                    sign.serialize_input(ret2.tx.inputs[0], address, secexp)
+                    if multisig:
+                        sign.serialize_input_multisig(ret2.tx.inputs[0], multisig, secexp)
+                    else:
+                        sign.serialize_input(ret2.tx.inputs[0], address, secexp)
 
                 else:
                     # Add I to StreamTransactionSign
@@ -389,7 +394,22 @@ class StreamingSigningWorkflow(Workflow):
 
             # Sign StreamTransactionSign
             (signature, pubkey) = sign.sign()
-            serialized_tx += outtx.serialize_input(inp, signature, pubkey)
+
+            if inp.multisig:
+                # We're doing partial signature for multisig input
+                signatures = inp.multisig.signatures
+
+                # Find position of actual signature in 'signatures' list
+                sig_index = list(inp.multisig.pubkeys).index(pubkey)
+
+                # Put signature to proper place
+                signatures[sig_index] = signature
+
+                serialized_tx += outtx.serialize_input_multisig(inp, signatures, inp.multisig)
+
+            else:
+                # Standard paytoaddress input
+                serialized_tx += outtx.serialize_input(inp, signature, pubkey)
 
             print "SIGNATURE", binascii.hexlify(signature)
             print "PUBKEY", binascii.hexlify(pubkey)
