@@ -331,15 +331,14 @@ class StreamingSigningWorkflow(Workflow):
                 if i2 == i:
                     # Fill scriptsig
                     address = bip32.get_address(coin, list(ret2.tx.inputs[0].address_n))
-                    multisig = ret2.tx.inputs[0].multisig
                     private_key = bip32.get_private_node(list(ret2.tx.inputs[0].address_n)).private_key
 
                     print "ADDRESS", address
                     print "PRIVKEY", binascii.hexlify(private_key)
 
                     secexp = string_to_number(private_key)
-                    if multisig:
-                        sign.serialize_input_multisig(ret2.tx.inputs[0], multisig, secexp)
+                    if ret2.tx.inputs[0].script_type == proto_types.SPENDMULTISIG:
+                        sign.serialize_input_multisig(ret2.tx.inputs[0], ret2.tx.inputs[0].multisig, secexp)
                     else:
                         sign.serialize_input(ret2.tx.inputs[0], address, secexp)
 
@@ -395,7 +394,7 @@ class StreamingSigningWorkflow(Workflow):
             # Sign StreamTransactionSign
             (signature, pubkey) = sign.sign()
 
-            if inp.multisig:
+            if inp.script_type == proto_types.SPENDMULTISIG:
                 # We're doing partial signature for multisig input
                 signatures = inp.multisig.signatures
 

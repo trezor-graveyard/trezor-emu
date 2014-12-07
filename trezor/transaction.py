@@ -78,7 +78,7 @@ def compile_script_multisig(multisig):
     script = n_to_op(m)
 
     for pubkey in multisig.pubkeys:
-        script += '\x21'
+        script += op_push(len(pubkey))
         script += pubkey
     
     script += n_to_op(n)
