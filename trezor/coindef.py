@@ -28,9 +28,17 @@ LTC = types.CoinType(
     address_type=48,
 )
 
+DOGE = types.CoinType(
+    maxfee_kb=100000000,  # == 1 DOGE/kB
+    coin_name='Dogecoin',
+    coin_shortcut='DOGE',
+    address_type=30,
+)
+
 types = {
     'Bitcoin': BTC,
     'Testnet': TEST,
     'Namecoin': NMC,
     'Litecoin': LTC,
+    'Dogecoin': DOGE,
 }
