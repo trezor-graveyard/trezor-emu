@@ -65,12 +65,9 @@ def compile_script_multisig(multisig):
     # P2SH
 
     def n_to_op(n):
-        if n == 2:
-            return '\x52'
-        elif n == 3:
-            return '\x53'
-        else:
+        if n < 1 or n > 15:
             raise Exception("Unsupported multisig type")
+        return chr(0x50 + n)
         
     n = len(multisig.pubkeys)
     m = multisig.m

@@ -399,7 +399,10 @@ class StreamingSigningWorkflow(Workflow):
                 signatures = inp.multisig.signatures
 
                 # Find position of actual signature in 'signatures' list
-                sig_index = list(inp.multisig.pubkeys).index(pubkey)
+                try:
+                    sig_index = list(inp.multisig.pubkeys).index(pubkey)
+                except ValueError:
+                    raise Exception(proto.Failure(code=proto_types.Failure_Other, message="Pubkey not found in multisig script"))
 
                 # Put signature to proper place
                 signatures[sig_index] = signature
