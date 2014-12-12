@@ -4,7 +4,7 @@ from ecdsa.util import string_to_number
 from logo import logo
 import coindef
 import tools
-from bip32 import BIP32
+from bip32 import BIP32, public_ckd
 import messages_pb2 as proto
 import types_pb2 as proto_types
 
@@ -400,7 +400,8 @@ class StreamingSigningWorkflow(Workflow):
 
                 # Find position of actual signature in 'signatures' list
                 try:
-                    sig_index = list(inp.multisig.pubkeys).index(pubkey)
+                    pubkeys = [ public_ckd(n.node, list(n.address_n)).public_key for n in inp.multisig.pubkeys ]
+                    sig_index = list(pubkeys).index(pubkey)
                 except ValueError:
                     raise Exception(proto.Failure(code=proto_types.Failure_Other, message="Pubkey not found in multisig script"))
 

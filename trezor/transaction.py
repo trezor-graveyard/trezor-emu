@@ -7,6 +7,7 @@ import coindef
 from hashlib import sha256
 
 import tools
+from bip32 import BIP32, public_ckd
 import types_pb2 as types
 
 def op_push(i):
@@ -74,7 +75,9 @@ def compile_script_multisig(multisig):
     
     script = n_to_op(m)
 
-    for pubkey in multisig.pubkeys:
+    for node in multisig.pubkeys:
+        pubkey = public_ckd(node.node, list(node.address_n)).public_key
+
         script += op_push(len(pubkey))
         script += pubkey
     
