@@ -7,6 +7,7 @@ import hmac
 import pyaes
 
 import signing
+import transaction
 import tools
 import messages_pb2 as proto
 import types_pb2 as proto_types
@@ -690,8 +691,20 @@ class StateMachine(object):
         return self.protect_call([msg], '',
                     '{ Cancel', 'Confirm }', self.pin.change, is_remove)
 
-    def _get_address(self, coin, address_n):
-        address = BIP32(self.storage.get_node()).get_address(coin, address_n)
+    def _get_address(self, coin, address_n, multisig):
+        if multisig:
+            # check if we own the pubkey
+            pubkey = BIP32(self.storage.get_node()).get_public_node(address_n).public_key
+            try:
+                sig_index = list(multisig.pubkeys).index(pubkey)
+            except ValueError:
+                return proto.Failure(code=proto_types.Failure_Other, message="Pubkey not found in multisig script")
+            # convert script to P2SH address
+            script = transaction.compile_script_multisig(multisig)
+            h160 = tools.hash_160(script)
+            address = tools.hash_160_to_bc_address(h160, 0x05) # multisig cointype
+        else:
+            address = BIP32(self.storage.get_node()).get_address(coin, address_n)
         self.layout.show_receiving_address(address)
         self.custom_message = True  # Yes button will redraw screen
         return proto.Address(address=address)
@@ -805,7 +818,7 @@ class StateMachine(object):
             return self.passphrase.use(self._get_public_key, list(msg.address_n))
 
         if isinstance(msg, proto.GetAddress):
-            return self.passphrase.use(self._get_address, coindef.types[msg.coin_name], list(msg.address_n))
+            return self.passphrase.use(self._get_address, coindef.types[msg.coin_name], list(msg.address_n), msg.HasField('multisig') and msg.multisig or None)
         
         if isinstance(msg, proto.ChangePin):
             return self._change_pin(msg.remove)
