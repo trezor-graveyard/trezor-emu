@@ -14,7 +14,7 @@ import types_pb2 as proto_types
 import machine_signing
 from mnemonic import Mnemonic
 from storage import NotInitializedException
-from bip32 import BIP32
+from bip32 import BIP32, public_ckd
 import coindef
 
 class PinState(object):
@@ -696,7 +696,8 @@ class StateMachine(object):
             # check if we own the pubkey
             pubkey = BIP32(self.storage.get_node()).get_public_node(address_n).public_key
             try:
-                sig_index = list(multisig.pubkeys).index(pubkey)
+                pubkeys = [ public_ckd(n.node, list(n.address_n)).public_key for n in multisig.pubkeys ]
+                sig_index = list(pubkeys).index(pubkey)
             except ValueError:
                 return proto.Failure(code=proto_types.Failure_Other, message="Pubkey not found in multisig script")
             # convert script to P2SH address
