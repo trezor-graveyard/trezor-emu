@@ -146,6 +146,10 @@ class Storage(object):
     def get_passphrase_protection(self):
         return bool(self.struct.passphrase_protection)
 
+    def set_passphrase_protection(self, passphrase_protection):
+        self.struct.passphrase_protection = passphrase_protection
+        self.save()
+
     def set_secret(self, language, passphrase_protection, mnemonic=None, node=None, skip_checksum=False):
         '''This should be the only method which *set* mnemonir or node'''
         if node != None and node.IsInitialized():

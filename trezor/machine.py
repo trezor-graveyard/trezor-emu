@@ -630,7 +630,12 @@ class StateMachine(object):
             message.append('Label: %s' % settings.label)
         else:
             settings.ClearField('label')
-            
+
+        if settings.HasField('use_passphrase'):
+            message.append('Passphrase: %s' % settings.use_passphrase)
+        else:
+            settings.ClearField('use_passphrase')
+
         question = 'Apply these settings?'
         func = self._apply_settings
         args = (settings,)
@@ -643,6 +648,9 @@ class StateMachine(object):
             
         if settings.HasField('label'):
             self.storage.set_label(settings.label)
+
+        if settings.HasField('use_passphrase'):
+            self.storage.set_passphrase_protection(settings.use_passphrase)
 
         self.set_main_state()
         return proto.Success(message='Settings updated')
