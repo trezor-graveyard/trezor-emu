@@ -9,7 +9,8 @@ import messages_pb2 as proto
 import types_pb2 as proto_types
 
 from transaction import StreamTransactionHash, StreamTransactionSerialize, \
-        StreamTransactionSign, compile_TxOutput, estimate_size, estimate_size_kb
+        StreamTransactionSign, compile_TxOutput, estimate_size, estimate_size_kb, \
+        multisig_fingerprint
 
 '''
 Workflow of streamed signing
@@ -87,17 +88,23 @@ class SimpleSignStateMachine(object):
             return proto.Failure(code=proto_types.Failure_Other,
                                  message="Cannot have both address and address_n for the output")
 
+        is_change = False
+
         # Calculate proper address for given address_n
         if len(list(out.address_n)):
+            out.address = self.bip32.get_address(coin, list(out.address_n))
+            out.ClearField('address_n')
+            is_change = True
+
+        if out.HasField('multisig'):
+            pass # TODO: maybe is change
+
+        if is_change:
             if out_change == None:
-                out.address = self.bip32.get_address(coin, list(out.address_n))
-                out.ClearField('address_n')
                 out_change = index  # Remember which output is supposed to be a change
             else:
                 return proto.Failure(code=proto_types.Failure_Other,
                                      message="Only one change output allowed")
-
-        if out_change == index: # we have a change output
             return self.confirm_output(msg, index + 1, out_change)
         else:
             self.layout.show_output(coin, out.address, out.amount)
@@ -256,6 +263,7 @@ class StreamingSigningWorkflow(Workflow):
         change_amount = 0
         outtx = StreamTransactionSerialize(msg.inputs_count, msg.outputs_count,
                                            version, lock_time)
+        tx_multisig_fingerprint = None
 
         # foreach I:
         for i in range(msg.inputs_count):
@@ -320,12 +328,21 @@ class StreamingSigningWorkflow(Workflow):
                                           version, lock_time, True)
 
             # foreach I:
+            multisig_fp = None
             for i2 in range(msg.inputs_count):
                 # Request I
                 ret2 = yield(proto.TxRequest(request_type=proto_types.TXINPUT,
                         details=proto_types.TxRequestDetailsType(request_index=i2)))
 
                 check.serialize_input(ret2.tx.inputs[0])
+
+                if ret2.tx.inputs[0].HasField('multisig'):
+                    fp = multisig_fingerprint(ret2.tx.inputs[0].multisig)
+                    if multisig_fp == None:
+                        multisig_fp = fp
+                    else:
+                        if multisig_fp != fp:
+                            multisig_fp = ''
 
                 # If I == I-to-be-signed:
                 if i2 == i:
@@ -358,11 +375,21 @@ class StreamingSigningWorkflow(Workflow):
                     raise Exception(proto.Failure(code=proto_types.Failure_Other,
                                  message="Cannot have both address and address_n for the output"))
 
+                is_change = False
+
                 # Calculate proper address for given address_n
                 if len(list(out.address_n)):
+                    out.address = bip32.get_address(coin, list(out.address_n))
+                    out.ClearField('address_n')
+                    is_change = True
+
+                if out.HasField('multisig'):
+                    if multisig_fp != None and multisig_fp != '' and \
+                       multisig_fingerprint(out.multisig) == multisig_fp:
+                        is_change = True
+
+                if is_change:
                     if out_change == None:
-                        out.address = bip32.get_address(coin, list(out.address_n))
-                        out.ClearField('address_n')
                         out_change = o2  # Remember which output is supposed to be a change
                     else:
                         raise Exception(proto.Failure(code=proto_types.Failure_Other, message="Only one change output allowed"))

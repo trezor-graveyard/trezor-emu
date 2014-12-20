@@ -125,6 +125,18 @@ def serialize_script_multisig(signatures, multisig):
     
     return script
 
+def multisig_fingerprint(multisig):
+    nodes = [ x.node for x in multisig.pubkeys ]
+    s = sorted(nodes, key=lambda x: x.public_key)
+    h = sha256('')
+    for p in s:
+        h.update(struct.pack('<I', p.depth))
+        h.update(struct.pack('<I', p.fingerprint))
+        h.update(struct.pack('<I', p.child_num))
+        h.update(p.chain_code)
+        h.update(p.public_key)
+    return h.hexdigest()
+
 def estimate_size(inputs_len, outputs_len):
     # in kB, so far works for simple pay-to-address script
     '''
