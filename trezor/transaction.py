@@ -48,6 +48,15 @@ def compile_TxOutput(txout):
         script += '\x87'  # op_equal
         ret.script_pubkey = script
 
+    elif txout.script_type == types.PAYTOMULTISIG:
+        s = compile_script_multisig(txout.multisig)
+        h160 = tools.hash_160(s)
+        script = '\xa9'  # op_hash_160
+        script += '\x14'  # push 0x14 bytes
+        script += h160
+        script += '\x87'  # op_equal
+        ret.script_pubkey = script
+
     else:
         raise Exception("Unknown script type")
 
