@@ -711,7 +711,7 @@ class StateMachine(object):
             # convert script to P2SH address
             script = transaction.compile_script_multisig(multisig)
             h160 = tools.hash_160(script)
-            address = tools.hash_160_to_bc_address(h160, 0x05) # multisig cointype
+            address = tools.hash_160_to_bc_address(h160, coin.address_type_p2sh)
         else:
             address = BIP32(self.storage.get_node()).get_address(coin, address_n)
         self.layout.show_receiving_address(address)

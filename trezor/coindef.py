@@ -5,6 +5,7 @@ BTC = types.CoinType(
     coin_name='Bitcoin',
     coin_shortcut='BTC',
     address_type=0,
+    address_type_p2sh=5,
 )
 
 TEST = types.CoinType(
@@ -12,6 +13,7 @@ TEST = types.CoinType(
     coin_name='Testnet',
     coin_shortcut='TEST',
     address_type=111,
+    address_type_p2sh=196,
 )
 
 NMC = types.CoinType(
@@ -19,6 +21,7 @@ NMC = types.CoinType(
     coin_name='Namecoin',
     coin_shortcut='NMC',
     address_type=52,
+    address_type_p2sh=5,
 )
 
 LTC = types.CoinType(
@@ -26,6 +29,7 @@ LTC = types.CoinType(
     coin_name='Litecoin',
     coin_shortcut='LTC',
     address_type=48,
+    address_type_p2sh=5,
 )
 
 DOGE = types.CoinType(
@@ -33,6 +37,7 @@ DOGE = types.CoinType(
     coin_name='Dogecoin',
     coin_shortcut='DOGE',
     address_type=30,
+    address_type_p2sh=22,
 )
 
 types = {
