@@ -3,7 +3,7 @@ import os
 import types_pb2 as types
 import messages_pb2 as proto
 import storage_pb2 as proto_storage
-from bip32 import BIP32
+from bip32 import BIP32, DerivationCache
 import tools
 import signing
 import coindef
@@ -69,6 +69,7 @@ class Storage(object):
 
     def init_session(self):
         self.session = Session()
+        DerivationCache.clear()
 
     def get_features(self):
         m = proto.Features()
@@ -151,7 +152,7 @@ class Storage(object):
         self.save()
 
     def set_secret(self, language, passphrase_protection, mnemonic=None, node=None, skip_checksum=False):
-        '''This should be the only method which *set* mnemonir or node'''
+        '''This should be the only method which *set* mnemonic or node'''
         if node != None and node.IsInitialized():
             self.struct.passphrase_protection = False # Node cannot be passphrase protected
             self.struct.node.CopyFrom(node)

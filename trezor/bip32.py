@@ -85,6 +85,57 @@ def get_subnode(node, i):
 
     return node_out
 
+class DerivationCache(object):
+    cache = {}
+    last_index = 0
+    max_objects = 10
+    known_root_node = None
+            
+    @classmethod
+    def clear(cls):
+        cls.cache = {}
+        cls.last_index = 0
+        cls.known_root_node = None
+        
+    @classmethod
+    def get(cls, root_node, address_n):
+        if root_node != cls.known_root_node:
+            return None
+        
+        if address_n == []:
+            n = types.HDNodeType()
+            n.CopyFrom(self.known_root_node)
+            return n
+        
+        for i in cls.cache.keys():
+            (addr_n, node) = cls.cache[i] 
+            if addr_n == address_n:
+                n = types.HDNodeType()
+                n.CopyFrom(node)
+                return n
+        return None
+    
+    @classmethod
+    def set(cls, root_node, address_n, node):
+        if root_node == node:
+            # Don't store root node, it's useless
+            return
+
+        if cls.known_root_node != root_node:
+            # Drop cache if root node changed
+            cls.clear()
+               
+        n1 = types.HDNodeType()
+        n1.CopyFrom(node)
+        
+        cls.known_root_node = types.HDNodeType()
+        cls.known_root_node.CopyFrom(root_node)
+                          
+        #print "!!! setting cache", n1, address_n, n2
+        cls.cache[cls.last_index] = (address_n, n1)
+        cls.last_index = (cls.last_index + 1) % cls.max_objects
+        
+        
 class BIP32(object):
     def __init__(self, node):
         if node.public_key == '':
@@ -145,10 +196,26 @@ class BIP32(object):
         if not isinstance(n, list):
             raise Exception('Parameter must be a list')
 
-        node = types.HDNodeType()
-        node.CopyFrom(self.node)
-        
-        for i in n:
+        # Check if parent node already in cache
+        node = DerivationCache.get(self.node, n[:-1])
+        if node != None:
+            if len(n):
+                n = [n[-1],]
+            else:
+                return node
+            
+            index_to_cache = None
+            
+        else:
+            node = types.HDNodeType()
+            node.CopyFrom(self.node)
+            index_to_cache = len(n[:-1])
+           
+        for index, i in enumerate(n):
+            # Put parent of target derivation to cache
+            if index == index_to_cache:
+                DerivationCache.set(self.node, n[:-1], node)
+                
             node.CopyFrom(self._get_subnode(node, i))
         
         return node
