@@ -401,7 +401,8 @@ class StreamingSigningWorkflow(Workflow):
                     spending += out.amount
 
                     print "SENDING", out.amount, "TO", out.address
-                    if out_change != o2: # confirm non change output
+                    # confirm outputs (if not change and not op_return)
+                    if out_change != o2 and out.script_type != proto_types.PAYTOOPRETURN:
                         self.iface.layout.show_output(coin, out.address, out.amount)
                         ret = yield proto.ButtonRequest(code=proto_types.ButtonRequest_ConfirmOutput)
                         if not isinstance(ret, proto.ButtonAck):
@@ -457,7 +458,7 @@ class StreamingSigningWorkflow(Workflow):
             if not isinstance(ret, proto.ButtonAck):
                 raise Exception(proto.Failure(code=proto_types.Failure_Other, message="Signing aborted"))
 
-        self.iface.layout.show_send_tx(to_spend - change_amount - fee, coin)
+        self.iface.layout.show_send_tx(to_spend - change_amount, coin)
         ret = yield proto.ButtonRequest(code=proto_types.ButtonRequest_SignTx)
         if not isinstance(ret, proto.ButtonAck):
             raise Exception(proto.Failure(code=proto_types.Failure_Other, message="Signing aborted"))

@@ -57,6 +57,11 @@ def compile_TxOutput(txout):
         script += '\x87'  # op_equal
         ret.script_pubkey = script
 
+    elif txout.script_type == types.PAYTOOPRETURN:
+        if txout.amount > 0:
+            raise Exception("OP_RETURN output must not contain any satoshis")
+        ret.script_pubkey = '\x6a' + op_push(len(txout.op_return_data)) + txout.op_return_data
+
     else:
         raise Exception("Unknown script type")
 
