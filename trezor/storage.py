@@ -147,8 +147,18 @@ class Storage(object):
     def get_passphrase_protection(self):
         return bool(self.struct.passphrase_protection)
 
+    def get_homescreen(self):
+        return self.struct.homescreen
+
     def set_passphrase_protection(self, passphrase_protection):
         self.struct.passphrase_protection = passphrase_protection
+        self.save()
+
+    def set_homescreen(self, homescreen):
+        if len(homescreen) == 1024:
+            self.struct.homescreen = homescreen
+        else:
+            self.struct.ClearField('homescreen')
         self.save()
 
     def set_secret(self, language, passphrase_protection, mnemonic=None, node=None, skip_checksum=False):

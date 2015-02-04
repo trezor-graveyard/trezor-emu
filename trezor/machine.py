@@ -563,7 +563,7 @@ class StateMachine(object):
     def clear_custom_message(self):
         if self.custom_message:
             self.custom_message = False
-            self.layout.show_logo(None, self.storage.get_label())
+            self.layout.show_homescreen(self.storage)
 
     def press_button(self, button):
         if button and self.custom_message:
@@ -611,7 +611,7 @@ class StateMachine(object):
         self.custom_message = False
     
         if self.storage.is_initialized():
-            self.layout.show_logo(None, self.storage.get_label())   
+            self.layout.show_homescreen(self.storage)
         else:
             self.layout.show_message(
                 ["_cDevice hasn't been",
@@ -636,6 +636,12 @@ class StateMachine(object):
         else:
             settings.ClearField('use_passphrase')
 
+        if settings.HasField('homescreen'):
+            message.append('Homescreen')
+        else:
+            settings.ClearField('homescreen')
+
+
         question = 'Apply these settings?'
         func = self._apply_settings
         args = (settings,)
@@ -651,6 +657,9 @@ class StateMachine(object):
 
         if settings.HasField('use_passphrase'):
             self.storage.set_passphrase_protection(settings.use_passphrase)
+
+        if settings.HasField('homescreen'):
+            self.storage.set_homescreen(settings.homescreen)
 
         self.set_main_state()
         return proto.Success(message='Settings updated')

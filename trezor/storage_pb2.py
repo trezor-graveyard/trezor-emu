@@ -14,7 +14,7 @@ import types_pb2
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='storage.proto',
   package='',
-  serialized_pb='\n\rstorage.proto\x1a\x0btypes.proto\"\xc3\x01\n\x07Storage\x12\x0f\n\x07version\x18\x01 \x02(\r\x12\x19\n\x04node\x18\x02 \x01(\x0b\x32\x0b.HDNodeType\x12\x10\n\x08mnemonic\x18\x03 \x01(\t\x12\x1d\n\x15passphrase_protection\x18\x04 \x01(\x08\x12\x1b\n\x13pin_failed_attempts\x18\x05 \x01(\r\x12\x0b\n\x03pin\x18\x06 \x01(\t\x12\x10\n\x08language\x18\x07 \x01(\t\x12\r\n\x05label\x18\x08 \x01(\t\x12\x10\n\x08imported\x18\t \x01(\x08\x42\x30\n\x1f\x63om.satoshilabs.trezor.protobufB\rTrezorStorage')
+  serialized_pb='\n\rstorage.proto\x1a\x0btypes.proto\"\xd7\x01\n\x07Storage\x12\x0f\n\x07version\x18\x01 \x02(\r\x12\x19\n\x04node\x18\x02 \x01(\x0b\x32\x0b.HDNodeType\x12\x10\n\x08mnemonic\x18\x03 \x01(\t\x12\x1d\n\x15passphrase_protection\x18\x04 \x01(\x08\x12\x1b\n\x13pin_failed_attempts\x18\x05 \x01(\r\x12\x0b\n\x03pin\x18\x06 \x01(\t\x12\x10\n\x08language\x18\x07 \x01(\t\x12\r\n\x05label\x18\x08 \x01(\t\x12\x10\n\x08imported\x18\t \x01(\x08\x12\x12\n\nhomescreen\x18\n \x01(\x0c\x42\x30\n\x1f\x63om.satoshilabs.trezor.protobufB\rTrezorStorage')
 
 
 
@@ -89,6 +89,13 @@ _STORAGE = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='homescreen', full_name='Storage.homescreen', index=9,
+      number=10, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value="",
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -99,7 +106,7 @@ _STORAGE = _descriptor.Descriptor(
   is_extendable=False,
   extension_ranges=[],
   serialized_start=31,
-  serialized_end=226,
+  serialized_end=246,
 )
 
 _STORAGE.fields_by_name['node'].message_type = types_pb2._HDNODETYPE

@@ -1,6 +1,6 @@
 import time
 import smallfonts
-from logo import logo as default_logo
+from logo import logo
 
 class Layout(object):
     def __init__(self, buff, display):
@@ -20,15 +20,16 @@ class Layout(object):
         """return proper (is_refresh, is_active) if layout has something to render"""
         return (False, button)
 
-    def show_logo(self, logo=None, label=None):
+    def show_homescreen(self, storage):
         self.clear()
-        if logo:
-            self.buffer.draw_bitmap(logo)
+        custom = storage.get_homescreen()
+        if custom:
+            self.buffer.draw_bitmap([ ord(x) for x in custom ])
         else:
-            self.buffer.draw_bitmap(default_logo)
-
-        if label:
-            self._show_status(label, '', '')
+            self.buffer.draw_bitmap(logo)
+            label = storage.get_label()
+            if label:
+                self._show_status(label, '', '')
 
         self.display.refresh()
 
@@ -115,15 +116,12 @@ class Layout(object):
             current = int((time.time() - start) * 10)
             clear = True if current == 0 else False
             
-            self.show_progress(current, maximum, clear, default_logo)    
+            self.show_progress(current, maximum, clear)
             time.sleep(0.1)
 
-    def show_progress(self, current, maximum, clear=False, logo=None):
+    def show_progress(self, current, maximum, clear=False):
         if clear:
             self.clear()
-            if logo:
-                self.show_logo(logo)
-
             self.buffer.clear(0, self.buffer.height - 11, self.buffer.width - 1, self.buffer.height - 1)
             self.buffer.frame(0, self.buffer.height - 10, self.buffer.width - 1, self.buffer.height - 1)
 

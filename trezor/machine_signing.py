@@ -1,7 +1,6 @@
 import binascii
 from ecdsa.util import string_to_number
 
-from logo import logo
 import coindef
 import tools
 from bip32 import BIP32, public_ckd
@@ -177,7 +176,7 @@ class SimpleSignStateMachine(object):
 
         # Sign inputs
         index = 0
-        self.layout.show_progress(index, len(msg.inputs), clear=True, logo=logo)
+        self.layout.show_progress(index, len(msg.inputs), clear=True)
         for inp in msg.inputs:
             self.layout.show_progress(index, len(msg.inputs), clear=False)
 
@@ -210,7 +209,7 @@ class SimpleSignStateMachine(object):
             print '.',
             serialized_tx += outtx.serialize_output(compile_TxOutput(out))
 
-        self.layout.show_logo()
+        self.layout.show_homescreen(self.storage)
         self.set_main_state()
         return proto.TxRequest(request_type=proto_types.TXFINISHED,
                                serialized=proto_types.TxRequestSerializedType(serialized_tx=serialized_tx))
