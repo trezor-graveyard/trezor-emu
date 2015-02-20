@@ -5,6 +5,7 @@ import traceback
 import binascii
 import hmac
 import pyaes
+import struct
 
 import signing
 import transaction
@@ -753,6 +754,28 @@ class StateMachine(object):
         except:
             return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Cannot sign message")
 
+    def _sign_identity(self, identity, challenge_hidden, challenge_visual):
+        coin = coindef.types['Bitcoin']
+        m = hashlib.sha256()
+        m.update(struct.pack("<I", identity.index))
+        uri = ''
+        if identity.proto: uri += identity.proto + '://'
+        if identity.user: uri += identity.user + '@'
+        if identity.host: uri += identity.host
+        if identity.port: uri += ':' + identity.port
+        if identity.path: uri += identity.path
+        m.update(uri)
+        (a, b, c, d, _, _, _, _) = struct.unpack('<8I', m.digest())
+        address_n = [0x80000000 | 46, 0x80000000 | a, 0x80000000 | b, 0x80000000 | c, 0x80000000 | d]
+        message = bytes(challenge_hidden) + bytes(challenge_visual)
+        try:
+            bip32 = BIP32(self.storage.get_node())
+            pubkey = bip32.get_public_node(address_n).public_key
+            (address, sig) = signing.sign_message(bip32, coin, address_n, message)
+            return proto.SignedIdentity(address=address, public_key=pubkey, signature=sig)
+        except:
+            return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Cannot sign identity")
+
     def _cipher_keyvalue(self, address_n, key, value, encrypt, ask_on_encrypt, ask_on_decrypt):
         self.set_main_state()
         if len(value) % 16 > 0:
@@ -872,6 +895,16 @@ class StateMachine(object):
                                      'Sign this message?', '{ Cancel', 'Confirm }',
                                      self.passphrase.use, self._sign_message,
                                      coindef.types[msg.coin_name], list(msg.address_n), msg.message)
+
+        if isinstance(msg, proto.SignIdentity):
+            return self.protect_call([msg.identity.proto + ' identity',
+                                      'user:' + msg.identity.user,
+                                      'host:' + msg.identity.host,
+                                      'challenge:',
+                                      msg.challenge_visual],
+                                     'Login?', '{ Cancel', 'Confirm }',
+                                     self.passphrase.use, self._sign_identity,
+                                     msg.identity, msg.challenge_hidden, msg.challenge_visual)
 
         if isinstance(msg, proto.VerifyMessage):
             try:
