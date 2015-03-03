@@ -40,10 +40,19 @@ DOGE = types.CoinType(
     address_type_p2sh=22,
 )
 
+DRK = types.CoinType(
+    maxfee_kb=100000,  # == 0.001 DRK/kB
+    coin_name='Darkcoin',
+    coin_shortcut='DRK',
+    address_type=76,
+    address_type_p2sh=16,
+)
+
 types = {
     'Bitcoin': BTC,
     'Testnet': TEST,
     'Namecoin': NMC,
     'Litecoin': LTC,
     'Dogecoin': DOGE,
+    'Darkcoin': DRK,
 }
