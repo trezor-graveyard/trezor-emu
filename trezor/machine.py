@@ -766,7 +766,7 @@ class StateMachine(object):
         if identity.path: uri += identity.path
         m.update(uri)
         (a, b, c, d, _, _, _, _) = struct.unpack('<8I', m.digest())
-        address_n = [0x80000000 | 46, 0x80000000 | a, 0x80000000 | b, 0x80000000 | c, 0x80000000 | d]
+        address_n = [0x80000000 | 13, 0x80000000 | a, 0x80000000 | b, 0x80000000 | c, 0x80000000 | d]
         message = bytes(challenge_hidden) + bytes(challenge_visual)
         try:
             bip32 = BIP32(self.storage.get_node())
