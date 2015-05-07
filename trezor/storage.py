@@ -9,6 +9,10 @@ import signing
 import coindef
 import binascii
 from mnemonic import Mnemonic
+from pbkdf2 import PBKDF2
+import hmac
+import pyaes
+import hashlib
 
 class NotInitializedException(Exception):
     pass
@@ -164,14 +168,12 @@ class Storage(object):
     def set_secret(self, language, passphrase_protection, mnemonic=None, node=None, skip_checksum=False):
         '''This should be the only method which *set* mnemonic or node'''
         if node != None and node.IsInitialized():
-            self.struct.passphrase_protection = False # Node cannot be passphrase protected
+            self.struct.passphrase_protection = bool(passphrase_protection)
             self.struct.node.CopyFrom(node)
             self.struct.ClearField('mnemonic')
-                    
         elif mnemonic != '':
             if not skip_checksum and not Mnemonic(language).check(mnemonic):
                 raise Exception("Invalid mnemonic")
-
             self.struct.passphrase_protection = bool(passphrase_protection)
             self.struct.mnemonic = mnemonic
             self.struct.ClearField('node')
@@ -249,7 +251,7 @@ class Storage(object):
 
         if self.struct.HasField('mnemonic') and self.struct.HasField('node'):
             raise Exception("Cannot have both mnemonic and node at the same time")
-        
+
         if self.session.has_node():
             # If we've already unlocked node, let's use it
             return self.session.node
@@ -260,7 +262,19 @@ class Storage(object):
             self.session.set_node(BIP32.get_node_from_seed(seed))
         else:
             print "Loading node"
-            self.session.set_node(self.struct.node)
+            passphrase = self.session.get_passphrase()
+            if passphrase:
+                secret = PBKDF2(passphrase, "TREZORHD", iterations=2048, macmodule=hmac, digestmodule=hashlib.sha512).read(64)
+                node = types.HDNodeType()
+                node.CopyFrom(self.struct.node)
+                aes_key = secret[:32]
+                aes_iv = secret[32:48]
+                aescbc = pyaes.AESModeOfOperationCBC(key=aes_key, iv=aes_iv)
+                node.chain_code = aescbc.decrypt(node.chain_code[:16]) + aescbc.decrypt(node.chain_code[16:])
+                node.private_key = aescbc.decrypt(node.private_key[:16]) + aescbc.decrypt(node.private_key[16:])
+                self.session.set_node(node)
+            else:
+                self.session.set_node(self.struct.node)
 
         return self.session.node
 
