@@ -767,7 +767,7 @@ class StateMachine(object):
         m.update(uri)
         (a, b, c, d, _, _, _, _) = struct.unpack('<8I', m.digest())
         address_n = [0x80000000 | 13, 0x80000000 | a, 0x80000000 | b, 0x80000000 | c, 0x80000000 | d]
-        message = bytes(challenge_hidden) + bytes(challenge_visual)
+        message = hashlib.sha256(challenge_hidden).digest() + hashlib.sha256(challenge_visual).digest()
         try:
             bip32 = BIP32(self.storage.get_node())
             pubkey = bip32.get_public_node(address_n).public_key
