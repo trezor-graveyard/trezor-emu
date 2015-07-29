@@ -1,7 +1,7 @@
 import types_pb2 as types
 
 BTC = types.CoinType(
-    maxfee_kb=10000,  # == 0.0001 BTC/kB
+    maxfee_kb=100000,  # == 0.001 BTC/kB
     coin_name='Bitcoin',
     coin_shortcut='BTC',
     address_type=0,
@@ -25,7 +25,7 @@ NMC = types.CoinType(
 )
 
 LTC = types.CoinType(
-    maxfee_kb=10000000,  # == 0.1 LTC/kB
+    maxfee_kb=1000000,  # == 0.01 LTC/kB
     coin_name='Litecoin',
     coin_shortcut='LTC',
     address_type=48,
@@ -33,7 +33,7 @@ LTC = types.CoinType(
 )
 
 DOGE = types.CoinType(
-    maxfee_kb=100000000,  # == 1 DOGE/kB
+    maxfee_kb=1000000000,  # == 10 DOGE/kB
     coin_name='Dogecoin',
     coin_shortcut='DOGE',
     address_type=30,
@@ -41,9 +41,9 @@ DOGE = types.CoinType(
 )
 
 DRK = types.CoinType(
-    maxfee_kb=100000,  # == 0.001 DRK/kB
-    coin_name='Darkcoin',
-    coin_shortcut='DRK',
+    maxfee_kb=100000,  # == 0.001 DASH/kB
+    coin_name='Dash',
+    coin_shortcut='DASH',
     address_type=76,
     address_type_p2sh=16,
 )
