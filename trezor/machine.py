@@ -772,6 +772,8 @@ class StateMachine(object):
             bip32 = BIP32(self.storage.get_node())
             pubkey = bip32.get_public_node(address_n).public_key
             (address, sig) = signing.sign_message(bip32, coin, address_n, message)
+            if identity.proto and identity.proto == 'ssh':
+                address = ''
             return proto.SignedIdentity(address=address, public_key=pubkey, signature=sig)
         except:
             return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Cannot sign identity")
