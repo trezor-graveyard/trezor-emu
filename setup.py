@@ -12,7 +12,7 @@ setup(
     packages = find_packages(),
     test_suite = 'tests',
     dependency_links=['https://github.com/trezor/python-mnemonic/archive/master.zip#egg=mnemonic-0.8'],
-    install_requires=['ecdsa>=0.11', 'RPi.GPIO', 'spidev', 'pyserial', 'protobuf', 'mnemonic>=0.8', 'pyaes'],
+    install_requires=['ecdsa>=0.11', 'RPi.GPIO', 'spidev', 'pyserial', 'protobuf==2.6.1', 'mnemonic>=0.8', 'pyaes'],
     entry_points = {'console_scripts': ['trezor-emu  =  trezor:run', ], },
     include_package_data = True,
     package_data = {'protobuf': ['*.proto'], },
