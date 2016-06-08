@@ -778,7 +778,7 @@ class StateMachine(object):
         except:
             return proto.Failure(code=proto_types.Failure_InvalidSignature, message="Cannot sign identity")
 
-    def _cipher_keyvalue(self, address_n, key, value, encrypt, ask_on_encrypt, ask_on_decrypt):
+    def _cipher_keyvalue(self, address_n, key, value, encrypt, ask_on_encrypt, ask_on_decrypt, iv):
         self.set_main_state()
         if len(value) % 16 > 0:
             return proto.Failure(code=proto_types.Failure_SyntaxError, message="Input length must be a multiple of 16")
@@ -787,7 +787,7 @@ class StateMachine(object):
         key += "D1" if ask_on_decrypt else "D0"
         secret = hmac.HMAC(key=private_key, msg=key, digestmod=hashlib.sha512).digest()
         aes_key = secret[0:32]
-        aes_iv = secret[32:48]
+        aes_iv = iv if iv else secret[32:48]
         aes = pyaes.AESModeOfOperationCBC(key=aes_key, iv=aes_iv)
         if encrypt:
             res = ''.join([aes.encrypt(value[i:i+16]) for i in range(0, len(value), 16)])
@@ -942,7 +942,7 @@ class StateMachine(object):
                                      '{ Cancel', 'Confirm }',
                                      self.passphrase.use, self._cipher_keyvalue,
                                      msg.address_n, msg.key, msg.value, msg.encrypt,
-                                     msg.ask_on_encrypt, msg.ask_on_decrypt)
+                                     msg.ask_on_encrypt, msg.ask_on_decrypt, msg.iv)
 
         if isinstance(msg, proto.SimpleSignTx):
             return self.simplesign.process_message(msg)
