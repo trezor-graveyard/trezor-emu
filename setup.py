@@ -4,7 +4,7 @@ from os.path import dirname, join
 here = dirname(__file__)
 setup(
     name = 'trezor-emu',
-    version = '0.1.0',
+    version = '0.2.0',
     author = 'Bitcoin TREZOR',
     author_email = 'info@bitcointrezor.com',
     description = 'Python implementation of TREZOR compatible hardware bitcoin wallet',
